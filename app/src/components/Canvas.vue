@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Konva from "konva";
-import { type Ref, ref } from 'vue'
+import { type Ref, ref, computed } from 'vue'
 const stage: Ref<any> = ref(null);
 const layer: Ref<any> = ref(null);
 
@@ -15,36 +15,120 @@ const mode = 'brush';
 let isDrawing = false;
 let points = [] as any[];
 let lines = [] as any[];
-
-const penSizes = [20, 40, 60, 80, 100];
-const penSize = ref(40); // 20, 40, 60, 80
-const allowFingerIfStylus = ref(false);
-
 let isStylus = ref(false);
 let detectedStlyus = ref(false);
+const allowFingerIfStylus = ref(false);
+
+enum Tool {
+  ERASER = 0,
+  PEN = 1,
+  MARKER = 2,
+}
+const supportedTools = {
+  [Tool.PEN]: { label: 'Pen' },
+  [Tool.MARKER]: { label: 'Marker' },
+  [Tool.ERASER]: { label: 'Eraser' },
+}
+const toolOrder = [Tool.PEN, Tool.MARKER, Tool.ERASER];
+const selectedTool = ref(Tool.PEN);
+
+const penSizes = [5, 10, 20, 40, 60];
+const penSize = ref(40); // 20, 40, 60, 80
+
+const colors = [
+  '#000000',
+  '#ff0000',
+  '#00ff00',
+  '#0000ff',
+  '#ffff00',
+  '#00ffff',
+  '#ff00ff',
+  '#ffffff',
+];
+const selectedColor = ref(colors[0]);
+
+const compositionOptions = [
+  'source-over',
+  'source-in',
+  'source-out',
+  'source-atop',
+  'destination-over',
+  'destination-in',
+  'destination-out',
+  'destination-atop',
+  'lighter',
+  'copy',
+  'xor',
+  'multiply',
+  'screen',
+  'overlay',
+  'darken',
+  'lighten',
+  'color-dodge',
+  'color-burn',
+  'hard-light',
+  'soft-light',
+  'difference',
+  'exclusion',
+  'hue',
+  'saturation',
+  'color',
+  'luminosity',
+];
+const selectedComposition = ref(compositionOptions[0]);
+
+const globalCompositeOperation = computed(() => {
+  if (selectedTool.value === Tool.ERASER) {
+    return 'destination-out';
+  }
+
+  if (selectedTool.value === Tool.MARKER) {
+    return 'multiply';
+  }
+
+  return 'source-over';
+});
+
+
+function setupIsStylus(event) {
+  let force = event.touches ? event.touches[0]["force"] : 0;
+  isStylus.value = force > 0;
+  detectedStlyus.value = detectedStlyus.value || isStylus.value;
+}
 
 function getStrokeWidth(event, isTouchStart = false): number | undefined {
   let strokeWidth;
   let pressure;
 
   if (isTouchStart) {
-    pressure = event.touches ? event.touches[0]["force"] : 0;
-    isStylus.value = pressure > 0;
-    detectedStlyus.value = detectedStlyus.value || isStylus.value;
-  } else if (isStylus.value) {
-    pressure = event.touches[0]["force"];
-  } else {
-    pressure = 1;
+    setupIsStylus(event);
   }
 
   if (detectedStlyus.value && !isStylus.value && !allowFingerIfStylus.value) {
     return;
   }
 
+  if (isTouchStart) {
+    pressure = event.touches ? event.touches[0]["force"] : 0;
+  } else if (selectedTool.value === Tool.PEN && isStylus.value) {
+    pressure = event.touches[0]["force"];
+  } else {
+    pressure = 1;
+  }
+
   strokeWidth = Math.ceil(Math.log(pressure + 1) * penSize.value);
   if (strokeWidth < 1) strokeWidth = 1;
   return strokeWidth;
 }
+
+function getOpacity(): number {
+  if (selectedTool.value === Tool.MARKER) {
+    return 0.9;
+  }
+
+  return 1;
+}
+
 
 function handleTouchStart(event) {
   if (stage.value === null || layer.value === null) return;
@@ -59,10 +143,10 @@ function handleTouchStart(event) {
   if (strokeWidth === undefined) return;
 
   const newLine: Konva.LineConfig = {
-    stroke: '#000000',
+    stroke: selectedColor.value,
+    opacity: getOpacity(),
     strokeWidth,
-    globalCompositeOperation:
-      mode === 'brush' ? 'source-over' : 'destination-out',
+    globalCompositeOperation: globalCompositeOperation.value,
     lineCap: 'round',
     lineJoin: 'round',
     points: [pos.x, pos.y, pos.x, pos.y],
@@ -103,10 +187,21 @@ function handleTouchMove(event) {
   const currStrokeWidth = lastLine.strokeWidth();
   const gap = Math.abs(newStrokeWidth - currStrokeWidth);
 
-  if (gap <= 1) {
-    const newPoints = lastLine.points().concat([pos.x, pos.y]);
-    points.push({ x: pos.x, y: pos.y });
+  if (selectedTool.value !== Tool.PEN || gap <= 1) {
+    const lastPoint = points[points.length - 1];
+
+    const isSamePoint = lastPoint.x === pos.x && lastPoint.y === pos.y;
+    if (isSamePoint) {
+      return;
+    }
+
+    if (selectedTool.value !== Tool.PEN) {
+      lastLine.strokeWidth(newStrokeWidth);
+    }
+
+    let newPoints = lastLine.points().concat([pos.x, pos.y]);
     lastLine.points(newPoints);
+    points.push({ x: pos.x, y: pos.y });
   } else {
     const lastPoints = points[points.length - 1];
     const secndLastPoints = points[points.length - 2];
@@ -133,10 +228,10 @@ function handleTouchMove(event) {
     let tweenStroke = (currStrokeWidth + newStrokeWidth) / 2;
 
     const connectorLine: Konva.LineConfig = {
-      stroke: '#000000',
+      stroke: selectedColor.value,
+      opacity: getOpacity(),
       strokeWidth: tweenStroke,
-      globalCompositeOperation:
-        mode === 'brush' ? 'source-over' : 'destination-out',
+      globalCompositeOperation: globalCompositeOperation.value,
       lineCap: 'round',
       lineJoin: 'round',
       points: newPoints,
@@ -158,9 +253,24 @@ function handleTouchMove(event) {
 <template>
   <div class="canvas">
     <div class="tools">
+      <select v-model="selectedTool">
+        <option v-for="tool in toolOrder" :key="tool" :value="tool">
+          {{ supportedTools[tool].label }}
+        </option>
+      </select>
       <select v-model="penSize">
         <option v-for="size in penSizes" :key="size" :value="size">
           {{ size }}
+        </option>
+      </select>
+      <select v-model="selectedColor">
+        <option v-for="color in colors" :key="color" :value="color">
+          {{ color }}
+        </option>
+      </select>
+      <select v-model="selectedComposition">
+        <option v-for="composition in compositionOptions" :key="composition" :value="composition">
+          {{ composition }}
         </option>
       </select>
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
