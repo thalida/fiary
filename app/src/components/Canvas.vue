@@ -24,15 +24,17 @@ enum Tool {
   ERASER = 0,
   PEN = 1,
   MARKER = 2,
-  BLOB = 3,
+  HIGHLIGHTER = 3,
+  BLOB = 10,
 }
 const supportedTools = {
   [Tool.PEN]: { label: 'Pen' },
   [Tool.MARKER]: { label: 'Marker' },
+  [Tool.HIGHLIGHTER]: { label: 'Highlighter' },
   [Tool.BLOB]: { label: 'Blob' },
   [Tool.ERASER]: { label: 'Eraser' },
 }
-const toolOrder = [Tool.PEN, Tool.MARKER, Tool.BLOB, Tool.ERASER];
+const toolOrder = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER, Tool.BLOB, Tool.ERASER];
 const selectedTool = ref(Tool.PEN);
 
 const penSizes = [5, 10, 20, 40, 60];
@@ -92,6 +94,10 @@ const globalCompositeOperation = computed(() => {
     return 'multiply';
   }
 
+  if (selectedTool.value === Tool.HIGHLIGHTER) {
+    return 'lighten';
+  }
+
   return 'source-over';
 });
 
@@ -132,6 +138,10 @@ function getOpacity(): number {
     return 0.9;
   }
 
+  if (selectedTool.value === Tool.HIGHLIGHTER) {
+    return 0.75;
+  }
+
   return 1;
 }
 
@@ -151,13 +161,15 @@ function handleTouchStart(event) {
   const strokeWidth = getStrokeWidth(event.evt, true);
   const opacity = getOpacity();
 
+  points = [pos.x, pos.y, pos.x + strokeWidth, pos.y + strokeWidth];
+
   const newLine: Konva.LineConfig = {
     strokeWidth,
     opacity,
     globalCompositeOperation: globalCompositeOperation.value,
     lineCap: 'round',
     lineJoin: 'round',
-    points: [pos.x, pos.y, pos.x, pos.y],
+    points,
     bezier: true,
     closed: selectedTool.value === Tool.BLOB,
     perfectDrawEnabled: false,
@@ -177,8 +189,6 @@ function handleTouchStart(event) {
     newLine.fill = selectedColor.value;
     newLine.stroke = selectedColor.value;
   }
-
-  points = [{ x: pos.x, y: pos.y }, { x: pos.x, y: pos.y }];
 
   const konvaLine = new Konva.Line(newLine);
   lines.push({
