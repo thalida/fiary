@@ -11,37 +11,37 @@ const configKonva = {
 }
 
 const mode = 'brush';
-let isPaint = false;
+
+let isDrawing = false;
 let points = [] as any[];
 let lines = [] as any[];
-const penSize = 40; // 20, 40, 60, 80
-let isStylus: boolean | null = null;
-let detectedStlyus = false;
-const allowFingerIfStylus = false;
 
-function getStrokeWidth(event): number | undefined {
+const penSizes = [20, 40, 60, 80, 100];
+const penSize = ref(40); // 20, 40, 60, 80
+const allowFingerIfStylus = ref(false);
+
+let isStylus = ref(false);
+let detectedStlyus = ref(false);
+
+function getStrokeWidth(event, isTouchStart = false): number | undefined {
   let strokeWidth;
-  if (event.touches && event.touches[0] && typeof event.touches[0]["force"] !== "undefined") {
-    let pressure;
-    if (isStylus === null) {
-      pressure = event.touches[0]["force"];
-      isStylus = pressure > 0;
-      detectedStlyus = detectedStlyus || isStylus;
-    } else if (isStylus) {
-      pressure = event.touches[0]["force"];
-    } else {
-      pressure = 1
-    }
+  let pressure;
 
-    if (detectedStlyus && !isStylus && !allowFingerIfStylus) {
-      return;
-    }
-
-    strokeWidth = Math.ceil(Math.log(pressure + 1) * penSize);
+  if (isTouchStart) {
+    pressure = event.touches ? event.touches[0]["force"] : 0;
+    isStylus.value = pressure > 0;
+    detectedStlyus.value = detectedStlyus.value || isStylus.value;
+  } else if (isStylus.value) {
+    pressure = event.touches[0]["force"];
   } else {
-    strokeWidth = Math.ceil(Math.log(2) * penSize);
+    pressure = 1;
   }
 
+  if (detectedStlyus.value && !isStylus.value && !allowFingerIfStylus.value) {
+    return;
+  }
+
+  strokeWidth = Math.ceil(Math.log(pressure + 1) * penSize.value);
   if (strokeWidth < 1) strokeWidth = 1;
   return strokeWidth;
 }
@@ -49,12 +49,12 @@ function getStrokeWidth(event): number | undefined {
 function handleTouchStart(event) {
   if (stage.value === null || layer.value === null) return;
 
-  isPaint = true;
+  isDrawing = true;
 
   const stageNode = stage.value.getNode();
   const layerNode = layer.value.getNode();
   const pos = stageNode.getPointerPosition();
-  const strokeWidth = getStrokeWidth(event.evt);
+  const strokeWidth = getStrokeWidth(event.evt, true);
 
   if (strokeWidth === undefined) return;
 
@@ -80,12 +80,11 @@ function handleTouchStart(event) {
 }
 
 function handleTouchEnd() {
-  isPaint = false;
-  isStylus = null;
+  isDrawing = false;
 }
 
 function handleTouchMove(event) {
-  if (!isPaint) {
+  if (!isDrawing) {
     return;
   }
 
@@ -158,6 +157,16 @@ function handleTouchMove(event) {
 
 <template>
   <div class="canvas">
+    <div class="tools">
+      <select v-model="penSize">
+        <option v-for="size in penSizes" :key="size" :value="size">
+          {{ size }}
+        </option>
+      </select>
+      <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
+      <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
+      <label><input type="checkbox" v-model="allowFingerIfStylus" /> finger?</label>
+    </div>
     <v-stage ref="stage" :config="configKonva" @mousedown="handleTouchStart" @touchstart="handleTouchStart"
       @mouseup="handleTouchEnd" @touchend="handleTouchEnd" @mousemove="handleTouchMove" @touchmove="handleTouchMove">
       <v-layer ref="layer"></v-layer>
@@ -168,5 +177,12 @@ function handleTouchMove(event) {
 <style scoped>
 .canvas {
   border: 2px solid red;
+}
+
+.tools {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
 }
 </style>
