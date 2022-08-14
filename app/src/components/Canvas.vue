@@ -13,23 +13,26 @@ const configKonva = {
 const mode = 'brush';
 
 let isDrawing = false;
-let points = [] as any[];
 let lines = [] as any[];
+let points = [] as any[];
+let maxPointPosition: any = null;
 let isStylus = ref(false);
 let detectedStlyus = ref(false);
-const allowFingerIfStylus = ref(false);
+const allowFingerDrawing = ref(true);
 
 enum Tool {
   ERASER = 0,
   PEN = 1,
   MARKER = 2,
+  BLOB = 3,
 }
 const supportedTools = {
   [Tool.PEN]: { label: 'Pen' },
   [Tool.MARKER]: { label: 'Marker' },
+  [Tool.BLOB]: { label: 'Blob' },
   [Tool.ERASER]: { label: 'Eraser' },
 }
-const toolOrder = [Tool.PEN, Tool.MARKER, Tool.ERASER];
+const toolOrder = [Tool.PEN, Tool.MARKER, Tool.BLOB, Tool.ERASER];
 const selectedTool = ref(Tool.PEN);
 
 const penSizes = [5, 10, 20, 40, 60];
@@ -44,6 +47,9 @@ const colors = [
   '#00ffff',
   '#ff00ff',
   '#ffffff',
+  [0, '#ff0000', 1, '#0000ff'],
+  [0, '#00ff00', 1, '#ff0000'],
+  [0, '#0000ff', 1, '#00ff00'],
 ];
 const selectedColor = ref(colors[0]);
 
@@ -96,17 +102,17 @@ function setupIsStylus(event) {
   detectedStlyus.value = detectedStlyus.value || isStylus.value;
 }
 
-function getStrokeWidth(event, isTouchStart = false): number | undefined {
+function isDrawingAllowed() {
+  if (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value) {
+    return false
+  }
+
+  return true;
+}
+
+function getStrokeWidth(event, isTouchStart = false): number {
   let strokeWidth;
   let pressure;
-
-  if (isTouchStart) {
-    setupIsStylus(event);
-  }
-
-  if (detectedStlyus.value && !isStylus.value && !allowFingerIfStylus.value) {
-    return;
-  }
 
   if (isTouchStart) {
     pressure = event.touches ? event.touches[0]["force"] : 0;
@@ -135,36 +141,66 @@ function handleTouchStart(event) {
 
   isDrawing = true;
 
+  setupIsStylus(event.evt);
+
+  if (!isDrawingAllowed()) return;
+
   const stageNode = stage.value.getNode();
   const layerNode = layer.value.getNode();
   const pos = stageNode.getPointerPosition();
   const strokeWidth = getStrokeWidth(event.evt, true);
-
-  if (strokeWidth === undefined) return;
+  const opacity = getOpacity();
 
   const newLine: Konva.LineConfig = {
-    stroke: selectedColor.value,
-    opacity: getOpacity(),
     strokeWidth,
+    opacity,
     globalCompositeOperation: globalCompositeOperation.value,
     lineCap: 'round',
     lineJoin: 'round',
     points: [pos.x, pos.y, pos.x, pos.y],
     bezier: true,
+    closed: selectedTool.value === Tool.BLOB,
     perfectDrawEnabled: false,
     shadowForStrokeEnabled: false,
     listening: false,
   };
 
+  if (Array.isArray(selectedColor.value)) {
+    newLine.fillLinearGradientColorStops = selectedColor.value;
+    newLine.fillLinearGradientStartPoint = { x: pos.x, y: pos.y }
+    newLine.fillLinearGradientEndPoint = { x: pos.x, y: pos.y }
+
+    newLine.strokeLinearGradientColorStops = selectedColor.value;
+    newLine.strokeLinearGradientStartPoint = { x: pos.x, y: pos.y }
+    newLine.strokeLinearGradientEndPoint = { x: pos.x, y: pos.y }
+  } else {
+    newLine.fill = selectedColor.value;
+    newLine.stroke = selectedColor.value;
+  }
+
   points = [{ x: pos.x, y: pos.y }, { x: pos.x, y: pos.y }];
 
   const konvaLine = new Konva.Line(newLine);
-  lines.push(konvaLine);
+  lines.push({
+    konva: konvaLine,
+    segments: [] as any[],
+  });
   layerNode.add(konvaLine);
 }
 
 function handleTouchEnd() {
   isDrawing = false;
+  maxPointPosition = null;
+  points = [];
+
+
+  const lastLine = lines[lines.length - 1];
+  lastLine.konva.cache();
+
+  for (let i = 0; i < lastLine.segments.length; i++) {
+    const segment = lastLine.segments[i];
+    segment.cache();
+  }
 }
 
 function handleTouchMove(event) {
@@ -174,8 +210,8 @@ function handleTouchMove(event) {
 
   if (stage.value === null || layer.value === null) return;
 
-  const newStrokeWidth = getStrokeWidth(event.evt);
-  if (newStrokeWidth === undefined) return;
+  if (!isDrawingAllowed()) return;
+
 
   event.evt.preventDefault();
 
@@ -183,9 +219,23 @@ function handleTouchMove(event) {
   const layerNode = layer.value.getNode();
   const pos = stageNode.getPointerPosition();
   const lastLine = lines[lines.length - 1];
+  const anchorLine = (lastLine.segments.length === 0) ? lastLine.konva : lastLine.segments[lastLine.segments.length - 1];
 
-  const currStrokeWidth = lastLine.strokeWidth();
+  const currStrokeWidth = anchorLine.strokeWidth();
+  const newStrokeWidth = getStrokeWidth(event.evt);
   const gap = Math.abs(newStrokeWidth - currStrokeWidth);
+
+  if (maxPointPosition !== null) {
+    const newPoint = points[points.length - 1];
+    if (newPoint.x > maxPointPosition.x) {
+      maxPointPosition.x = newPoint.x;
+    }
+    if (newPoint.y > maxPointPosition.y) {
+      maxPointPosition.y = newPoint.y;
+    }
+  } else {
+    maxPointPosition = { x: pos.x, y: pos.y };
+  }
 
   if (selectedTool.value !== Tool.PEN || gap <= 1) {
     const lastPoint = points[points.length - 1];
@@ -196,11 +246,16 @@ function handleTouchMove(event) {
     }
 
     if (selectedTool.value !== Tool.PEN) {
-      lastLine.strokeWidth(newStrokeWidth);
+      anchorLine.strokeWidth(newStrokeWidth);
     }
 
-    let newPoints = lastLine.points().concat([pos.x, pos.y]);
-    lastLine.points(newPoints);
+    if (Array.isArray(selectedColor.value)) {
+      anchorLine.fillLinearGradientEndPoint(maxPointPosition);
+      anchorLine.strokeLinearGradientEndPoint(maxPointPosition);
+    }
+
+    let newPoints = anchorLine.points().concat([pos.x, pos.y]);
+    anchorLine.points(newPoints);
     points.push({ x: pos.x, y: pos.y });
   } else {
     const lastPoints = points[points.length - 1];
@@ -228,7 +283,6 @@ function handleTouchMove(event) {
     let tweenStroke = (currStrokeWidth + newStrokeWidth) / 2;
 
     const connectorLine: Konva.LineConfig = {
-      stroke: selectedColor.value,
       opacity: getOpacity(),
       strokeWidth: tweenStroke,
       globalCompositeOperation: globalCompositeOperation.value,
@@ -241,9 +295,32 @@ function handleTouchMove(event) {
       listening: false,
     };
 
+    if (Array.isArray(selectedColor.value)) {
+      connectorLine.fillLinearGradientColorStops = selectedColor.value;
+      connectorLine.fillLinearGradientStartPoint = points[0];
+      connectorLine.fillLinearGradientEndPoint = maxPointPosition;
+
+      connectorLine.strokeLinearGradientColorStops = selectedColor.value;
+      connectorLine.strokeLinearGradientStartPoint = points[0];
+      connectorLine.strokeLinearGradientEndPoint = maxPointPosition;
+    } else {
+      connectorLine.fill = selectedColor.value;
+      connectorLine.stroke = selectedColor.value;
+    }
+
     const konvaConnectorLine = new Konva.Line(connectorLine);
     points.push({ x: pos.x, y: pos.y });
-    lines.push(konvaConnectorLine);
+
+    if (Array.isArray(selectedColor.value)) {
+      for (let i = 0; i < lastLine.segments.length; i += 1) {
+        const segment = lastLine.segments[i];
+
+        segment.fillLinearGradientEndPoint(maxPointPosition);
+        segment.strokeLinearGradientEndPoint(maxPointPosition);
+      }
+    }
+
+    lastLine.segments.push(konvaConnectorLine);
     layerNode.add(konvaConnectorLine);
   }
 }
@@ -275,7 +352,7 @@ function handleTouchMove(event) {
       </select>
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
-      <label><input type="checkbox" v-model="allowFingerIfStylus" /> finger?</label>
+      <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
     </div>
     <v-stage ref="stage" :config="configKonva" @mousedown="handleTouchStart" @touchstart="handleTouchStart"
       @mouseup="handleTouchEnd" @touchend="handleTouchEnd" @mousemove="handleTouchMove" @touchmove="handleTouchMove">
