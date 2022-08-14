@@ -1,19 +1,33 @@
 <script setup lang="ts">
 import Konva from "konva";
-import { Ref, ref } from 'vue'
+import { type Ref, ref } from 'vue'
 const stage: Ref<any> = ref(null);
 const layer: Ref<any> = ref(null);
 
 const configKonva = {
-  width: 800,
-  height: 800
+  width: window.innerWidth,
+  height: window.innerHeight,
+  draggable: false,
 }
 
 const mode = 'brush';
 let isPaint = false;
+let points = [] as any[];
 let lines = [] as any[];
+const penSize = 80; // 20, 40, 80
 
-function handleTouchStart() {
+function getStrokeWidth(event) {
+  let pressure: number | null = null;
+  if (event.touches && event.touches[0] && typeof event.touches[0]["force"] !== "undefined" && event.touches[0]["force"] >= 0) {
+    pressure = event.touches[0]["force"]
+  }
+
+  let strokeWidth = pressure !== null ? Math.ceil(Math.log(pressure + 1) * penSize) : penSize;
+  if (strokeWidth < 1) strokeWidth = 1;
+  return strokeWidth;
+}
+
+function handleTouchStart(event) {
   if (stage.value === null || layer.value === null) return;
 
   isPaint = true;
@@ -21,18 +35,23 @@ function handleTouchStart() {
   const stageNode = stage.value.getNode();
   const layerNode = layer.value.getNode();
   const pos = stageNode.getPointerPosition();
+  const strokeWidth = getStrokeWidth(event.evt);
+
   const newLine: Konva.LineConfig = {
     stroke: '#000000',
-    strokeWidth: 10,
+    strokeWidth,
     globalCompositeOperation:
       mode === 'brush' ? 'source-over' : 'destination-out',
-    // round cap for smoother lines
     lineCap: 'round',
     lineJoin: 'round',
-    // add point twice, so we have some drawings even on a simple click
     points: [pos.x, pos.y, pos.x, pos.y],
-    tension: 0.5,
+    bezier: true,
+    perfectDrawEnabled: false,
+    shadowForStrokeEnabled: false,
+    listening: false,
   };
+
+  points = [{ x: pos.x, y: pos.y }, { x: pos.x, y: pos.y }];
 
   const konvaLine = new Konva.Line(newLine);
   lines.push(konvaLine);
@@ -50,14 +69,64 @@ function handleTouchMove(event) {
 
   if (stage.value === null || layer.value === null) return;
 
-  // prevent scrolling on touch devices
   event.evt.preventDefault();
 
   const stageNode = stage.value.getNode();
+  const layerNode = layer.value.getNode();
   const pos = stageNode.getPointerPosition();
   const lastLine = lines[lines.length - 1];
-  const newPoints = lastLine.points().concat([pos.x, pos.y]);
-  lastLine.points(newPoints);
+  const newStrokeWidth = getStrokeWidth(event.evt);
+  const currStrokeWidth = lastLine.strokeWidth();
+  const gap = Math.abs(newStrokeWidth - currStrokeWidth);
+
+  if (gap <= 1) {
+    const newPoints = lastLine.points().concat([pos.x, pos.y]);
+    points.push({ x: pos.x, y: pos.y });
+    lastLine.points(newPoints);
+  } else {
+    const lastPoints = points[points.length - 1];
+    const secndLastPoints = points[points.length - 2];
+    const thirdLastPoints = points[points.length - 3];
+
+    let newPoints = [] as any[];
+
+    if (thirdLastPoints) {
+      newPoints = [
+        thirdLastPoints.x,
+        thirdLastPoints.y,
+      ];
+    }
+
+    newPoints = newPoints.concat([
+      secndLastPoints.x,
+      secndLastPoints.y,
+      lastPoints.x,
+      lastPoints.y,
+      pos.x,
+      pos.y,
+    ]);
+
+    let tweenStroke = (currStrokeWidth + newStrokeWidth) / 2;
+
+    const connectorLine: Konva.LineConfig = {
+      stroke: '#000000',
+      strokeWidth: tweenStroke,
+      globalCompositeOperation:
+        mode === 'brush' ? 'source-over' : 'destination-out',
+      lineCap: 'round',
+      lineJoin: 'round',
+      points: newPoints,
+      bezier: true,
+      perfectDrawEnabled: false,
+      shadowForStrokeEnabled: false,
+      listening: false,
+    };
+
+    const konvaConnectorLine = new Konva.Line(connectorLine);
+    points.push({ x: pos.x, y: pos.y });
+    lines.push(konvaConnectorLine);
+    layerNode.add(konvaConnectorLine);
+  }
 }
 
 </script>
@@ -66,8 +135,7 @@ function handleTouchMove(event) {
   <div class="canvas">
     <v-stage ref="stage" :config="configKonva" @mousedown="handleTouchStart" @touchstart="handleTouchStart"
       @mouseup="handleTouchEnd" @touchend="handleTouchEnd" @mousemove="handleTouchMove" @touchmove="handleTouchMove">
-      <v-layer ref="layer">
-      </v-layer>
+      <v-layer ref="layer"></v-layer>
     </v-stage>
   </div>
 </template>
