@@ -14,15 +14,34 @@ const mode = 'brush';
 let isPaint = false;
 let points = [] as any[];
 let lines = [] as any[];
-const penSize = 80; // 20, 40, 80
+const penSize = 40; // 20, 40, 60, 80
+let isStylus: boolean | null = null;
+let detectedStlyus = false;
+const allowFingerIfStylus = false;
 
-function getStrokeWidth(event) {
-  let pressure: number | null = null;
-  if (event.touches && event.touches[0] && typeof event.touches[0]["force"] !== "undefined" && event.touches[0]["force"] >= 0) {
-    pressure = event.touches[0]["force"]
+function getStrokeWidth(event): number | undefined {
+  let strokeWidth;
+  if (event.touches && event.touches[0] && typeof event.touches[0]["force"] !== "undefined") {
+    let pressure;
+    if (isStylus === null) {
+      pressure = event.touches[0]["force"];
+      isStylus = pressure > 0;
+      detectedStlyus = detectedStlyus || isStylus;
+    } else if (isStylus) {
+      pressure = event.touches[0]["force"];
+    } else {
+      pressure = 1
+    }
+
+    if (detectedStlyus && !isStylus && !allowFingerIfStylus) {
+      return;
+    }
+
+    strokeWidth = Math.ceil(Math.log(pressure + 1) * penSize);
+  } else {
+    strokeWidth = Math.ceil(Math.log(2) * penSize);
   }
 
-  let strokeWidth = pressure !== null ? Math.ceil(Math.log(pressure + 1) * penSize) : penSize;
   if (strokeWidth < 1) strokeWidth = 1;
   return strokeWidth;
 }
@@ -36,6 +55,8 @@ function handleTouchStart(event) {
   const layerNode = layer.value.getNode();
   const pos = stageNode.getPointerPosition();
   const strokeWidth = getStrokeWidth(event.evt);
+
+  if (strokeWidth === undefined) return;
 
   const newLine: Konva.LineConfig = {
     stroke: '#000000',
@@ -60,6 +81,7 @@ function handleTouchStart(event) {
 
 function handleTouchEnd() {
   isPaint = false;
+  isStylus = null;
 }
 
 function handleTouchMove(event) {
@@ -69,13 +91,16 @@ function handleTouchMove(event) {
 
   if (stage.value === null || layer.value === null) return;
 
+  const newStrokeWidth = getStrokeWidth(event.evt);
+  if (newStrokeWidth === undefined) return;
+
   event.evt.preventDefault();
 
   const stageNode = stage.value.getNode();
   const layerNode = layer.value.getNode();
   const pos = stageNode.getPointerPosition();
   const lastLine = lines[lines.length - 1];
-  const newStrokeWidth = getStrokeWidth(event.evt);
+
   const currStrokeWidth = lastLine.strokeWidth();
   const gap = Math.abs(newStrokeWidth - currStrokeWidth);
 
