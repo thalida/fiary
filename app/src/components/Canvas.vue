@@ -22,20 +22,23 @@ const allowFingerDrawing = ref(true);
 
 enum Tool {
   ERASER = 0,
-  PEN = 1,
-  MARKER = 2,
-  HIGHLIGHTER = 3,
-  BLOB = 10,
+  PEN = 10,
+  MARKER = 11,
+  HIGHLIGHTER = 12,
+  BLOB = 20,
+  CIRCLE = 30,
 }
 const supportedTools = {
   [Tool.PEN]: { label: 'Pen' },
   [Tool.MARKER]: { label: 'Marker' },
   [Tool.HIGHLIGHTER]: { label: 'Highlighter' },
   [Tool.BLOB]: { label: 'Blob' },
+  [Tool.CIRCLE]: { label: 'Circle' },
   [Tool.ERASER]: { label: 'Eraser' },
 }
-const toolOrder = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER, Tool.BLOB, Tool.ERASER];
+const toolOrder = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER, Tool.BLOB, Tool.CIRCLE, Tool.ERASER];
 const selectedTool = ref(Tool.PEN);
+const isLineToolSelected = computed(() => [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER, Tool.ERASER].includes(selectedTool.value));
 
 const penSizes = [5, 10, 20, 40, 60];
 const penSize = ref(40); // 20, 40, 60, 80
@@ -193,43 +196,73 @@ function handleTouchStart(event) {
   const strokeWidth = getStrokeWidth(event.evt, true);
   const opacity = getOpacity();
 
-  // points = [pos.x, pos.y, pos.x, pos.y];
-  points = [{ x: pos.x, y: pos.y }];
+  if (selectedTool.value === Tool.CIRCLE) {
+    const newCircle: Konva.CircleConfig = {
+      x: pos.x,
+      y: pos.y,
+      radius: strokeWidth,
+      strokeWidth,
+      opacity,
+      globalCompositeOperation: globalCompositeOperation.value,
+      perfectDrawEnabled: false,
+      shadowForStrokeEnabled: false,
+      listening: false,
+    };
 
-  const newLine: Konva.LineConfig = {
-    strokeWidth,
-    opacity,
-    globalCompositeOperation: globalCompositeOperation.value,
-    lineCap: 'round',
-    lineJoin: 'round',
-    points: [pos.x, pos.y],
-    bezier: false,
-    closed: selectedTool.value === Tool.BLOB,
-    perfectDrawEnabled: false,
-    shadowForStrokeEnabled: false,
-    listening: false,
-    // sceneFunc: lineSceneFunc,
-  };
+    if (Array.isArray(selectedColor.value)) {
+      newCircle.fillLinearGradientColorStops = selectedColor.value;
+      newCircle.fillLinearGradientStartPoint = { x: pos.x, y: pos.y }
+      newCircle.fillLinearGradientEndPoint = { x: pos.x, y: pos.y }
 
-  if (Array.isArray(selectedColor.value)) {
-    newLine.fillLinearGradientColorStops = selectedColor.value;
-    newLine.fillLinearGradientStartPoint = { x: pos.x, y: pos.y }
-    newLine.fillLinearGradientEndPoint = { x: pos.x, y: pos.y }
-
-    newLine.strokeLinearGradientColorStops = selectedColor.value;
-    newLine.strokeLinearGradientStartPoint = { x: pos.x, y: pos.y }
-    newLine.strokeLinearGradientEndPoint = { x: pos.x, y: pos.y }
+      newCircle.strokeLinearGradientColorStops = selectedColor.value;
+      newCircle.strokeLinearGradientStartPoint = { x: pos.x, y: pos.y }
+      newCircle.strokeLinearGradientEndPoint = { x: pos.x, y: pos.y }
+    } else {
+      newCircle.fill = selectedColor.value;
+      newCircle.stroke = selectedColor.value;
+    }
+    const konvaCircle = new Konva.Circle(newCircle);
+    lines.push({
+      konva: konvaCircle,
+      segments: [] as any[],
+    });
+    layerNode.add(konvaCircle);
   } else {
-    newLine.fill = selectedColor.value;
-    newLine.stroke = selectedColor.value;
-  }
+    const newLine: Konva.LineConfig = {
+      strokeWidth,
+      opacity,
+      globalCompositeOperation: globalCompositeOperation.value,
+      lineCap: 'round',
+      lineJoin: 'round',
+      points: [pos.x, pos.y],
+      bezier: false,
+      closed: selectedTool.value === Tool.BLOB,
+      perfectDrawEnabled: false,
+      shadowForStrokeEnabled: false,
+      listening: false,
+    };
 
-  const konvaLine = new Konva.Line(newLine);
-  lines.push({
-    konva: konvaLine,
-    segments: [] as any[],
-  });
-  layerNode.add(konvaLine);
+    if (Array.isArray(selectedColor.value)) {
+      newLine.fillLinearGradientColorStops = selectedColor.value;
+      newLine.fillLinearGradientStartPoint = { x: pos.x, y: pos.y }
+      newLine.fillLinearGradientEndPoint = { x: pos.x, y: pos.y }
+
+      newLine.strokeLinearGradientColorStops = selectedColor.value;
+      newLine.strokeLinearGradientStartPoint = { x: pos.x, y: pos.y }
+      newLine.strokeLinearGradientEndPoint = { x: pos.x, y: pos.y }
+    } else {
+      newLine.fill = selectedColor.value;
+      newLine.stroke = selectedColor.value;
+    }
+
+    const konvaLine = new Konva.Line(newLine);
+    lines.push({
+      konva: konvaLine,
+      segments: [] as any[],
+    });
+    points = [{ x: pos.x, y: pos.y }];
+    layerNode.add(konvaLine);
+  }
 }
 
 function handleTouchEnd() {
@@ -239,13 +272,16 @@ function handleTouchEnd() {
 
   if (stage.value === null || layer.value === null) return;
 
-  const stageNode = stage.value.getNode();
-  const pos = stageNode.getPointerPosition();
   const lastLine = lines[lines.length - 1];
-  const anchorLine = (lastLine.segments.length === 0) ? lastLine.konva : lastLine.segments[lastLine.segments.length - 1];
 
-  let newPoints = anchorLine.points().concat([pos.x, pos.y]).slice();
-  anchorLine.points(newPoints);
+  if (isLineToolSelected.value) {
+    const stageNode = stage.value.getNode();
+    const pos = stageNode.getPointerPosition();
+    const anchorLine = (lastLine.segments.length === 0) ? lastLine.konva : lastLine.segments[lastLine.segments.length - 1];
+
+    let newPoints = anchorLine.points().concat([pos.x, pos.y]).slice();
+    anchorLine.points(newPoints);
+  }
 
   isDrawing = false;
   maxPointPosition = null;
@@ -268,7 +304,6 @@ function handleTouchMove(event) {
 
   if (!isDrawingAllowed()) return;
 
-
   event.evt.preventDefault();
 
   const stageNode = stage.value.getNode();
@@ -280,6 +315,13 @@ function handleTouchMove(event) {
   const currStrokeWidth = anchorLine.strokeWidth();
   const newStrokeWidth = getStrokeWidth(event.evt);
   const gap = Math.abs(newStrokeWidth - currStrokeWidth);
+
+  if (selectedTool.value === Tool.CIRCLE) {
+    const radius = Math.sqrt(Math.pow(pos.x - anchorLine.x(), 2) + Math.pow(pos.y - anchorLine.y(), 2));
+    anchorLine.radius(radius);
+    anchorLine.strokeWidth(newStrokeWidth);
+    return
+  }
 
   if (maxPointPosition !== null) {
     const newPoint = points[points.length - 1];
@@ -358,7 +400,6 @@ function handleTouchMove(event) {
       perfectDrawEnabled: false,
       shadowForStrokeEnabled: false,
       listening: false,
-      // sceneFunc: lineSceneFunc,
     };
 
     if (Array.isArray(selectedColor.value)) {
