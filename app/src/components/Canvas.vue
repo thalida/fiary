@@ -158,6 +158,7 @@ function getMousePos(canvas, event) {
     y: (clientY - rect.top)
   }
 }
+
 function getSvgPathFromStroke(stroke) {
   if (!stroke.length) return ''
 
@@ -188,6 +189,7 @@ function drawElements(canvas, elements) {
     const maxY = Math.max(...points.map(({ y }: { y: number }) => y));
 
     ctx.save();
+
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.globalCompositeOperation = element.composition;
@@ -216,27 +218,24 @@ function drawElements(canvas, elements) {
       const myPath = new Path2D(pathData)
 
       ctx.fill(myPath);
-    } else if (element.tool === Tool.BLOB) {
+    } else {
       ctx.lineWidth = element.size;
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
-      let n = 0;
-      while (n < numPoints) {
-        const x1 = points[n].x;
-        const y1 = points[n].y;
-        const x2 = points[n + 1] ? points[n + 1].x : undefined;
-        const y2 = points[n + 1] ? points[n + 1].y : undefined;
-        const x3 = points[n + 2] ? points[n + 2].x : undefined;
-        const y3 = points[n + 2] ? points[n + 2].y : undefined;
-        ctx.bezierCurveTo(
-          x1, y1,
-          x2, y2,
-          x3, y3
-        );
-        n += 3;
+
+      let i = 1;
+      for (i = 1; i < points.length - 2; i += 1) {
+        var xc = (points[i].x + points[i + 1].x) / 2;
+        var yc = (points[i].y + points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
       }
-      ctx.closePath();
-      ctx.fill();
+      // curve through the last two points
+      ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+
+      if (element.tool === Tool.BLOB) {
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.stroke();
     }
 
