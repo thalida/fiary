@@ -145,6 +145,38 @@ function getOpacity(): number {
   return 1;
 }
 
+function lineSceneFunc(context, shape) {
+  const drawPoints = shape.attrs.points;
+  const numPoints = drawPoints.length;
+
+  if (numPoints === 0) {
+    return;
+  }
+
+  context.beginPath();
+  context.moveTo(drawPoints[0], drawPoints[1]);
+
+  let n = 2;
+
+  while (n < numPoints) {
+    context.bezierCurveTo(
+      drawPoints[n++],
+      drawPoints[n++],
+      drawPoints[n++],
+      drawPoints[n++],
+      drawPoints[n++],
+      drawPoints[n++]
+    );
+  }
+
+  if (shape.attrs.closed) {
+    context.closePath();
+    context.fillStrokeShape(shape);
+  } else {
+    context.strokeShape(shape);
+  }
+}
+
 
 function handleTouchStart(event) {
   if (stage.value === null || layer.value === null) return;
@@ -161,7 +193,8 @@ function handleTouchStart(event) {
   const strokeWidth = getStrokeWidth(event.evt, true);
   const opacity = getOpacity();
 
-  points = [pos.x, pos.y, pos.x + strokeWidth, pos.y + strokeWidth];
+  // points = [pos.x, pos.y, pos.x, pos.y];
+  points = [{ x: pos.x, y: pos.y }];
 
   const newLine: Konva.LineConfig = {
     strokeWidth,
@@ -169,12 +202,13 @@ function handleTouchStart(event) {
     globalCompositeOperation: globalCompositeOperation.value,
     lineCap: 'round',
     lineJoin: 'round',
-    points,
-    bezier: true,
+    points: [pos.x, pos.y],
+    bezier: false,
     closed: selectedTool.value === Tool.BLOB,
     perfectDrawEnabled: false,
     shadowForStrokeEnabled: false,
     listening: false,
+    // sceneFunc: lineSceneFunc,
   };
 
   if (Array.isArray(selectedColor.value)) {
@@ -199,12 +233,24 @@ function handleTouchStart(event) {
 }
 
 function handleTouchEnd() {
+  if (!isDrawing) {
+    return;
+  }
+
+  if (stage.value === null || layer.value === null) return;
+
+  const stageNode = stage.value.getNode();
+  const pos = stageNode.getPointerPosition();
+  const lastLine = lines[lines.length - 1];
+  const anchorLine = (lastLine.segments.length === 0) ? lastLine.konva : lastLine.segments[lastLine.segments.length - 1];
+
+  let newPoints = anchorLine.points().concat([pos.x, pos.y]).slice();
+  anchorLine.points(newPoints);
+
   isDrawing = false;
   maxPointPosition = null;
   points = [];
 
-
-  const lastLine = lines[lines.length - 1];
   lastLine.konva.cache();
 
   for (let i = 0; i < lastLine.segments.length; i++) {
@@ -273,7 +319,6 @@ function handleTouchMove(event) {
     const thirdLastPoints = points[points.length - 3];
 
     let newPoints = [] as any[];
-
     if (thirdLastPoints) {
       newPoints = [
         thirdLastPoints.x,
@@ -281,11 +326,21 @@ function handleTouchMove(event) {
       ];
     }
 
+    if (secndLastPoints) {
+      newPoints = newPoints.concat([
+        secndLastPoints.x,
+        secndLastPoints.y,
+      ]);
+    }
+
+    if (lastPoints) {
+      newPoints = newPoints.concat([
+        lastPoints.x,
+        lastPoints.y,
+      ]);
+    }
+
     newPoints = newPoints.concat([
-      secndLastPoints.x,
-      secndLastPoints.y,
-      lastPoints.x,
-      lastPoints.y,
       pos.x,
       pos.y,
     ]);
@@ -298,11 +353,12 @@ function handleTouchMove(event) {
       globalCompositeOperation: globalCompositeOperation.value,
       lineCap: 'round',
       lineJoin: 'round',
-      points: newPoints,
+      points: newPoints.slice(),
       bezier: true,
       perfectDrawEnabled: false,
       shadowForStrokeEnabled: false,
       listening: false,
+      // sceneFunc: lineSceneFunc,
     };
 
     if (Array.isArray(selectedColor.value)) {
