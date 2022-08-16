@@ -175,71 +175,131 @@ function getSvgPathFromStroke(stroke) {
   return d.join(' ')
 }
 
+function cacheElement(element) {
+  const points = element.points.slice();
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const dpi = window.devicePixelRatio;
+
+  const minX = Math.min(...points.map(({ x }: { x: number }) => x)) - element.size;
+  const minY = Math.min(...points.map(({ y }: { y: number }) => y)) - element.size;
+  const maxX = Math.max(...points.map(({ x }: { x: number }) => x)) + element.size;
+  const maxY = Math.max(...points.map(({ y }: { y: number }) => y)) + element.size;
+  const width = (maxX - minX);
+  const height = (maxY - minY);
+
+  canvas.width = width * dpi;
+  canvas.height = height * dpi;
+
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+
+  ctx.save();
+  ctx.scale(dpi, dpi);
+  ctx.translate(-minX, -minY);
+  drawElement(canvas, element, true);
+  ctx.restore();
+
+  element.isCached = true;
+  element.cache = {
+    x: minX,
+    y: minY,
+    width,
+    height,
+    dpi,
+    canvas,
+  };
+}
+
+function drawElement(canvas, element, isCaching = false) {
+  const ctx = canvas.getContext('2d');
+
+  if (element.isCached) {
+    const cachedCanvas = element.cache.canvas;
+    const ratio = element.cache.dpi;
+    ctx.save();
+    ctx.globalCompositeOperation = element.composition;
+    ctx.globalAlpha = element.opacity;
+    ctx.translate(element.cache.x, element.cache.y);
+    ctx.drawImage(
+      cachedCanvas,
+      0,
+      0,
+      cachedCanvas.width / ratio,
+      cachedCanvas.height / ratio
+    );
+    ctx.restore();
+    return;
+  }
+
+  const points = element.points.slice();
+  const minX = Math.min(...points.map(({ x }: { x: number }) => x));
+  const minY = Math.min(...points.map(({ y }: { y: number }) => y));
+  const maxX = Math.max(...points.map(({ x }: { x: number }) => x));
+  const maxY = Math.max(...points.map(({ y }: { y: number }) => y));
+  ctx.save();
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  if (!isCaching) {
+    ctx.globalCompositeOperation = element.composition;
+    ctx.globalAlpha = element.opacity;
+  }
+  ctx.strokeStyle = element.color;
+  ctx.fillStyle = element.color;
+
+  if (Array.isArray(element.color)) {
+    const gradient = ctx.createLinearGradient(minX, minY, maxX, maxY);
+    for (let j = 0; j < element.color.length; j += 2) {
+      gradient.addColorStop(element.color[j], element.color[j + 1]);
+    }
+    ctx.strokeStyle = gradient;
+    ctx.fillStyle = gradient;
+  } else {
+    ctx.strokeStyle = element.color;
+    ctx.fillStyle = element.color;
+  }
+
+  if (lineTools.includes(element.tool)) {
+    const outlinePoints = getStroke(points, element.freehandOptions)
+
+    ctx.beginPath();
+    ctx.moveTo(outlinePoints[0], outlinePoints[1]);
+    const pathData = getSvgPathFromStroke(outlinePoints)
+    const myPath = new Path2D(pathData)
+
+    ctx.fill(myPath);
+  } else {
+    ctx.lineWidth = element.size;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    let i = 1;
+    for (i = 1; i < points.length - 2; i += 1) {
+      var xc = (points[i].x + points[i + 1].x) / 2;
+      var yc = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+    }
+    // curve through the last two points
+    ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+
+    if (element.tool === Tool.BLOB) {
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 function drawElements(canvas, elements) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   for (let i = 0; i < elements.length; i += 1) {
     const element = elements[i];
-    const points = element.points.slice();
-    const numPoints = points.length;
-    const minX = Math.min(...points.map(({ x }: { x: number }) => x));
-    const minY = Math.min(...points.map(({ y }: { y: number }) => y));
-    const maxX = Math.max(...points.map(({ x }: { x: number }) => x));
-    const maxY = Math.max(...points.map(({ y }: { y: number }) => y));
-
-    ctx.save();
-
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalCompositeOperation = element.composition;
-    ctx.globalAlpha = element.opacity;
-    ctx.strokeStyle = element.color;
-    ctx.fillStyle = element.color;
-
-    if (Array.isArray(element.color)) {
-      const gradient = ctx.createLinearGradient(minX, minY, maxX, maxY);
-      for (let j = 0; j < element.color.length; j += 2) {
-        gradient.addColorStop(element.color[j], element.color[j + 1]);
-      }
-      ctx.strokeStyle = gradient;
-      ctx.fillStyle = gradient;
-    } else {
-      ctx.strokeStyle = element.color;
-      ctx.fillStyle = element.color;
-    }
-
-    if (lineTools.includes(element.tool)) {
-      const outlinePoints = getStroke(points, element.freehandOptions)
-
-      ctx.beginPath();
-      ctx.moveTo(outlinePoints[0], outlinePoints[1]);
-      const pathData = getSvgPathFromStroke(outlinePoints)
-      const myPath = new Path2D(pathData)
-
-      ctx.fill(myPath);
-    } else {
-      ctx.lineWidth = element.size;
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-
-      let i = 1;
-      for (i = 1; i < points.length - 2; i += 1) {
-        var xc = (points[i].x + points[i + 1].x) / 2;
-        var yc = (points[i].y + points[i + 1].y) / 2;
-        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-      }
-      // curve through the last two points
-      ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
-
-      if (element.tool === Tool.BLOB) {
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.stroke();
-    }
-
-    ctx.restore();
+    drawElement(canvas, element);
   }
 }
 
@@ -299,6 +359,8 @@ function handleTouchEnd(event) {
   isDrawing = false;
   const lastElement = canvasElements[canvasElements.length - 1];
   lastElement.freehandOptions.last = true;
+
+  cacheElement(lastElement);
   drawElements(canvas.value, canvasElements);
 }
 
