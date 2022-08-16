@@ -37,6 +37,8 @@ enum Tool {
   HIGHLIGHTER = 12,
   BLOB = 20,
   CIRCLE = 30,
+  RECTANGLE = 31,
+  TRIANGLE = 32,
 }
 const supportedTools = {
   [Tool.PEN]: { label: 'Pen' },
@@ -44,9 +46,11 @@ const supportedTools = {
   [Tool.HIGHLIGHTER]: { label: 'Highlighter' },
   [Tool.BLOB]: { label: 'Blob' },
   [Tool.CIRCLE]: { label: 'Circle' },
+  [Tool.RECTANGLE]: { label: 'Rectangle' },
+  [Tool.TRIANGLE]: { label: 'Triangle' },
   [Tool.ERASER]: { label: 'Eraser' },
 }
-const toolOrder = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER, Tool.BLOB, Tool.CIRCLE, Tool.ERASER];
+const toolOrder = Object.keys(supportedTools).map((key) => Number(key));
 const selectedTool = ref(Tool.PEN);
 const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
 
@@ -254,14 +258,16 @@ function drawElement(canvas, element, isCaching = false) {
   const minY = Math.min(...points.map(({ y }: { y: number }) => y));
   const maxX = Math.max(...points.map(({ x }: { x: number }) => x));
   const maxY = Math.max(...points.map(({ y }: { y: number }) => y));
+
   ctx.save();
 
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
   if (!isCaching) {
     ctx.globalCompositeOperation = element.composition;
     ctx.globalAlpha = element.opacity;
   }
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   ctx.lineWidth = element.size;
 
   if (Array.isArray(element.strokeColor)) {
@@ -336,6 +342,22 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.ellipse(midX, midY, radX, radY, 0, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.fill();
+  } else if (element.tool === Tool.TRIANGLE) {
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    ctx.lineTo(points[1].x, points[1].y);
+    ctx.lineTo(points[2].x, points[2].y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fill();
+  } else if (element.tool === Tool.RECTANGLE) {
+    ctx.beginPath();
+    const rectangle = new Path2D();
+    const width = maxX - minX;
+    const height = maxY - minY;
+    rectangle.rect(minX, minY, width, height);
+    ctx.stroke(rectangle);
+    ctx.fill(rectangle);
   } else {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
@@ -401,8 +423,11 @@ function handleTouchStart(event) {
     },
   }
 
-  if (newElement.tool === Tool.CIRCLE) {
-    newElement.points.push({ x: pos.x + 1, y: pos.y + 1, pressure });
+  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE) {
+    newElement.points.push({ x: pos.x, y: pos.y, pressure });
+  } else if (newElement.tool === Tool.TRIANGLE) {
+    newElement.points.push({ x: pos.x, y: pos.y, pressure });
+    newElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
 
   canvasElements.push(newElement);
@@ -420,11 +445,29 @@ function handleTouchMove(event) {
   const pressure = getPressure(event);
   const lastElement = canvasElements[canvasElements.length - 1];
 
-  if (lastElement.tool === Tool.CIRCLE) {
+  if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
+  } else if (lastElement.tool === Tool.TRIANGLE) {
+    const dx = lastElement.points[0].x - pos.x;
+    const dy = lastElement.points[0].y - pos.y;
+
+    let p2 = {
+      x: pos.x + (dy / 2),
+      y: pos.y - (dx / 2),
+    };
+
+    let p3 = {
+      x: pos.x - (dy / 2),
+      y: pos.y + (dx / 2),
+    };
+
+    lastElement.points[1] = p2;
+    lastElement.points[2] = p3;
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
+
+
   drawElements(canvas.value, canvasElements);
 }
 
