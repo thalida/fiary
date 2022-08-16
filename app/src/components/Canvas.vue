@@ -39,6 +39,7 @@ enum Tool {
   CIRCLE = 30,
   RECTANGLE = 31,
   TRIANGLE = 32,
+  ARROW = 33,
 }
 const supportedTools = {
   [Tool.PEN]: { label: 'Pen' },
@@ -48,6 +49,7 @@ const supportedTools = {
   [Tool.CIRCLE]: { label: 'Circle' },
   [Tool.RECTANGLE]: { label: 'Rectangle' },
   [Tool.TRIANGLE]: { label: 'Triangle' },
+  [Tool.ARROW]: { label: 'Arrow' },
   [Tool.ERASER]: { label: 'Eraser' },
 }
 const toolOrder = Object.keys(supportedTools).map((key) => Number(key));
@@ -326,7 +328,7 @@ function drawElement(canvas, element, isCaching = false) {
     const outlinePoints = getStroke(points, element.freehandOptions)
 
     ctx.beginPath();
-    ctx.moveTo(outlinePoints[0], outlinePoints[1]);
+    ctx.moveTo(outlinePoints[0][0], outlinePoints[0][1]);
     const pathData = getFlatSvgPathFromStroke(outlinePoints)
     const myPath = new Path2D(pathData)
 
@@ -358,6 +360,22 @@ function drawElement(canvas, element, isCaching = false) {
     rectangle.rect(minX, minY, width, height);
     ctx.stroke(rectangle);
     ctx.fill(rectangle);
+  } else if (element.tool === Tool.ARROW) {
+    const fromx = points[0].x;
+    const fromy = points[0].y;
+    const tox = points[3].x;
+    const toy = points[3].y;
+    ctx.beginPath();
+    ctx.moveTo(fromx, fromy);
+    ctx.lineTo(tox, toy);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(points[1].x, points[1].y);
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(points[2].x, points[2].y);
+    ctx.stroke();
   } else {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
@@ -396,7 +414,6 @@ function handleTouchStart(event) {
   checkIsStylus(event);
 
   if (!isDrawingAllowed() || canvas.value === null) {
-    console.log('her?')
     return;
   }
 
@@ -428,6 +445,30 @@ function handleTouchStart(event) {
   } else if (newElement.tool === Tool.TRIANGLE) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
+  } else if (newElement.tool === Tool.ARROW) {
+    const fromx = pos.x;
+    const fromy = pos.y;
+    const tox = pos.x;
+    const toy = pos.y;
+    var headlen = newElement.size * 2; // length of head in pixels
+    var dx = tox - fromx;
+    var dy = toy - fromy;
+    var angle = Math.atan2(dy, dx);
+
+    let a1 = {
+      x: tox - headlen * Math.cos(angle - Math.PI / 5),
+      y: toy - headlen * Math.sin(angle - Math.PI / 5),
+      pressure,
+    };
+    let a2 = {
+      x: tox - headlen * Math.cos(angle + Math.PI / 5),
+      y: toy - headlen * Math.sin(angle + Math.PI / 5),
+      pressure,
+    };
+
+    newElement.points[1] = a1;
+    newElement.points[2] = a2;
+    newElement.points[3] = { x: pos.x, y: pos.y, pressure };
   }
 
   canvasElements.push(newElement);
@@ -463,10 +504,31 @@ function handleTouchMove(event) {
 
     lastElement.points[1] = p2;
     lastElement.points[2] = p3;
+  } else if (lastElement.tool === Tool.ARROW) {
+    const fromx = lastElement.points[0].x;
+    const fromy = lastElement.points[0].y;
+    const tox = pos.x;
+    const toy = pos.y;
+    var headlen = lastElement.size * 2; // length of head in pixels
+    var dx = tox - fromx;
+    var dy = toy - fromy;
+    var angle = Math.atan2(dy, dx);
+
+    let a1 = {
+      x: tox - headlen * Math.cos(angle - Math.PI / 5),
+      y: toy - headlen * Math.sin(angle - Math.PI / 5),
+    };
+    let a2 = {
+      x: tox - headlen * Math.cos(angle + Math.PI / 5),
+      y: toy - headlen * Math.sin(angle + Math.PI / 5),
+    };
+
+    lastElement.points[1] = a1;
+    lastElement.points[2] = a2;
+    lastElement.points[3] = pos;
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
-
 
   drawElements(canvas.value, canvasElements);
 }
