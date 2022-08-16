@@ -65,8 +65,10 @@ const colors = [
   [0, '#ff0000', 1, '#0000ff'],
   [0, '#00ff00', 1, '#ff0000'],
   [0, '#0000ff', 1, '#00ff00'],
+  'transparent',
 ];
-const selectedColor = ref(colors[0]);
+const selectedStrokeColor = ref(colors[0]);
+const selectedFillColor = ref(colors[0]);
 
 const compositionOptions = [
   'source-over',
@@ -260,10 +262,9 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.globalCompositeOperation = element.composition;
     ctx.globalAlpha = element.opacity;
   }
-  ctx.strokeStyle = element.color;
-  ctx.fillStyle = element.color;
+  ctx.lineWidth = element.size;
 
-  if (Array.isArray(element.color)) {
+  if (Array.isArray(element.strokeColor)) {
     let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
     if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
       gradientStartX = minX;
@@ -281,14 +282,38 @@ function drawElement(canvas, element, isCaching = false) {
     }
 
     const gradient = ctx.createLinearGradient(gradientStartX, gradientStartY, gradientEndX, gradientEndY);
-    for (let j = 0; j < element.color.length; j += 2) {
-      gradient.addColorStop(element.color[j], element.color[j + 1]);
+    for (let j = 0; j < element.strokeColor.length; j += 2) {
+      gradient.addColorStop(element.strokeColor[j], element.strokeColor[j + 1]);
     }
     ctx.strokeStyle = gradient;
+  } else {
+    ctx.strokeStyle = element.strokeColor;
+  }
+
+  if (Array.isArray(element.fillColor)) {
+    let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
+    if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
+      gradientStartX = minX;
+      gradientEndX = maxX;
+    } else {
+      gradientStartX = maxX;
+      gradientEndX = minX;
+    }
+    if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
+      gradientStartY = minY;
+      gradientEndY = maxY;
+    } else {
+      gradientStartY = maxY;
+      gradientEndY = minY;
+    }
+
+    const gradient = ctx.createLinearGradient(gradientStartX, gradientStartY, gradientEndX, gradientEndY);
+    for (let j = 0; j < element.fillColor.length; j += 2) {
+      gradient.addColorStop(element.fillColor[j], element.fillColor[j + 1]);
+    }
     ctx.fillStyle = gradient;
   } else {
-    ctx.strokeStyle = element.color;
-    ctx.fillStyle = element.color;
+    ctx.fillStyle = element.fillColor;
   }
 
   if (lineTools.includes(element.tool)) {
@@ -299,9 +324,19 @@ function drawElement(canvas, element, isCaching = false) {
     const pathData = getFlatSvgPathFromStroke(outlinePoints)
     const myPath = new Path2D(pathData)
 
+    ctx.fillStyle = ctx.strokeStyle;
     ctx.fill(myPath);
+  } else if (element.tool === Tool.CIRCLE) {
+    ctx.beginPath();
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+    const radX = Math.abs(midX - minX);
+    const radY = Math.abs(midY - minY);
+
+    ctx.ellipse(midX, midY, radX, radY, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fill();
   } else {
-    ctx.lineWidth = element.size;
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
 
@@ -350,7 +385,8 @@ function handleTouchStart(event) {
 
   const newElement = {
     tool: selectedTool.value,
-    color: selectedColor.value,
+    strokeColor: selectedStrokeColor.value,
+    fillColor: selectedFillColor.value,
     size: penSize.value,
     composition,
     opacity,
@@ -364,6 +400,11 @@ function handleTouchStart(event) {
       last: false,
     },
   }
+
+  if (newElement.tool === Tool.CIRCLE) {
+    newElement.points.push({ x: pos.x + 1, y: pos.y + 1, pressure });
+  }
+
   canvasElements.push(newElement);
   drawElements(canvas.value, canvasElements);
 }
@@ -378,7 +419,12 @@ function handleTouchMove(event) {
   const pos = getMousePos(canvas.value, event);
   const pressure = getPressure(event);
   const lastElement = canvasElements[canvasElements.length - 1];
-  lastElement.points.push({ x: pos.x, y: pos.y, pressure });
+
+  if (lastElement.tool === Tool.CIRCLE) {
+    lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
+  } else {
+    lastElement.points.push({ x: pos.x, y: pos.y, pressure });
+  }
   drawElements(canvas.value, canvasElements);
 }
 
@@ -410,8 +456,13 @@ function handleTouchEnd(event) {
           {{ size }}
         </option>
       </select>
-      <select v-model="selectedColor">
-        <option v-for="color in colors" :key="color" :value="color">
+      <select v-model="selectedStrokeColor">
+        <option v-for="(color, index) in colors" :key="index" :value="color">
+          {{ color }}
+        </option>
+      </select>
+      <select v-model="selectedFillColor">
+        <option v-for="(color, index) in colors" :key="index" :value="color">
           {{ color }}
         </option>
       </select>
