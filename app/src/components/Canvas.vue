@@ -30,8 +30,8 @@ let detectedStlyus = ref(false);
 const allowFingerDrawing = ref(true);
 
 enum Tool {
-  ERASER = 0,
-  CLEAR_ALL = 1,
+  ERASER = 1,
+  CLEAR_ALL = 2,
   PEN = 10,
   MARKER = 11,
   HIGHLIGHTER = 12,
@@ -41,19 +41,18 @@ enum Tool {
   TRIANGLE = 32,
   ARROW = 33,
 }
-const supportedTools = {
-  [Tool.PEN]: { label: 'Pen' },
-  [Tool.MARKER]: { label: 'Marker' },
-  [Tool.HIGHLIGHTER]: { label: 'Highlighter' },
-  [Tool.BLOB]: { label: 'Blob' },
-  [Tool.CIRCLE]: { label: 'Circle' },
-  [Tool.RECTANGLE]: { label: 'Rectangle' },
-  [Tool.TRIANGLE]: { label: 'Triangle' },
-  [Tool.ARROW]: { label: 'Arrow' },
-  [Tool.ERASER]: { label: 'Eraser' },
-  [Tool.CLEAR_ALL]: { label: 'Clear All' },
-}
-const toolOrder = Object.keys(supportedTools).map((key) => Number(key));
+const supportedTools = ref([
+  { key: Tool.PEN, label: 'Pen' },
+  { key: Tool.MARKER, label: 'Marker' },
+  { key: Tool.HIGHLIGHTER, label: 'Highlighter' },
+  { key: Tool.BLOB, label: 'Blob' },
+  { key: Tool.CIRCLE, label: 'Circle' },
+  { key: Tool.RECTANGLE, label: 'Rectangle' },
+  { key: Tool.TRIANGLE, label: 'Triangle' },
+  { key: Tool.ARROW, label: 'Arrow' },
+  { key: Tool.ERASER, label: 'Eraser' },
+  { key: Tool.CLEAR_ALL, label: 'Clear All' },
+])
 const selectedTool = ref(Tool.PEN);
 const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
 
@@ -108,11 +107,12 @@ const compositionOptions = [
 const selectedComposition = ref(compositionOptions[0]);
 
 
-function handleToolChange() {
+function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
     canvasElements = [];
     drawElements(canvas.value, canvasElements);
     selectedTool.value = Tool.ERASER;
+    event.target.blur();
   }
 }
 
@@ -608,9 +608,9 @@ function handleTouchEnd(event) {
 <template>
   <div class="canvas-wrapper">
     <div class="tools">
-      <select v-model="selectedTool" @change="handleToolChange">
-        <option v-for="tool in toolOrder" :key="tool" :value="tool">
-          {{ supportedTools[tool].label }}
+      <select v-model.number="selectedTool" @change="handleToolChange">
+        <option v-for="tool in supportedTools" :key="tool.key" :value="tool.key">
+          {{ tool.label }}
         </option>
       </select>
       <select v-model="penSize">
