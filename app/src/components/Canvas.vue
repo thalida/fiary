@@ -441,7 +441,7 @@ function handleTouchStart(event) {
     },
   }
 
-  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.BLOB) {
+  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.BLOB || newElement.tool === Tool.ERASER) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
   } else if (newElement.tool === Tool.TRIANGLE) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
