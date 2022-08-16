@@ -344,23 +344,9 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.fill();
   } else if (element.tool === Tool.TRIANGLE) {
     ctx.beginPath();
-
-    const dx = points[0].x - points[1].x;
-    const dy = points[0].y - points[1].y;
-
     ctx.moveTo(points[0].x, points[0].y);
-
-    let t1 = {
-      x: points[1].x + (dy / 2),
-      y: points[1].y - (dx / 2),
-    };
-
-    let t2 = {
-      x: points[1].x - (dy / 2),
-      y: points[1].y + (dx / 2),
-    };
-    ctx.lineTo(t1.x, t1.y);
-    ctx.lineTo(t2.x, t2.y);
+    ctx.lineTo(points[1].x, points[1].y);
+    ctx.lineTo(points[2].x, points[2].y);
     ctx.closePath();
     ctx.stroke();
     ctx.fill();
@@ -437,8 +423,11 @@ function handleTouchStart(event) {
     },
   }
 
-  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.TRIANGLE) {
-    newElement.points.push({ x: pos.x + 1, y: pos.y + 1, pressure });
+  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE) {
+    newElement.points.push({ x: pos.x, y: pos.y, pressure });
+  } else if (newElement.tool === Tool.TRIANGLE) {
+    newElement.points.push({ x: pos.x, y: pos.y, pressure });
+    newElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
 
   canvasElements.push(newElement);
@@ -456,11 +445,29 @@ function handleTouchMove(event) {
   const pressure = getPressure(event);
   const lastElement = canvasElements[canvasElements.length - 1];
 
-  if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE || lastElement.tool === Tool.TRIANGLE) {
+  if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
+  } else if (lastElement.tool === Tool.TRIANGLE) {
+    const dx = lastElement.points[0].x - pos.x;
+    const dy = lastElement.points[0].y - pos.y;
+
+    let p2 = {
+      x: pos.x + (dy / 2),
+      y: pos.y - (dx / 2),
+    };
+
+    let p3 = {
+      x: pos.x - (dy / 2),
+      y: pos.y + (dx / 2),
+    };
+
+    lastElement.points[1] = p2;
+    lastElement.points[2] = p3;
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
+
+
   drawElements(canvas.value, canvasElements);
 }
 
@@ -473,9 +480,7 @@ function handleTouchEnd(event) {
   const lastElement = canvasElements[canvasElements.length - 1];
   lastElement.freehandOptions.last = true;
 
-  if (lastElement.tool !== Tool.TRIANGLE) {
-    cacheElement(lastElement);
-  }
+  cacheElement(lastElement);
   drawElements(canvas.value, canvasElements);
 }
 
