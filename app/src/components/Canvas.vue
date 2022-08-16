@@ -11,7 +11,6 @@ const canvasConfig = ref({
 
 onMounted(() => {
   const dpi = window.devicePixelRatio;
-  // const canvasRef = canvas.value;
   const ctx = canvas.value.getContext('2d')
 
   canvas.value.width = canvasConfig.value.width * dpi;
@@ -60,21 +59,28 @@ const penSizes = [5, 10, 20, 40, 60];
 const penSize = ref(40); // 20, 40, 60, 80
 
 const colors = [
-  '#000000',
-  '#ff0000',
-  '#00ff00',
-  '#0000ff',
-  '#ffff00',
-  '#00ffff',
-  '#ff00ff',
-  '#ffffff',
+  { r: 0, g: 0, b: 0, a: 1 },
+  { r: 255, g: 0, b: 0, a: 1 },
+  { r: 0, g: 255, b: 0, a: 1 },
+  { r: 0, g: 0, b: 255, a: 1 },
+  { r: 255, g: 255, b: 0, a: 1 },
+  { r: 255, g: 0, b: 255, a: 1 },
+  { r: 0, g: 255, b: 255, a: 1 },
+  { r: 255, g: 255, b: 255, a: 1 },
+  // '#ff0000',
+  // '#00ff00',
+  // '#0000ff',
+  // '#ffff00',
+  // '#00ffff',
+  // '#ff00ff',
+  // '#ffffff',
   [0, '#ff0000', 1, '#0000ff'],
   [0, '#00ff00', 1, '#ff0000'],
   [0, '#0000ff', 1, '#00ff00'],
   'transparent',
 ];
 const selectedFillColor = ref(colors[0]);
-const selectedStrokeColor = ref(colors[0]);
+const selectedStrokeColor = ref(colors[colors.length - 1]);
 
 const compositionOptions = [
   'source-over',
@@ -155,6 +161,10 @@ function getOpacity(): number {
   }
 
   return 1;
+}
+
+function formatColor(color, opacity) {
+  return `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
 }
 
 function getMousePos(canvas, event) {
@@ -242,7 +252,7 @@ function drawElement(canvas, element, isCaching = false) {
     const ratio = element.cache.dpi;
     ctx.save();
     ctx.globalCompositeOperation = element.composition;
-    ctx.globalAlpha = element.opacity;
+    // ctx.globalAlpha = element.opacity;
     ctx.translate(element.cache.x, element.cache.y);
     ctx.drawImage(
       cachedCanvas,
@@ -265,7 +275,7 @@ function drawElement(canvas, element, isCaching = false) {
 
   if (!isCaching) {
     ctx.globalCompositeOperation = element.composition;
-    ctx.globalAlpha = element.opacity;
+    // ctx.globalAlpha = element.opacity;
   }
 
   ctx.lineCap = 'round';
@@ -294,8 +304,10 @@ function drawElement(canvas, element, isCaching = false) {
       gradient.addColorStop(element.strokeColor[j], element.strokeColor[j + 1]);
     }
     ctx.strokeStyle = gradient;
-  } else {
+  } else if (typeof element.strokeColor === 'string') {
     ctx.strokeStyle = element.strokeColor;
+  } else {
+    ctx.strokeStyle = formatColor(element.strokeColor, element.opacity);
   }
 
   if (Array.isArray(element.fillColor)) {
@@ -320,19 +332,32 @@ function drawElement(canvas, element, isCaching = false) {
       gradient.addColorStop(element.fillColor[j], element.fillColor[j + 1]);
     }
     ctx.fillStyle = gradient;
-  } else {
+  } else if (typeof element.fillColor === 'string') {
     ctx.fillStyle = element.fillColor;
+  } else {
+    ctx.fillStyle = formatColor(element.fillColor, element.opacity);
   }
 
   if (lineTools.includes(element.tool)) {
-    const outlinePoints = getStroke(points, element.freehandOptions)
+    const outlineStrokePoints = getStroke(points, {
+      ...element.freehandOptions,
+      size: element.freehandOptions.size * 1.5,
+      thinning: element.freehandOptions.thinning / 1.5,
+    })
+    ctx.save()
+    ctx.beginPath();
+    ctx.moveTo(outlineStrokePoints[0][0], outlineStrokePoints[0][1]);
+    const strokeData = getFlatSvgPathFromStroke(outlineStrokePoints)
+    const myStroke = new Path2D(strokeData)
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.fill(myStroke);
+    ctx.restore()
 
+    const outlinePoints = getStroke(points, element.freehandOptions)
     ctx.beginPath();
     ctx.moveTo(outlinePoints[0][0], outlinePoints[0][1]);
     const pathData = getFlatSvgPathFromStroke(outlinePoints)
     const myPath = new Path2D(pathData)
-
-    ctx.fillStyle = ctx.strokeStyle;
     ctx.fill(myPath);
   } else if (element.tool === Tool.CIRCLE) {
     ctx.beginPath();
