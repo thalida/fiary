@@ -380,12 +380,13 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
 
-    let i = 1;
-    for (i = 1; i < points.length - 2; i += 1) {
+    let i = 0;
+    for (i = 0; i < points.length - 2; i += 1) {
       var xc = (points[i].x + points[i + 1].x) / 2;
       var yc = (points[i].y + points[i + 1].y) / 2;
       ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
     }
+
     // curve through the last two points
     ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
 
@@ -440,7 +441,7 @@ function handleTouchStart(event) {
     },
   }
 
-  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE) {
+  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.BLOB) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
   } else if (newElement.tool === Tool.TRIANGLE) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
