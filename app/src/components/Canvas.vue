@@ -73,8 +73,8 @@ const colors = [
   [0, '#0000ff', 1, '#00ff00'],
   'transparent',
 ];
-const selectedStrokeColor = ref(colors[0]);
 const selectedFillColor = ref(colors[0]);
+const selectedStrokeColor = ref(colors[0]);
 
 const compositionOptions = [
   'source-over',
@@ -365,6 +365,7 @@ function drawElement(canvas, element, isCaching = false) {
     const fromy = points[0].y;
     const tox = points[3].x;
     const toy = points[3].y;
+    ctx.strokeStyle = ctx.fillStyle;
     ctx.beginPath();
     ctx.moveTo(fromx, fromy);
     ctx.lineTo(tox, toy);
@@ -425,8 +426,8 @@ function handleTouchStart(event) {
 
   const newElement = {
     tool: selectedTool.value,
-    strokeColor: selectedStrokeColor.value,
     fillColor: selectedFillColor.value,
+    strokeColor: selectedStrokeColor.value,
     size: penSize.value,
     composition,
     opacity,
@@ -562,12 +563,12 @@ function handleTouchEnd(event) {
           {{ size }}
         </option>
       </select>
-      <select v-model="selectedStrokeColor">
+      <select v-model="selectedFillColor">
         <option v-for="(color, index) in colors" :key="index" :value="color">
           {{ color }}
         </option>
       </select>
-      <select v-model="selectedFillColor">
+      <select v-model="selectedStrokeColor">
         <option v-for="(color, index) in colors" :key="index" :value="color">
           {{ color }}
         </option>
