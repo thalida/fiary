@@ -258,14 +258,16 @@ function drawElement(canvas, element, isCaching = false) {
   const minY = Math.min(...points.map(({ y }: { y: number }) => y));
   const maxX = Math.max(...points.map(({ x }: { x: number }) => x));
   const maxY = Math.max(...points.map(({ y }: { y: number }) => y));
+
   ctx.save();
 
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
   if (!isCaching) {
     ctx.globalCompositeOperation = element.composition;
     ctx.globalAlpha = element.opacity;
   }
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   ctx.lineWidth = element.size;
 
   if (Array.isArray(element.strokeColor)) {
@@ -338,6 +340,27 @@ function drawElement(canvas, element, isCaching = false) {
     const radY = Math.abs(midY - minY);
 
     ctx.ellipse(midX, midY, radX, radY, 0, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fill();
+  } else if (element.tool === Tool.TRIANGLE) {
+    ctx.beginPath();
+
+    const dx = points[0].x - points[1].x;
+    const dy = points[0].y - points[1].y;
+
+    ctx.moveTo(points[0].x, points[0].y);
+
+    let t1 = {
+      x: points[1].x + (dy / 2),
+      y: points[1].y + (dx / 2),
+    };
+    let t2 = {
+      x: points[1].x - (dy / 2),
+      y: points[1].y - (dx / 2),
+    };
+    ctx.lineTo(t1.x, t1.y);
+    ctx.lineTo(t2.x, t2.y);
+    ctx.closePath();
     ctx.stroke();
     ctx.fill();
   } else if (element.tool === Tool.RECTANGLE) {
@@ -413,7 +436,7 @@ function handleTouchStart(event) {
     },
   }
 
-  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE) {
+  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.TRIANGLE) {
     newElement.points.push({ x: pos.x + 1, y: pos.y + 1, pressure });
   }
 
@@ -432,7 +455,7 @@ function handleTouchMove(event) {
   const pressure = getPressure(event);
   const lastElement = canvasElements[canvasElements.length - 1];
 
-  if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
+  if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE || lastElement.tool === Tool.TRIANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
@@ -449,7 +472,9 @@ function handleTouchEnd(event) {
   const lastElement = canvasElements[canvasElements.length - 1];
   lastElement.freehandOptions.last = true;
 
-  cacheElement(lastElement);
+  if (lastElement.tool !== Tool.TRIANGLE) {
+    cacheElement(lastElement);
+  }
   drawElements(canvas.value, canvasElements);
 }
 
