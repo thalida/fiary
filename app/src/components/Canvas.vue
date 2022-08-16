@@ -67,13 +67,6 @@ const colors = [
   { r: 255, g: 0, b: 255, a: 1 },
   { r: 0, g: 255, b: 255, a: 1 },
   { r: 255, g: 255, b: 255, a: 1 },
-  // '#ff0000',
-  // '#00ff00',
-  // '#0000ff',
-  // '#ffff00',
-  // '#00ffff',
-  // '#ff00ff',
-  // '#ffffff',
   [0, '#ff0000', 1, '#0000ff'],
   [0, '#00ff00', 1, '#ff0000'],
   [0, '#0000ff', 1, '#00ff00'],
@@ -233,8 +226,8 @@ function cacheElement(element) {
   drawElement(canvas, element, true);
   ctx.restore();
 
-  element.isCached = true;
-  element.cache = {
+  element.isDrawingCached = true;
+  element.cache.drawing = {
     x: minX,
     y: minY,
     width,
@@ -247,13 +240,12 @@ function cacheElement(element) {
 function drawElement(canvas, element, isCaching = false) {
   const ctx = canvas.getContext('2d');
 
-  if (element.isCached) {
-    const cachedCanvas = element.cache.canvas;
-    const ratio = element.cache.dpi;
+  if (element.isDrawingCached) {
+    const cachedCanvas = element.cache.drawing.canvas;
+    const ratio = element.cache.drawing.dpi;
     ctx.save();
     ctx.globalCompositeOperation = element.composition;
-    // ctx.globalAlpha = element.opacity;
-    ctx.translate(element.cache.x, element.cache.y);
+    ctx.translate(element.cache.drawing.x, element.cache.drawing.y);
     ctx.drawImage(
       cachedCanvas,
       0,
@@ -263,6 +255,10 @@ function drawElement(canvas, element, isCaching = false) {
     );
     ctx.restore();
     return;
+  }
+
+  if (typeof element.cache === 'undefined') {
+    element.cache = {};
   }
 
   const points = element.points.slice();
@@ -275,7 +271,6 @@ function drawElement(canvas, element, isCaching = false) {
 
   if (!isCaching) {
     ctx.globalCompositeOperation = element.composition;
-    // ctx.globalAlpha = element.opacity;
   }
 
   ctx.lineCap = 'round';
@@ -284,6 +279,7 @@ function drawElement(canvas, element, isCaching = false) {
 
   if (Array.isArray(element.strokeColor)) {
     let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
+
     if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
       gradientStartX = minX;
       gradientEndX = maxX;
@@ -291,6 +287,7 @@ function drawElement(canvas, element, isCaching = false) {
       gradientStartX = maxX;
       gradientEndX = minX;
     }
+
     if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
       gradientStartY = minY;
       gradientEndY = maxY;
@@ -304,8 +301,6 @@ function drawElement(canvas, element, isCaching = false) {
       gradient.addColorStop(element.strokeColor[j], element.strokeColor[j + 1]);
     }
     ctx.strokeStyle = gradient;
-  } else if (typeof element.strokeColor === 'string') {
-    ctx.strokeStyle = element.strokeColor;
   } else {
     ctx.strokeStyle = formatColor(element.strokeColor, element.opacity);
   }
@@ -332,8 +327,6 @@ function drawElement(canvas, element, isCaching = false) {
       gradient.addColorStop(element.fillColor[j], element.fillColor[j + 1]);
     }
     ctx.fillStyle = gradient;
-  } else if (typeof element.fillColor === 'string') {
-    ctx.fillStyle = element.fillColor;
   } else {
     ctx.fillStyle = formatColor(element.fillColor, element.opacity);
   }
