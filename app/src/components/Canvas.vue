@@ -37,6 +37,8 @@ enum Tool {
   HIGHLIGHTER = 12,
   BLOB = 20,
   CIRCLE = 30,
+  RECTANGLE = 31,
+  TRIANGLE = 32,
 }
 const supportedTools = {
   [Tool.PEN]: { label: 'Pen' },
@@ -44,9 +46,11 @@ const supportedTools = {
   [Tool.HIGHLIGHTER]: { label: 'Highlighter' },
   [Tool.BLOB]: { label: 'Blob' },
   [Tool.CIRCLE]: { label: 'Circle' },
+  [Tool.RECTANGLE]: { label: 'Rectangle' },
+  [Tool.TRIANGLE]: { label: 'Triangle' },
   [Tool.ERASER]: { label: 'Eraser' },
 }
-const toolOrder = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER, Tool.BLOB, Tool.CIRCLE, Tool.ERASER];
+const toolOrder = Object.keys(supportedTools).map((key) => Number(key));
 const selectedTool = ref(Tool.PEN);
 const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
 
@@ -336,6 +340,14 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.ellipse(midX, midY, radX, radY, 0, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.fill();
+  } else if (element.tool === Tool.RECTANGLE) {
+    ctx.beginPath();
+    const rectangle = new Path2D();
+    const width = maxX - minX;
+    const height = maxY - minY;
+    rectangle.rect(minX, minY, width, height);
+    ctx.stroke(rectangle);
+    ctx.fill(rectangle);
   } else {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
@@ -401,7 +413,7 @@ function handleTouchStart(event) {
     },
   }
 
-  if (newElement.tool === Tool.CIRCLE) {
+  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE) {
     newElement.points.push({ x: pos.x + 1, y: pos.y + 1, pressure });
   }
 
@@ -420,7 +432,7 @@ function handleTouchMove(event) {
   const pressure = getPressure(event);
   const lastElement = canvasElements[canvasElements.length - 1];
 
-  if (lastElement.tool === Tool.CIRCLE) {
+  if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
