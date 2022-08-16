@@ -22,7 +22,7 @@ onMounted(() => {
   ctx.scale(dpi, dpi);
 })
 
-const canvasElements: any[] = [];
+let canvasElements: any[] = [];
 
 let isDrawing = false
 let isStylus = ref(false);
@@ -31,6 +31,7 @@ const allowFingerDrawing = ref(true);
 
 enum Tool {
   ERASER = 0,
+  CLEAR_ALL = 1,
   PEN = 10,
   MARKER = 11,
   HIGHLIGHTER = 12,
@@ -50,6 +51,7 @@ const supportedTools = {
   [Tool.TRIANGLE]: { label: 'Triangle' },
   [Tool.ARROW]: { label: 'Arrow' },
   [Tool.ERASER]: { label: 'Eraser' },
+  [Tool.CLEAR_ALL]: { label: 'Clear All' },
 }
 const toolOrder = Object.keys(supportedTools).map((key) => Number(key));
 const selectedTool = ref(Tool.PEN);
@@ -106,6 +108,14 @@ const compositionOptions = [
 const selectedComposition = ref(compositionOptions[0]);
 
 
+function handleToolChange() {
+  if (selectedTool.value === Tool.CLEAR_ALL) {
+    canvasElements = [];
+    drawElements(canvas.value, canvasElements);
+    selectedTool.value = Tool.ERASER;
+  }
+}
+
 function checkIsStylus(event) {
   let force = event.touches ? event.touches[0]["force"] : 0;
   isStylus.value = force > 0;
@@ -157,6 +167,10 @@ function getOpacity(): number {
 }
 
 function formatColor(color, opacity) {
+  if (color === 'transparent') {
+    return 'transparent';
+  }
+
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
 }
 
@@ -269,9 +283,7 @@ function drawElement(canvas, element, isCaching = false) {
 
   ctx.save();
 
-  if (!isCaching) {
-    ctx.globalCompositeOperation = element.composition;
-  }
+  ctx.globalCompositeOperation = element.composition;
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -332,13 +344,13 @@ function drawElement(canvas, element, isCaching = false) {
   }
 
   if (lineTools.includes(element.tool)) {
+    ctx.save()
+    ctx.beginPath();
     const outlineStrokePoints = getStroke(points, {
       ...element.freehandOptions,
       size: element.freehandOptions.size * 1.5,
       thinning: element.freehandOptions.thinning / 1.5,
     })
-    ctx.save()
-    ctx.beginPath();
     ctx.moveTo(outlineStrokePoints[0][0], outlineStrokePoints[0][1]);
     const strokeData = getFlatSvgPathFromStroke(outlineStrokePoints)
     const myStroke = new Path2D(strokeData)
@@ -346,12 +358,14 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.fill(myStroke);
     ctx.restore()
 
-    const outlinePoints = getStroke(points, element.freehandOptions)
+    ctx.save()
     ctx.beginPath();
+    const outlinePoints = getStroke(points, element.freehandOptions)
     ctx.moveTo(outlinePoints[0][0], outlinePoints[0][1]);
     const pathData = getFlatSvgPathFromStroke(outlinePoints)
     const myPath = new Path2D(pathData)
     ctx.fill(myPath);
+    ctx.restore()
   } else if (element.tool === Tool.CIRCLE) {
     ctx.beginPath();
     const midX = (minX + maxX) / 2;
@@ -405,15 +419,20 @@ function drawElement(canvas, element, isCaching = false) {
       var yc = (points[i].y + points[i + 1].y) / 2;
       ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
     }
-
-    // curve through the last two points
     ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
 
     if (element.tool === Tool.BLOB) {
       ctx.closePath();
+      ctx.save()
+      if (element.strokeColor === 'transparent') {
+        ctx.strokeStyle = ctx.fillStyle;
+      }
+      ctx.stroke();
       ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.stroke();
     }
-    ctx.stroke();
   }
 
   ctx.restore();
@@ -571,7 +590,7 @@ function handleTouchEnd(event) {
 <template>
   <div class="canvas-wrapper">
     <div class="tools">
-      <select v-model="selectedTool">
+      <select v-model="selectedTool" @change="handleToolChange">
         <option v-for="tool in toolOrder" :key="tool" :value="tool">
           {{ supportedTools[tool].label }}
         </option>
