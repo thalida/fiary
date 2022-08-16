@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getStroke } from 'perfect-freehand'
+import polygonClipping from 'polygon-clipping'
 import { type Ref, ref, computed, watchEffect, onMounted } from 'vue'
 
 const canvas = ref<HTMLCanvasElement>()
@@ -126,11 +127,11 @@ function getComposition() {
   }
 
   if (selectedTool.value === Tool.MARKER) {
-    return 'hue';
+    return 'hard-light';
   }
 
   if (selectedTool.value === Tool.HIGHLIGHTER) {
-    return 'hard-light';
+    return 'hue';
   }
 
   return 'source-over';
@@ -172,6 +173,20 @@ function getSvgPathFromStroke(stroke) {
   )
 
   d.push('Z')
+  return d.join(' ')
+}
+
+function getFlatSvgPathFromStroke(stroke) {
+  const faces = polygonClipping.union([stroke])
+
+  const d = []
+
+  faces.forEach((face) =>
+    face.forEach((points) => {
+      d.push(getSvgPathFromStroke(points))
+    })
+  )
+
   return d.join(' ')
 }
 
@@ -249,7 +264,23 @@ function drawElement(canvas, element, isCaching = false) {
   ctx.fillStyle = element.color;
 
   if (Array.isArray(element.color)) {
-    const gradient = ctx.createLinearGradient(minX, minY, maxX, maxY);
+    let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
+    if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
+      gradientStartX = minX;
+      gradientEndX = maxX;
+    } else {
+      gradientStartX = maxX;
+      gradientEndX = minX;
+    }
+    if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
+      gradientStartY = minY;
+      gradientEndY = maxY;
+    } else {
+      gradientStartY = maxY;
+      gradientEndY = minY;
+    }
+
+    const gradient = ctx.createLinearGradient(gradientStartX, gradientStartY, gradientEndX, gradientEndY);
     for (let j = 0; j < element.color.length; j += 2) {
       gradient.addColorStop(element.color[j], element.color[j + 1]);
     }
@@ -265,7 +296,7 @@ function drawElement(canvas, element, isCaching = false) {
 
     ctx.beginPath();
     ctx.moveTo(outlinePoints[0], outlinePoints[1]);
-    const pathData = getSvgPathFromStroke(outlinePoints)
+    const pathData = getFlatSvgPathFromStroke(outlinePoints)
     const myPath = new Path2D(pathData)
 
     ctx.fill(myPath);
@@ -327,7 +358,7 @@ function handleTouchStart(event) {
     freehandOptions: {
       size: penSize.value,
       simulatePressure: selectedTool.value === Tool.PEN && !isStylus.value,
-      thinning: selectedTool.value === Tool.PEN ? 1 : 0,
+      thinning: selectedTool.value === Tool.PEN ? 0.95 : 0,
       streamline: 0.32,
       smoothing: 0.32,
       last: false,
