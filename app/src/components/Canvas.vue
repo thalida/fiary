@@ -1,21 +1,30 @@
 <script setup lang="ts">
-import Konva from "konva";
-import { type Ref, ref, computed } from 'vue'
-const stage: Ref<any> = ref(null);
-const layer: Ref<any> = ref(null);
+import { getStroke } from 'perfect-freehand'
+import { type Ref, ref, computed, watchEffect, onMounted } from 'vue'
 
-const configKonva = {
+const canvas = ref<HTMLCanvasElement>()
+const canvasConfig = ref({
   width: window.innerWidth,
   height: window.innerHeight,
-  draggable: false,
-}
+})
 
-const mode = 'brush';
+onMounted(() => {
+  const dpi = window.devicePixelRatio;
+  // const canvasRef = canvas.value;
+  const ctx = canvas.value.getContext('2d')
 
-let isDrawing = false;
-let lines = [] as any[];
-let points = [] as any[];
-let maxPointPosition: any = null;
+  canvas.value.width = canvasConfig.value.width * dpi;
+  canvas.value.height = canvasConfig.value.height * dpi;
+
+  canvas.value.style.width = `${canvasConfig.value.width}px`;
+  canvas.value.style.height = `${canvasConfig.value.height}px`;
+
+  ctx.scale(dpi, dpi);
+})
+
+const canvasElements: any[] = [];
+
+let isDrawing = false
 let isStylus = ref(false);
 let detectedStlyus = ref(false);
 const allowFingerDrawing = ref(true);
@@ -38,7 +47,7 @@ const supportedTools = {
 }
 const toolOrder = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER, Tool.BLOB, Tool.CIRCLE, Tool.ERASER];
 const selectedTool = ref(Tool.PEN);
-const isLineToolSelected = computed(() => [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER, Tool.ERASER].includes(selectedTool.value));
+const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
 
 const penSizes = [5, 10, 20, 40, 60];
 const penSize = ref(40); // 20, 40, 60, 80
@@ -88,52 +97,43 @@ const compositionOptions = [
 ];
 const selectedComposition = ref(compositionOptions[0]);
 
-const globalCompositeOperation = computed(() => {
-  if (selectedTool.value === Tool.ERASER) {
-    return 'destination-out';
-  }
 
-  if (selectedTool.value === Tool.MARKER) {
-    return 'multiply';
-  }
-
-  if (selectedTool.value === Tool.HIGHLIGHTER) {
-    return 'lighten';
-  }
-
-  return 'source-over';
-});
-
-
-function setupIsStylus(event) {
+function checkIsStylus(event) {
   let force = event.touches ? event.touches[0]["force"] : 0;
   isStylus.value = force > 0;
   detectedStlyus.value = detectedStlyus.value || isStylus.value;
 }
 
 function isDrawingAllowed() {
-  if (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value) {
+  if (!isDrawing || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
     return false
   }
 
   return true;
 }
 
-function getStrokeWidth(event, isTouchStart = false): number {
-  let strokeWidth;
-  let pressure;
-
-  if (isTouchStart) {
-    pressure = event.touches ? event.touches[0]["force"] : 0;
-  } else if (selectedTool.value === Tool.PEN && isStylus.value) {
-    pressure = event.touches[0]["force"];
-  } else {
-    pressure = 1;
+function getPressure(event): number {
+  if (selectedTool.value === Tool.PEN) {
+    return isStylus.value ? event.touches[0]["force"] : 0.5;
   }
 
-  strokeWidth = Math.ceil(Math.log(pressure + 1) * penSize.value);
-  if (strokeWidth < 1) strokeWidth = 1;
-  return strokeWidth;
+  return 0.5;
+}
+
+function getComposition() {
+  if (selectedTool.value === Tool.ERASER) {
+    return 'destination-out';
+  }
+
+  if (selectedTool.value === Tool.MARKER) {
+    return 'hue';
+  }
+
+  if (selectedTool.value === Tool.HIGHLIGHTER) {
+    return 'hard-light';
+  }
+
+  return 'source-over';
 }
 
 function getOpacity(): number {
@@ -148,294 +148,226 @@ function getOpacity(): number {
   return 1;
 }
 
-function lineSceneFunc(context, shape) {
-  const drawPoints = shape.attrs.points;
-  const numPoints = drawPoints.length;
+function getMousePos(canvas, event) {
+  const rect = canvas.getBoundingClientRect(); // abs. size of element
+  const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+  const clientY = event.touches ? event.touches[0].clientY : event.clientY;
 
-  if (numPoints === 0) {
-    return;
-  }
-
-  context.beginPath();
-  context.moveTo(drawPoints[0], drawPoints[1]);
-
-  let n = 2;
-
-  while (n < numPoints) {
-    context.bezierCurveTo(
-      drawPoints[n++],
-      drawPoints[n++],
-      drawPoints[n++],
-      drawPoints[n++],
-      drawPoints[n++],
-      drawPoints[n++]
-    );
-  }
-
-  if (shape.attrs.closed) {
-    context.closePath();
-    context.fillStrokeShape(shape);
-  } else {
-    context.strokeShape(shape);
+  return {
+    x: (clientX - rect.left),
+    y: (clientY - rect.top)
   }
 }
 
+function getSvgPathFromStroke(stroke) {
+  if (!stroke.length) return ''
+
+  const d = stroke.reduce(
+    (acc, [x0, y0], i, arr) => {
+      const [x1, y1] = arr[(i + 1) % arr.length]
+      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2)
+      return acc
+    },
+    ['M', ...stroke[0], 'Q']
+  )
+
+  d.push('Z')
+  return d.join(' ')
+}
+
+function cacheElement(element) {
+  const points = element.points.slice();
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const dpi = window.devicePixelRatio;
+
+  const minX = Math.min(...points.map(({ x }: { x: number }) => x)) - element.size;
+  const minY = Math.min(...points.map(({ y }: { y: number }) => y)) - element.size;
+  const maxX = Math.max(...points.map(({ x }: { x: number }) => x)) + element.size;
+  const maxY = Math.max(...points.map(({ y }: { y: number }) => y)) + element.size;
+  const width = (maxX - minX);
+  const height = (maxY - minY);
+
+  canvas.width = width * dpi;
+  canvas.height = height * dpi;
+
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+
+  ctx.save();
+  ctx.scale(dpi, dpi);
+  ctx.translate(-minX, -minY);
+  drawElement(canvas, element, true);
+  ctx.restore();
+
+  element.isCached = true;
+  element.cache = {
+    x: minX,
+    y: minY,
+    width,
+    height,
+    dpi,
+    canvas,
+  };
+}
+
+function drawElement(canvas, element, isCaching = false) {
+  const ctx = canvas.getContext('2d');
+
+  if (element.isCached) {
+    const cachedCanvas = element.cache.canvas;
+    const ratio = element.cache.dpi;
+    ctx.save();
+    ctx.globalCompositeOperation = element.composition;
+    ctx.globalAlpha = element.opacity;
+    ctx.translate(element.cache.x, element.cache.y);
+    ctx.drawImage(
+      cachedCanvas,
+      0,
+      0,
+      cachedCanvas.width / ratio,
+      cachedCanvas.height / ratio
+    );
+    ctx.restore();
+    return;
+  }
+
+  const points = element.points.slice();
+  const minX = Math.min(...points.map(({ x }: { x: number }) => x));
+  const minY = Math.min(...points.map(({ y }: { y: number }) => y));
+  const maxX = Math.max(...points.map(({ x }: { x: number }) => x));
+  const maxY = Math.max(...points.map(({ y }: { y: number }) => y));
+  ctx.save();
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  if (!isCaching) {
+    ctx.globalCompositeOperation = element.composition;
+    ctx.globalAlpha = element.opacity;
+  }
+  ctx.strokeStyle = element.color;
+  ctx.fillStyle = element.color;
+
+  if (Array.isArray(element.color)) {
+    const gradient = ctx.createLinearGradient(minX, minY, maxX, maxY);
+    for (let j = 0; j < element.color.length; j += 2) {
+      gradient.addColorStop(element.color[j], element.color[j + 1]);
+    }
+    ctx.strokeStyle = gradient;
+    ctx.fillStyle = gradient;
+  } else {
+    ctx.strokeStyle = element.color;
+    ctx.fillStyle = element.color;
+  }
+
+  if (lineTools.includes(element.tool)) {
+    const outlinePoints = getStroke(points, element.freehandOptions)
+
+    ctx.beginPath();
+    ctx.moveTo(outlinePoints[0], outlinePoints[1]);
+    const pathData = getSvgPathFromStroke(outlinePoints)
+    const myPath = new Path2D(pathData)
+
+    ctx.fill(myPath);
+  } else {
+    ctx.lineWidth = element.size;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    let i = 1;
+    for (i = 1; i < points.length - 2; i += 1) {
+      var xc = (points[i].x + points[i + 1].x) / 2;
+      var yc = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+    }
+    // curve through the last two points
+    ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+
+    if (element.tool === Tool.BLOB) {
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawElements(canvas, elements) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < elements.length; i += 1) {
+    const element = elements[i];
+    drawElement(canvas, element);
+  }
+}
 
 function handleTouchStart(event) {
-  if (stage.value === null || layer.value === null) return;
-
   isDrawing = true;
+  checkIsStylus(event);
 
-  setupIsStylus(event.evt);
-
-  if (!isDrawingAllowed()) return;
-
-  const stageNode = stage.value.getNode();
-  const layerNode = layer.value.getNode();
-  const pos = stageNode.getPointerPosition();
-  const strokeWidth = getStrokeWidth(event.evt, true);
-  const opacity = getOpacity();
-
-  if (selectedTool.value === Tool.CIRCLE) {
-    const newCircle: Konva.CircleConfig = {
-      x: pos.x,
-      y: pos.y,
-      radius: strokeWidth,
-      strokeWidth,
-      opacity,
-      globalCompositeOperation: globalCompositeOperation.value,
-      perfectDrawEnabled: false,
-      shadowForStrokeEnabled: false,
-      listening: false,
-    };
-
-    if (Array.isArray(selectedColor.value)) {
-      newCircle.fillLinearGradientColorStops = selectedColor.value;
-      newCircle.fillLinearGradientStartPoint = { x: pos.x, y: pos.y }
-      newCircle.fillLinearGradientEndPoint = { x: pos.x, y: pos.y }
-
-      newCircle.strokeLinearGradientColorStops = selectedColor.value;
-      newCircle.strokeLinearGradientStartPoint = { x: pos.x, y: pos.y }
-      newCircle.strokeLinearGradientEndPoint = { x: pos.x, y: pos.y }
-    } else {
-      newCircle.fill = selectedColor.value;
-      newCircle.stroke = selectedColor.value;
-    }
-    const konvaCircle = new Konva.Circle(newCircle);
-    lines.push({
-      konva: konvaCircle,
-      segments: [] as any[],
-    });
-    layerNode.add(konvaCircle);
-  } else {
-    const newLine: Konva.LineConfig = {
-      strokeWidth,
-      opacity,
-      globalCompositeOperation: globalCompositeOperation.value,
-      lineCap: 'round',
-      lineJoin: 'round',
-      points: [pos.x, pos.y],
-      bezier: false,
-      closed: selectedTool.value === Tool.BLOB,
-      perfectDrawEnabled: false,
-      shadowForStrokeEnabled: false,
-      listening: false,
-    };
-
-    if (Array.isArray(selectedColor.value)) {
-      newLine.fillLinearGradientColorStops = selectedColor.value;
-      newLine.fillLinearGradientStartPoint = { x: pos.x, y: pos.y }
-      newLine.fillLinearGradientEndPoint = { x: pos.x, y: pos.y }
-
-      newLine.strokeLinearGradientColorStops = selectedColor.value;
-      newLine.strokeLinearGradientStartPoint = { x: pos.x, y: pos.y }
-      newLine.strokeLinearGradientEndPoint = { x: pos.x, y: pos.y }
-    } else {
-      newLine.fill = selectedColor.value;
-      newLine.stroke = selectedColor.value;
-    }
-
-    const konvaLine = new Konva.Line(newLine);
-    lines.push({
-      konva: konvaLine,
-      segments: [] as any[],
-    });
-    points = [{ x: pos.x, y: pos.y }];
-    layerNode.add(konvaLine);
-  }
-}
-
-function handleTouchEnd() {
-  if (!isDrawing) {
+  if (!isDrawingAllowed() || canvas.value === null) {
+    console.log('her?')
     return;
   }
 
-  if (stage.value === null || layer.value === null) return;
+  const pos = getMousePos(canvas.value, event);
+  const pressure = getPressure(event);
+  const opacity = getOpacity();
+  const composition = getComposition();
 
-  const lastLine = lines[lines.length - 1];
-
-  if (isLineToolSelected.value) {
-    const stageNode = stage.value.getNode();
-    const pos = stageNode.getPointerPosition();
-    const anchorLine = (lastLine.segments.length === 0) ? lastLine.konva : lastLine.segments[lastLine.segments.length - 1];
-
-    let newPoints = anchorLine.points().concat([pos.x, pos.y]).slice();
-    anchorLine.points(newPoints);
+  const newElement = {
+    tool: selectedTool.value,
+    color: selectedColor.value,
+    size: penSize.value,
+    composition,
+    opacity,
+    points: [{ x: pos.x, y: pos.y, pressure }],
+    freehandOptions: {
+      size: penSize.value,
+      simulatePressure: selectedTool.value === Tool.PEN && !isStylus.value,
+      thinning: selectedTool.value === Tool.PEN ? 1 : 0,
+      streamline: 0.32,
+      smoothing: 0.32,
+      last: false,
+    },
   }
-
-  isDrawing = false;
-  maxPointPosition = null;
-  points = [];
-
-  lastLine.konva.cache();
-
-  for (let i = 0; i < lastLine.segments.length; i++) {
-    const segment = lastLine.segments[i];
-    segment.cache();
-  }
+  canvasElements.push(newElement);
+  drawElements(canvas.value, canvasElements);
 }
 
 function handleTouchMove(event) {
-  if (!isDrawing) {
+  if (!isDrawingAllowed() || canvas.value === null) {
     return;
   }
 
-  if (stage.value === null || layer.value === null) return;
+  event.preventDefault();
 
-  if (!isDrawingAllowed()) return;
+  const pos = getMousePos(canvas.value, event);
+  const pressure = getPressure(event);
+  const lastElement = canvasElements[canvasElements.length - 1];
+  lastElement.points.push({ x: pos.x, y: pos.y, pressure });
+  drawElements(canvas.value, canvasElements);
+}
 
-  event.evt.preventDefault();
-
-  const stageNode = stage.value.getNode();
-  const layerNode = layer.value.getNode();
-  const pos = stageNode.getPointerPosition();
-  const lastLine = lines[lines.length - 1];
-  const anchorLine = (lastLine.segments.length === 0) ? lastLine.konva : lastLine.segments[lastLine.segments.length - 1];
-
-  const currStrokeWidth = anchorLine.strokeWidth();
-  const newStrokeWidth = getStrokeWidth(event.evt);
-  const gap = Math.abs(newStrokeWidth - currStrokeWidth);
-
-  if (selectedTool.value === Tool.CIRCLE) {
-    const radius = Math.sqrt(Math.pow(pos.x - anchorLine.x(), 2) + Math.pow(pos.y - anchorLine.y(), 2));
-    anchorLine.radius(radius);
-    anchorLine.strokeWidth(newStrokeWidth);
-    return
+function handleTouchEnd(event) {
+  if (!isDrawingAllowed() || canvas.value === null) {
+    return;
   }
 
-  if (maxPointPosition !== null) {
-    const newPoint = points[points.length - 1];
-    if (newPoint.x > maxPointPosition.x) {
-      maxPointPosition.x = newPoint.x;
-    }
-    if (newPoint.y > maxPointPosition.y) {
-      maxPointPosition.y = newPoint.y;
-    }
-  } else {
-    maxPointPosition = { x: pos.x, y: pos.y };
-  }
+  isDrawing = false;
+  const lastElement = canvasElements[canvasElements.length - 1];
+  lastElement.freehandOptions.last = true;
 
-  if (selectedTool.value !== Tool.PEN || gap <= 1) {
-    const lastPoint = points[points.length - 1];
-
-    const isSamePoint = lastPoint.x === pos.x && lastPoint.y === pos.y;
-    if (isSamePoint) {
-      return;
-    }
-
-    if (selectedTool.value !== Tool.PEN) {
-      anchorLine.strokeWidth(newStrokeWidth);
-    }
-
-    if (Array.isArray(selectedColor.value)) {
-      anchorLine.fillLinearGradientEndPoint(maxPointPosition);
-      anchorLine.strokeLinearGradientEndPoint(maxPointPosition);
-    }
-
-    let newPoints = anchorLine.points().concat([pos.x, pos.y]);
-    anchorLine.points(newPoints);
-    points.push({ x: pos.x, y: pos.y });
-  } else {
-    const lastPoints = points[points.length - 1];
-    const secndLastPoints = points[points.length - 2];
-    const thirdLastPoints = points[points.length - 3];
-
-    let newPoints = [] as any[];
-    if (thirdLastPoints) {
-      newPoints = [
-        thirdLastPoints.x,
-        thirdLastPoints.y,
-      ];
-    }
-
-    if (secndLastPoints) {
-      newPoints = newPoints.concat([
-        secndLastPoints.x,
-        secndLastPoints.y,
-      ]);
-    }
-
-    if (lastPoints) {
-      newPoints = newPoints.concat([
-        lastPoints.x,
-        lastPoints.y,
-      ]);
-    }
-
-    newPoints = newPoints.concat([
-      pos.x,
-      pos.y,
-    ]);
-
-    let tweenStroke = (currStrokeWidth + newStrokeWidth) / 2;
-
-    const connectorLine: Konva.LineConfig = {
-      opacity: getOpacity(),
-      strokeWidth: tweenStroke,
-      globalCompositeOperation: globalCompositeOperation.value,
-      lineCap: 'round',
-      lineJoin: 'round',
-      points: newPoints.slice(),
-      bezier: true,
-      perfectDrawEnabled: false,
-      shadowForStrokeEnabled: false,
-      listening: false,
-    };
-
-    if (Array.isArray(selectedColor.value)) {
-      connectorLine.fillLinearGradientColorStops = selectedColor.value;
-      connectorLine.fillLinearGradientStartPoint = points[0];
-      connectorLine.fillLinearGradientEndPoint = maxPointPosition;
-
-      connectorLine.strokeLinearGradientColorStops = selectedColor.value;
-      connectorLine.strokeLinearGradientStartPoint = points[0];
-      connectorLine.strokeLinearGradientEndPoint = maxPointPosition;
-    } else {
-      connectorLine.fill = selectedColor.value;
-      connectorLine.stroke = selectedColor.value;
-    }
-
-    const konvaConnectorLine = new Konva.Line(connectorLine);
-    points.push({ x: pos.x, y: pos.y });
-
-    if (Array.isArray(selectedColor.value)) {
-      for (let i = 0; i < lastLine.segments.length; i += 1) {
-        const segment = lastLine.segments[i];
-
-        segment.fillLinearGradientEndPoint(maxPointPosition);
-        segment.strokeLinearGradientEndPoint(maxPointPosition);
-      }
-    }
-
-    lastLine.segments.push(konvaConnectorLine);
-    layerNode.add(konvaConnectorLine);
-  }
+  cacheElement(lastElement);
+  drawElements(canvas.value, canvasElements);
 }
 
 </script>
 
 <template>
-  <div class="canvas">
+  <div class="canvas-wrapper">
     <div class="tools">
       <select v-model="selectedTool">
         <option v-for="tool in toolOrder" :key="tool" :value="tool">
@@ -461,15 +393,15 @@ function handleTouchMove(event) {
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
     </div>
-    <v-stage ref="stage" :config="configKonva" @mousedown="handleTouchStart" @touchstart="handleTouchStart"
-      @mouseup="handleTouchEnd" @touchend="handleTouchEnd" @mousemove="handleTouchMove" @touchmove="handleTouchMove">
-      <v-layer ref="layer"></v-layer>
-    </v-stage>
+    <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleTouchStart"
+      @touchstart="handleTouchStart" @mouseup="handleTouchEnd" @touchend="handleTouchEnd" @mousemove="handleTouchMove"
+      @touchmove="handleTouchMove">
+    </canvas>
   </div>
 </template>
 
 <style scoped>
-.canvas {
+.canvas-wrapper {
   border: 2px solid red;
 }
 
