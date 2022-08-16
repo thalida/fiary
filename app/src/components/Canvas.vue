@@ -352,11 +352,12 @@ function drawElement(canvas, element, isCaching = false) {
 
     let t1 = {
       x: points[1].x + (dy / 2),
-      y: points[1].y + (dx / 2),
+      y: points[1].y - (dx / 2),
     };
+
     let t2 = {
       x: points[1].x - (dy / 2),
-      y: points[1].y - (dx / 2),
+      y: points[1].y + (dx / 2),
     };
     ctx.lineTo(t1.x, t1.y);
     ctx.lineTo(t2.x, t2.y);
