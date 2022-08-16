@@ -397,6 +397,23 @@ function drawElement(canvas, element, isCaching = false) {
     const fromy = points[0].y;
     const tox = points[3].x;
     const toy = points[3].y;
+
+    ctx.save()
+    ctx.lineWidth *= 1.5;
+    ctx.beginPath();
+    ctx.moveTo(fromx, fromy);
+    ctx.lineTo(tox, toy);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(points[1].x, points[1].y);
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(points[2].x, points[2].y);
+    ctx.stroke();
+    ctx.restore()
+
+    ctx.save();
     ctx.strokeStyle = ctx.fillStyle;
     ctx.beginPath();
     ctx.moveTo(fromx, fromy);
@@ -409,6 +426,7 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.moveTo(tox, toy);
     ctx.lineTo(points[2].x, points[2].y);
     ctx.stroke();
+    ctx.restore();
   } else {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
