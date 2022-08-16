@@ -359,6 +359,10 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.restore()
 
     ctx.save()
+    if (element.fillColor === 'transparent') {
+      ctx.globalCompositeOperation = 'xor';
+      ctx.fillStyle = "#ff0000";
+    }
     ctx.beginPath();
     const outlinePoints = getStroke(points, element.freehandOptions)
     ctx.moveTo(outlinePoints[0][0], outlinePoints[0][1]);
