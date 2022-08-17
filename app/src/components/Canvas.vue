@@ -201,7 +201,7 @@ function getMousePos(canvas, event) {
   let isRulerLine = false;
 
   if (ruler.value.isVisible && moveable.value) {
-    const searchDistance = penSize.value * 2;
+    const searchDistance = 25;
     let foundX, foundY;
     let searchFor = true;
     let isFirstLoop = true;
@@ -635,12 +635,6 @@ function handleCanvasTouchMove(event) {
   const pressure = getPressure(event);
   const lastElement = canvasElements[canvasElements.length - 1];
 
-  lastElement.isRulerLine = lastElement.isRulerLine || pos.isRulerLine;
-  if (lastElement.isRulerLine) {
-    lastElement.freehandOptions.streamline = 1;
-    lastElement.freehandOptions.smoothing = 1;
-  }
-
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
   } else if (lastElement.tool === Tool.TRIANGLE) {
@@ -683,6 +677,16 @@ function handleCanvasTouchMove(event) {
     lastElement.points[3] = { x: pos.x, y: pos.y };
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
+  }
+
+  if (
+    (lineTools.includes(lastElement.tool) || lastElement.tool === Tool.ERASER) &&
+    pos.isRulerLine &&
+    !lastElement.isRulerLine
+  ) {
+    handleCanvasTouchEnd(event);
+    handleCanvasTouchStart(event);
+    return;
   }
 
   drawElements(canvas.value, canvasElements);
