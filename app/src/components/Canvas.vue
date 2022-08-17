@@ -201,32 +201,55 @@ function getMousePos(canvas, event) {
   let isRulerLine = false;
 
   if (ruler.value.isVisible && moveable.value) {
-    const searchDistance = penSize.value / 2;
+    const searchDistance = penSize.value * 2;
     let foundX, foundY;
     let searchFor = true;
     let isFirstLoop = true;
-    for (let dx = -1 * searchDistance; dx <= searchDistance; dx += 1) {
-      const rx = clientX + dx;
 
-      for (let dy = -1 * searchDistance; dy <= searchDistance; dy += 1) {
-        const ry = clientY + dy;
-        const isInside = moveable.value.isInside(rx, ry);
+    let dx = 0;
+    while (dx <= searchDistance) {
+      const rx1 = clientX - dx;
+      const rx2 = clientX + dx;
 
-        if (isFirstLoop) {
-          searchFor = !isInside;
-          isFirstLoop = false;
+      let dy = 0;
+      while (dy <= searchDistance) {
+        const ry1 = clientY - dy;
+        const ry2 = clientY + dy;
+        const searchDirections = [
+          [rx1, ry1],
+          [rx1, ry2],
+          [rx2, ry1],
+          [rx2, ry2],
+        ];
+
+        for (let i = 0; i < searchDirections.length; i += 1) {
+          const searchDirction = searchDirections[i];
+          const isInside = moveable.value.isInside(searchDirction[0], searchDirction[1]);
+
+          if (isFirstLoop) {
+            searchFor = !isInside;
+            isFirstLoop = false;
+          }
+
+          if (isInside === searchFor) {
+            foundX = searchDirction[0];
+            foundY = searchDirction[1];
+            break;
+          }
         }
 
-        if (isInside === searchFor) {
-          foundX = rx;
-          foundY = ry;
+        if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
           break;
         }
+
+        dy += 1;
       }
 
       if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
         break;
       }
+
+      dx += 1;
     }
 
     if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
@@ -614,8 +637,8 @@ function handleCanvasTouchMove(event) {
 
   lastElement.isRulerLine = lastElement.isRulerLine || pos.isRulerLine;
   if (lastElement.isRulerLine) {
-    lastElement.freehandOptions.smoothing = 1;
     lastElement.freehandOptions.streamline = 1;
+    lastElement.freehandOptions.smoothing = 1;
   }
 
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
@@ -763,8 +786,9 @@ function onRulerRotate({ target, drag, rotation }) {
           <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
         </div>
         <Moveable ref="moveable" v-if="ruler.isVisible" className=" moveable" :target="['.ruler-container']"
-          :pinchable="['rotatable']" :draggable="true" :rotatable="true" :scalable="false" :throttleRotate="1"
-          @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart" @renderEnd="onRulerMoveEnd" />
+          :pinchable="['rotatable']" :draggable="!isDrawing" :rotatable="!isDrawing" :scalable="false"
+          :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart"
+          @renderEnd="onRulerMoveEnd" />
       </div>
       <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
         @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
