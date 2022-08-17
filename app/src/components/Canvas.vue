@@ -10,6 +10,8 @@ const canvasConfig = ref({
   height: window.innerHeight,
 })
 
+
+const moveable = ref()
 const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
 const ruler = ref({
   isVisible: false,
@@ -194,11 +196,49 @@ function getMousePos(canvas, event) {
   const rect = canvas.getBoundingClientRect(); // abs. size of element
   const clientX = event.touches ? event.touches[0].clientX : event.clientX;
   const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+  let inputX = clientX;
+  let inputY = clientY;
+  let isRulerLine = false;
 
-  return {
-    x: (clientX - rect.left),
-    y: (clientY - rect.top)
+  if (ruler.value.isVisible && moveable.value) {
+    const searchDistance = penSize.value / 2;
+    let foundX, foundY;
+    let searchFor = true;
+    let isFirstLoop = true;
+    for (let dx = -1 * searchDistance; dx <= searchDistance; dx += 1) {
+      const rx = clientX + dx;
+
+      for (let dy = -1 * searchDistance; dy <= searchDistance; dy += 1) {
+        const ry = clientY + dy;
+        const isInside = moveable.value.isInside(rx, ry);
+
+        if (isFirstLoop) {
+          searchFor = !isInside;
+          isFirstLoop = false;
+        }
+
+        if (isInside === searchFor) {
+          foundX = rx;
+          foundY = ry;
+          break;
+        }
+      }
+
+      if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
+        break;
+      }
+    }
+
+    if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
+      isRulerLine = true;
+      inputX = foundX;
+      inputY = foundY;
+    }
   }
+
+  const x = (inputX - rect.left);
+  const y = (inputY - rect.top);
+  return { x, y, isRulerLine }
 }
 
 function getSvgPathFromStroke(stroke) {
@@ -502,6 +542,7 @@ function handleCanvasTouchStart(event) {
   }
 
   const pos = getMousePos(canvas.value, event);
+  const isRulerLine = pos.isRulerLine;
   const pressure = getPressure(event);
   const opacity = getOpacity();
   const composition = getComposition();
@@ -513,13 +554,14 @@ function handleCanvasTouchStart(event) {
     size: penSize.value,
     composition,
     opacity,
+    isRulerLine,
     points: [{ x: pos.x, y: pos.y, pressure }],
     freehandOptions: {
       size: penSize.value,
       simulatePressure: selectedTool.value === Tool.PEN && !isStylus.value,
       thinning: selectedTool.value === Tool.PEN ? 0.95 : 0,
-      streamline: 0.32,
-      smoothing: 0.32,
+      streamline: isRulerLine ? 1 : 0.32,
+      smoothing: isRulerLine ? 1 : 0.32,
       last: false,
     },
   }
@@ -570,6 +612,12 @@ function handleCanvasTouchMove(event) {
   const pressure = getPressure(event);
   const lastElement = canvasElements[canvasElements.length - 1];
 
+  lastElement.isRulerLine = lastElement.isRulerLine || pos.isRulerLine;
+  if (lastElement.isRulerLine) {
+    lastElement.freehandOptions.smoothing = 1;
+    lastElement.freehandOptions.streamline = 1;
+  }
+
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
   } else if (lastElement.tool === Tool.TRIANGLE) {
@@ -609,7 +657,7 @@ function handleCanvasTouchMove(event) {
 
     lastElement.points[1] = a1;
     lastElement.points[2] = a2;
-    lastElement.points[3] = pos;
+    lastElement.points[3] = { x: pos.x, y: pos.y };
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
@@ -714,9 +762,9 @@ function onRulerRotate({ target, drag, rotation }) {
           <div class="ruler-rotation">{{ Math.round(ruler.rotation) }}&deg;</div>
           <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
         </div>
-        <Moveable v-if="ruler.isVisible" className=" moveable" :target="['.ruler-container']" :pinchable="['rotatable']"
-          :draggable="true" :rotatable="true" :scalable="false" :throttleRotate="1" @drag="onRulerDrag"
-          @rotate="onRulerRotate" @renderStart="onRulerMoveStart" @renderEnd="onRulerMoveEnd" />
+        <Moveable ref="moveable" v-if="ruler.isVisible" className=" moveable" :target="['.ruler-container']"
+          :pinchable="['rotatable']" :draggable="true" :rotatable="true" :scalable="false" :throttleRotate="1"
+          @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart" @renderEnd="onRulerMoveEnd" />
       </div>
       <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
         @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
