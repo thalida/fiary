@@ -533,8 +533,8 @@ function drawElement(canvas, element, isCaching = false) {
 
     ctx.save()
     if (element.fillColor === 'transparent') {
-      ctx.globalCompositeOperation = 'xor';
-      ctx.fillStyle = "#ff0000";
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = "#fff";
     }
     ctx.beginPath();
     const pathPoints = element.smoothPoints.path;
@@ -883,7 +883,8 @@ function onRulerRotate({ target, drag, rotation }) {
           <div class="ruler-rotation">
             {{ Math.round(ruler.rotation) }}&deg; |
             <span v-if="canvasElements.length > 0 && isDrawing">
-              {{ canvasElements[canvasElements.length - 1].dimensions }}
+              {{ canvasElements[canvasElements.length - 1].dimensions.outerWidth }} x
+              {{ canvasElements[canvasElements.length - 1].dimensions.outerHeight }}
             </span>
           </div>
           <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
