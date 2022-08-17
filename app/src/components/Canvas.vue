@@ -681,7 +681,7 @@ function handleCanvasTouchMove(event) {
   }
 
   if (
-    (lineTools.includes(lastElement.tool) || lastElement.tool === Tool.ERASER) &&
+    lastElement.tool === Tool.ERASER &&
     pos.isRulerLine &&
     !lastElement.isRulerLine
   ) {
