@@ -17,6 +17,19 @@ const ruler = ref({
   rotation: 0,
 })
 
+let canvasElements: any[] = [];
+
+
+let isMovingRuler = false;
+let isDrawing = ref(false)
+let isStylus = ref(false);
+let detectedStlyus = ref(false);
+const allowFingerDrawing = ref(true);
+
+const showRulerControls = computed(() => {
+  return !isDrawing.value
+})
+
 onMounted(() => {
   const dpi = window.devicePixelRatio;
   const ctx = canvas.value.getContext('2d')
@@ -29,15 +42,6 @@ onMounted(() => {
 
   ctx.scale(dpi, dpi);
 })
-
-let canvasElements: any[] = [];
-
-
-let isMovingRuler = false;
-let isDrawing = false
-let isStylus = ref(false);
-let detectedStlyus = ref(false);
-const allowFingerDrawing = ref(true);
 
 enum Tool {
   POINTER = 0,
@@ -135,7 +139,7 @@ function checkIsStylus(event) {
 }
 
 function isDrawingAllowed() {
-  if (!isDrawing || isMovingRuler || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
+  if (!isDrawing.value || isMovingRuler || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
     return false
   }
 
@@ -490,7 +494,7 @@ function drawElements(canvas, elements) {
 }
 
 function handleCanvasTouchStart(event) {
-  isDrawing = true;
+  isDrawing.value = true;
   checkIsStylus(event);
 
   if (!isDrawingAllowed() || canvas.value === null) {
@@ -618,12 +622,12 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
-  isDrawing = false;
   const lastElement = canvasElements[canvasElements.length - 1];
   lastElement.freehandOptions.last = true;
 
   cacheElement(lastElement);
   drawElements(canvas.value, canvasElements);
+  isDrawing.value = false;
 }
 
 function onRulerMoveStart() {
@@ -705,14 +709,14 @@ function onRulerRotate({ target, drag, rotation }) {
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
     </div>
     <div>
-      <div v-show="ruler.isVisible">
+      <div v-show="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
         <div class="ruler-container" :style="{ width: ruler.width + 'px' }">
           <div class="ruler-rotation">{{ Math.round(ruler.rotation) }}&deg;</div>
           <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
         </div>
-        <Moveable className="moveable" :target="['.ruler-container']" :pinchable="['rotatable']" :draggable="true"
-          :rotatable="true" :scalable="false" :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate"
-          @renderStart="onRulerMoveStart" @renderEnd="onRulerMoveEnd" />
+        <Moveable v-if="ruler.isVisible" className=" moveable" :target="['.ruler-container']" :pinchable="['rotatable']"
+          :draggable="true" :rotatable="true" :scalable="false" :throttleRotate="1" @drag="onRulerDrag"
+          @rotate="onRulerRotate" @renderStart="onRulerMoveStart" @renderEnd="onRulerMoveEnd" />
       </div>
       <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
         @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
@@ -761,6 +765,10 @@ function onRulerRotate({ target, drag, rotation }) {
 </style>
 
 <style>
+.hide-ruler-controls .moveable-control-box .moveable-rotation {
+  display: none;
+}
+
 .moveable-control-box .moveable-control.moveable-rotation-control {
   width: 30px;
   height: 30px;
