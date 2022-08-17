@@ -2,8 +2,9 @@
 import { getStroke } from 'perfect-freehand'
 import Moveable from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
-import { type Ref, ref, computed, watchEffect, onMounted } from 'vue'
+import { type Ref, ref, computed, watchEffect, onMounted, watch } from 'vue'
 
+const debugMode = ref(false);
 const canvas = ref<HTMLCanvasElement>()
 const canvasConfig = ref({
   width: window.innerWidth,
@@ -19,8 +20,7 @@ const ruler = ref({
   rotation: 0,
 })
 
-let canvasElements: any[] = [];
-
+let canvasElements = ref([] as any[]);
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -44,6 +44,13 @@ onMounted(() => {
 
   ctx.scale(dpi, dpi);
 })
+
+watch(
+  () => debugMode.value,
+  () => {
+    drawElements(canvas.value, canvasElements.value)
+  }
+)
 
 enum Tool {
   POINTER = 0,
@@ -127,8 +134,8 @@ const selectedComposition = ref(compositionOptions[0]);
 
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
-    canvasElements = [];
-    drawElements(canvas.value, canvasElements);
+    canvasElements.value = [];
+    drawElements(canvas.value, canvasElements.value);
     selectedTool.value = Tool.ERASER;
     event.target.blur();
   }
@@ -190,6 +197,84 @@ function formatColor(color, opacity) {
   }
 
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
+}
+
+function getSmoothPoints(element) {
+  const stroke = getStroke(element.points, {
+    ...element.freehandOptions,
+    size: element.freehandOptions.size * 1.5,
+    thinning: element.freehandOptions.thinning / 1.5,
+  })
+  const path = getStroke(element.points, element.freehandOptions)
+
+  return {
+    stroke,
+    path,
+  }
+}
+
+function calculateDimensions(element) {
+  let xPoints, yPoints;
+  if (lineTools.includes(element.tool)) {
+    xPoints = element.smoothPoints.path.map((point) => point[0]);
+    yPoints = element.smoothPoints.path.map((point) => point[1]);
+  } else {
+    xPoints = element.points.map(({ x }: { x: number }) => x);
+    yPoints = element.points.map(({ y }: { y: number }) => y);
+  }
+
+  const minX = Math.min(...xPoints);
+  const minY = Math.min(...yPoints);
+  const maxX = Math.max(...xPoints);
+  const maxY = Math.max(...yPoints);
+  const width = (maxX - minX);
+  const height = (maxY - minY);
+
+  let outerMinX = minX;
+  let outerMinY = minY;
+  let outerMaxX = maxX;
+  let outerMaxY = maxY;
+
+
+  if (lineTools.includes(element.tool) && element.strokeColor !== 'transparent') {
+    let outerXPoints = element.smoothPoints.stroke.map((point) => point[0]);
+    let outerYPoints = element.smoothPoints.stroke.map((point) => point[1]);
+    outerMinX = Math.min(...outerXPoints);
+    outerMinY = Math.min(...outerYPoints);
+    outerMaxX = Math.max(...outerXPoints);
+    outerMaxY = Math.max(...outerYPoints);
+  } else {
+    let strokeSize = 0;
+
+    if (element.tool === Tool.ARROW) {
+      strokeSize = element.strokeColor !== 'transparent' ? element.size * 0.75 : element.size / 2
+    } else if (element.strokeColor !== 'transparent' || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
+      strokeSize = element.size / 2;
+    }
+
+    outerMinX -= strokeSize;
+    outerMinY -= strokeSize;
+    outerMaxX += strokeSize;
+    outerMaxY += strokeSize;
+  }
+
+  const outerWidth = (outerMaxX - outerMinX);
+  const outerHeight = (outerMaxY - outerMinY);
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    outerMinX,
+    outerMinY,
+    outerMaxX,
+    outerMaxY,
+    width,
+    height,
+    outerWidth,
+    outerHeight,
+  }
 }
 
 function getMousePos(canvas, event, followRuler = false) {
@@ -295,17 +380,14 @@ function getFlatSvgPathFromStroke(stroke) {
 }
 
 function cacheElement(element) {
-  const points = element.points.slice();
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const dpi = window.devicePixelRatio;
 
-  const minX = Math.min(...points.map(({ x }: { x: number }) => x)) - element.size;
-  const minY = Math.min(...points.map(({ y }: { y: number }) => y)) - element.size;
-  const maxX = Math.max(...points.map(({ x }: { x: number }) => x)) + element.size;
-  const maxY = Math.max(...points.map(({ y }: { y: number }) => y)) + element.size;
-  const width = (maxX - minX);
-  const height = (maxY - minY);
+  const minX = element.dimensions.outerMinX;
+  const minY = element.dimensions.outerMinY;
+  const width = element.dimensions.outerWidth;
+  const height = element.dimensions.outerHeight;
 
   canvas.width = width * dpi;
   canvas.height = height * dpi;
@@ -347,6 +429,17 @@ function drawElement(canvas, element, isCaching = false) {
       cachedCanvas.height / ratio
     );
     ctx.restore();
+
+    if (debugMode.value) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.translate(element.cache.drawing.x, element.cache.drawing.y);
+      ctx.rect(0, 0, cachedCanvas.width / ratio, cachedCanvas.height / ratio);
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      ctx.restore();
+    }
     return;
   }
 
@@ -355,10 +448,7 @@ function drawElement(canvas, element, isCaching = false) {
   }
 
   const points = element.points.slice();
-  const minX = Math.min(...points.map(({ x }: { x: number }) => x));
-  const minY = Math.min(...points.map(({ y }: { y: number }) => y));
-  const maxX = Math.max(...points.map(({ x }: { x: number }) => x));
-  const maxY = Math.max(...points.map(({ y }: { y: number }) => y));
+  const { minX, minY, maxX, maxY } = element.dimensions;
 
   ctx.save();
 
@@ -429,13 +519,9 @@ function drawElement(canvas, element, isCaching = false) {
   if (lineTools.includes(element.tool)) {
     ctx.save()
     ctx.beginPath();
-    const outlineStrokePoints = getStroke(points, {
-      ...element.freehandOptions,
-      size: element.freehandOptions.size * 1.5,
-      thinning: element.freehandOptions.thinning / 1.5,
-    })
-    ctx.moveTo(outlineStrokePoints[0][0], outlineStrokePoints[0][1]);
-    const strokeData = getFlatSvgPathFromStroke(outlineStrokePoints)
+    const strokePoints = element.smoothPoints.stroke;
+    ctx.moveTo(strokePoints[0][0], strokePoints[0][1]);
+    const strokeData = getFlatSvgPathFromStroke(strokePoints)
     const myStroke = new Path2D(strokeData)
     ctx.fillStyle = ctx.strokeStyle;
     ctx.fill(myStroke);
@@ -447,9 +533,9 @@ function drawElement(canvas, element, isCaching = false) {
       ctx.fillStyle = "#ff0000";
     }
     ctx.beginPath();
-    const outlinePoints = getStroke(points, element.freehandOptions)
-    ctx.moveTo(outlinePoints[0][0], outlinePoints[0][1]);
-    const pathData = getFlatSvgPathFromStroke(outlinePoints)
+    const pathPoints = element.smoothPoints.path;
+    ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
+    const pathData = getFlatSvgPathFromStroke(pathPoints)
     const myPath = new Path2D(pathData)
     ctx.fill(myPath);
     ctx.restore()
@@ -587,6 +673,8 @@ function handleCanvasTouchStart(event) {
       smoothing: isRulerLine ? 1 : 0.32,
       last: false,
     },
+    smoothPoints: {},
+    dimensions: {},
   }
 
   if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.BLOB || newElement.tool === Tool.ERASER) {
@@ -620,8 +708,12 @@ function handleCanvasTouchStart(event) {
     newElement.points[3] = { x: pos.x, y: pos.y, pressure };
   }
 
-  canvasElements.push(newElement);
-  drawElements(canvas.value, canvasElements);
+  if (lineTools.includes(newElement.tool)) {
+    newElement.smoothPoints = getSmoothPoints(newElement);
+  }
+  newElement.dimensions = calculateDimensions(newElement);
+  canvasElements.value.push(newElement);
+  drawElements(canvas.value, canvasElements.value);
 }
 
 function handleCanvasTouchMove(event) {
@@ -631,7 +723,7 @@ function handleCanvasTouchMove(event) {
 
   event.preventDefault();
 
-  const lastElement = canvasElements[canvasElements.length - 1];
+  const lastElement = canvasElements.value[canvasElements.value.length - 1];
   const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
   const pos = getMousePos(canvas.value, event, followRuler);
   const pressure = getPressure(event);
@@ -680,17 +772,13 @@ function handleCanvasTouchMove(event) {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
 
-  if (
-    lastElement.tool === Tool.ERASER &&
-    pos.isRulerLine &&
-    !lastElement.isRulerLine
-  ) {
-    lastElement.freehandOptions.last = true;
-    handleCanvasTouchStart(event);
-    return;
-  }
+  lastElement.isRulerLine = pos.isRulerLine;
 
-  drawElements(canvas.value, canvasElements);
+  if (lineTools.includes(lastElement.tool)) {
+    lastElement.smoothPoints = getSmoothPoints(lastElement);
+  }
+  lastElement.dimensions = calculateDimensions(lastElement);
+  drawElements(canvas.value, canvasElements.value);
 }
 
 function handleCanvasTouchEnd(event) {
@@ -698,11 +786,11 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
-  const lastElement = canvasElements[canvasElements.length - 1];
+  const lastElement = canvasElements.value[canvasElements.value.length - 1];
   lastElement.freehandOptions.last = true;
-
+  lastElement.dimensions = calculateDimensions(lastElement);
   cacheElement(lastElement);
-  drawElements(canvas.value, canvasElements);
+  drawElements(canvas.value, canvasElements.value);
   isDrawing.value = false;
 }
 
@@ -783,11 +871,17 @@ function onRulerRotate({ target, drag, rotation }) {
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
+      <label><input type="checkbox" v-model="debugMode" /> debug?</label>
     </div>
     <div>
       <div v-show="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
         <div class="ruler-container" :style="{ width: ruler.width + 'px' }">
-          <div class="ruler-rotation">{{ Math.round(ruler.rotation) }}&deg;</div>
+          <div class="ruler-rotation">
+            {{ Math.round(ruler.rotation) }}&deg; |
+            <span v-if="canvasElements.length > 0 && isDrawing">
+              {{ canvasElements[canvasElements.length - 1].dimensions }}
+            </span>
+          </div>
           <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
         </div>
         <Moveable ref="moveable" v-if="ruler.isVisible" className=" moveable" :target="['.ruler-container']"
