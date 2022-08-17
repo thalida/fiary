@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getStroke } from 'perfect-freehand'
+import Moveable from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import { type Ref, ref, computed, watchEffect, onMounted } from 'vue'
 
@@ -7,6 +8,13 @@ const canvas = ref<HTMLCanvasElement>()
 const canvasConfig = ref({
   width: window.innerWidth,
   height: window.innerHeight,
+})
+
+const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
+const ruler = ref({
+  isVisible: false,
+  width: windowDiag,
+  rotation: 0,
 })
 
 onMounted(() => {
@@ -24,12 +32,15 @@ onMounted(() => {
 
 let canvasElements: any[] = [];
 
+
+let isMovingRuler = false;
 let isDrawing = false
 let isStylus = ref(false);
 let detectedStlyus = ref(false);
 const allowFingerDrawing = ref(true);
 
 enum Tool {
+  POINTER = 0,
   ERASER = 1,
   CLEAR_ALL = 2,
   PEN = 10,
@@ -42,6 +53,7 @@ enum Tool {
   ARROW = 33,
 }
 const supportedTools = ref([
+  { key: Tool.POINTER, label: 'Pointer' },
   { key: Tool.PEN, label: 'Pen' },
   { key: Tool.MARKER, label: 'Marker' },
   { key: Tool.HIGHLIGHTER, label: 'Highlighter' },
@@ -123,7 +135,7 @@ function checkIsStylus(event) {
 }
 
 function isDrawingAllowed() {
-  if (!isDrawing || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
+  if (!isDrawing || isMovingRuler || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
     return false
   }
 
@@ -132,7 +144,7 @@ function isDrawingAllowed() {
 
 function getPressure(event): number {
   if (selectedTool.value === Tool.PEN) {
-    return isStylus.value ? event.touches[0]["force"] : 0.5;
+    return isStylus.value ? event.touches[0]["force"] : 1;
   }
 
   return 0.5;
@@ -283,7 +295,11 @@ function drawElement(canvas, element, isCaching = false) {
 
   ctx.save();
 
-  ctx.globalCompositeOperation = element.composition;
+  if (isCaching && element.tool === Tool.ERASER) {
+    ctx.globalCompositeOperation = 'source-over';
+  } else {
+    ctx.globalCompositeOperation = element.composition;
+  }
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -431,7 +447,7 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.lineTo(points[2].x, points[2].y);
     ctx.stroke();
     ctx.restore();
-  } else {
+  } else if (element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
 
@@ -452,8 +468,11 @@ function drawElement(canvas, element, isCaching = false) {
       ctx.stroke();
       ctx.fill();
       ctx.restore();
-    } else {
+    } else if (element.tool === Tool.ERASER) {
+      ctx.save()
+      ctx.strokeStyle = "#ffffff";
       ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -470,7 +489,7 @@ function drawElements(canvas, elements) {
   }
 }
 
-function handleTouchStart(event) {
+function handleCanvasTouchStart(event) {
   isDrawing = true;
   checkIsStylus(event);
 
@@ -536,7 +555,7 @@ function handleTouchStart(event) {
   drawElements(canvas.value, canvasElements);
 }
 
-function handleTouchMove(event) {
+function handleCanvasTouchMove(event) {
   if (!isDrawingAllowed() || canvas.value === null) {
     return;
   }
@@ -594,7 +613,7 @@ function handleTouchMove(event) {
   drawElements(canvas.value, canvasElements);
 }
 
-function handleTouchEnd(event) {
+function handleCanvasTouchEnd(event) {
   if (!isDrawingAllowed() || canvas.value === null) {
     return;
   }
@@ -605,6 +624,49 @@ function handleTouchEnd(event) {
 
   cacheElement(lastElement);
   drawElements(canvas.value, canvasElements);
+}
+
+function onRulerMoveStart() {
+  isMovingRuler = true;
+}
+
+function onRulerMoveEnd() {
+  isMovingRuler = false;
+}
+
+function onRulerDrag({ target, transform, isPinch }) {
+  if (isPinch) {
+    return;
+  }
+
+  target.style.transform = transform;
+}
+
+function onRulerRotate({ target, drag, rotation }) {
+  const translate = drag.translate;
+  const normalizedRotation = rotation % 360;
+  const absRotation = Math.abs(normalizedRotation);
+  let transformRotation = normalizedRotation;
+
+  const direction = normalizedRotation > 0 ? 1 : -1;
+  const snapTargets = [0, 45, 90, 135, 180, 225, 270, 315, 360];
+  const snapThreshold = 5;
+
+  for (let i = 0; i < snapTargets.length; i += 1) {
+    const target = snapTargets[i];
+
+    if (absRotation < target && absRotation + snapThreshold >= target) {
+      transformRotation = target * direction;
+      break;
+    } else if (absRotation > target && absRotation - snapThreshold <= target) {
+      transformRotation = target * direction;
+      break;
+    }
+  }
+
+  let transform = `translate(${translate[0]}px, ${translate[1]}px) rotate(${transformRotation}deg)`;
+  ruler.value.rotation = transformRotation % 360;
+  target.style.transform = transform;
 }
 
 </script>
@@ -637,14 +699,26 @@ function handleTouchEnd(event) {
           {{ composition }}
         </option>
       </select>
+      <label><input type="checkbox" v-model="ruler.isVisible" /> Show Ruler?</label>
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
     </div>
-    <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleTouchStart"
-      @touchstart="handleTouchStart" @mouseup="handleTouchEnd" @touchend="handleTouchEnd" @mousemove="handleTouchMove"
-      @touchmove="handleTouchMove">
-    </canvas>
+    <div>
+      <div v-show="ruler.isVisible">
+        <div class="ruler-container" :style="{ width: ruler.width + 'px' }">
+          <div class="ruler-rotation">{{ Math.round(ruler.rotation) }}&deg;</div>
+          <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
+        </div>
+        <Moveable className="moveable" :target="['.ruler-container']" :pinchable="['rotatable']" :draggable="true"
+          :rotatable="true" :scalable="false" :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate"
+          @renderStart="onRulerMoveStart" @renderEnd="onRulerMoveEnd" />
+      </div>
+      <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
+        @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
+        @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
+      </canvas>
+    </div>
   </div>
 </template>
 
@@ -658,5 +732,43 @@ function handleTouchEnd(event) {
   top: 0;
   left: 0;
   z-index: 9999;
+}
+
+.ruler-container {
+  position: fixed;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+  top: 50%;
+  left: -5%;
+  transform-origin: center center;
+  transform: translate(0, 0) rotate(0deg);
+  z-index: 1;
+}
+
+.ruler-rotation {
+  position: absolute;
+  z-index: 1;
+}
+
+.ruler {
+  height: 100px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.5);
+  background: linear-gradient(to right, rgba(255, 0, 0, 0.5) 0%, rgba(0, 0, 255, 0.5) 100%);
+}
+</style>
+
+<style>
+.moveable-control-box .moveable-control.moveable-rotation-control {
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  margin-left: -15px;
+}
+
+.moveable-control-box .moveable-control.moveable-origin {
+  display: none;
 }
 </style>
