@@ -415,6 +415,10 @@ function cacheElement(element) {
 function drawElement(canvas, element, isCaching = false) {
   const ctx = canvas.getContext('2d');
 
+  if (element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
+    return
+  }
+
   if (element.isDrawingCached) {
     const cachedCanvas = element.cache.drawing.canvas;
     const ratio = element.cache.drawing.dpi;
