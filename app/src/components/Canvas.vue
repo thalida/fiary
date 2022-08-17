@@ -684,7 +684,7 @@ function handleCanvasTouchMove(event) {
     pos.isRulerLine &&
     !lastElement.isRulerLine
   ) {
-    handleCanvasTouchEnd(event);
+    lastElement.freehandOptions.last = true;
     handleCanvasTouchStart(event);
     return;
   }
