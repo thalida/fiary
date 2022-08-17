@@ -192,7 +192,7 @@ function formatColor(color, opacity) {
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
 }
 
-function getMousePos(canvas, event) {
+function getMousePos(canvas, event, followRuler = false) {
   const rect = canvas.getBoundingClientRect(); // abs. size of element
   const clientX = event.touches ? event.touches[0].clientX : event.clientX;
   const clientY = event.touches ? event.touches[0].clientY : event.clientY;
@@ -200,7 +200,7 @@ function getMousePos(canvas, event) {
   let inputY = clientY;
   let isRulerLine = false;
 
-  if (ruler.value.isVisible && moveable.value) {
+  if (followRuler && ruler.value.isVisible && moveable.value) {
     const searchDistance = 25;
     let foundX, foundY;
     let searchFor = true;
@@ -564,7 +564,7 @@ function handleCanvasTouchStart(event) {
     return;
   }
 
-  const pos = getMousePos(canvas.value, event);
+  const pos = getMousePos(canvas.value, event, true);
   const isRulerLine = pos.isRulerLine;
   const pressure = getPressure(event);
   const opacity = getOpacity();
@@ -631,9 +631,10 @@ function handleCanvasTouchMove(event) {
 
   event.preventDefault();
 
-  const pos = getMousePos(canvas.value, event);
-  const pressure = getPressure(event);
   const lastElement = canvasElements[canvasElements.length - 1];
+  const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
+  const pos = getMousePos(canvas.value, event, followRuler);
+  const pressure = getPressure(event);
 
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
