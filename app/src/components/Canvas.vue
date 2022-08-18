@@ -33,6 +33,10 @@ const showRulerControls = computed(() => {
 })
 
 onMounted(() => {
+  if (typeof canvas.value === 'undefined') {
+    return;
+  }
+
   const dpi = window.devicePixelRatio;
   const ctx = canvas.value.getContext('2d')
 
