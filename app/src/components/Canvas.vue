@@ -37,9 +37,13 @@ onMounted(() => {
     return;
   }
 
-  const dpi = window.devicePixelRatio;
   const ctx = canvas.value.getContext('2d')
 
+  if (ctx === null) {
+    return;
+  }
+
+  const dpi = window.devicePixelRatio;
   canvas.value.width = canvasConfig.value.width * dpi;
   canvas.value.height = canvasConfig.value.height * dpi;
 
