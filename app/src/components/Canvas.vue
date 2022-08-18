@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { getStroke } from 'perfect-freehand'
+import ColorPicker from '@mcistudio/vue-colorpicker'
+import '@mcistudio/vue-colorpicker/dist/style.css'
 import Moveable from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import { type Ref, ref, computed, watchEffect, onMounted, watch } from 'vue'
@@ -92,22 +94,46 @@ const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
 const penSizes = [5, 10, 20, 40, 60];
 const penSize = ref(40); // 20, 40, 60, 80
 
-const colors = [
-  { r: 0, g: 0, b: 0, a: 1 },
-  { r: 255, g: 0, b: 0, a: 1 },
-  { r: 0, g: 255, b: 0, a: 1 },
-  { r: 0, g: 0, b: 255, a: 1 },
-  { r: 255, g: 255, b: 0, a: 1 },
-  { r: 255, g: 0, b: 255, a: 1 },
-  { r: 0, g: 255, b: 255, a: 1 },
-  { r: 255, g: 255, b: 255, a: 1 },
-  [0, '#ff0000', 1, '#0000ff'],
-  [0, '#00ff00', 1, '#ff0000'],
-  [0, '#0000ff', 1, '#00ff00'],
-  'transparent',
-];
-const selectedFillColor = ref(colors[0]);
-const selectedStrokeColor = ref(colors[colors.length - 1]);
+const TRANSPARENT_COLOR = 'transparent';
+const swatches = ref([
+  {
+    key: 'lightmode',
+    label: 'Lightmode',
+    colors: [
+      { r: 0, g: 0, b: 0, a: 1 },
+      { r: 255, g: 0, b: 0, a: 1 },
+      { r: 0, g: 255, b: 0, a: 1 },
+      { r: 0, g: 0, b: 255, a: 1 },
+      { r: 255, g: 255, b: 0, a: 1 },
+      { r: 0, g: 255, b: 255, a: 1 },
+      { r: 255, g: 0, b: 255, a: 1 },
+      [
+        {
+          percent: 0,
+          color: { r: 255, g: 0, b: 0, a: 1 },
+        },
+        {
+          percent: 100,
+          color: { r: 0, g: 0, b: 255, a: 1 },
+        },
+      ],
+      [
+        {
+          percent: 0,
+          color: { r: 0, g: 255, b: 0, a: 1 },
+        },
+        {
+          percent: 100,
+          color: { r: 0, g: 0, b: 255, a: 1 },
+        },
+      ]
+    ],
+  }
+]);
+
+const selectedSwatch = ref(swatches.value[0]);
+const selectedFillColor = ref(selectedSwatch.value.colors[0]);
+const selectedStrokeColor = ref(TRANSPARENT_COLOR);
 
 const compositionOptions = [
   'source-over',
@@ -501,8 +527,11 @@ function drawElement(canvas, element, isCaching = false) {
     }
 
     const gradient = ctx.createLinearGradient(gradientStartX, gradientStartY, gradientEndX, gradientEndY);
-    for (let j = 0; j < element.strokeColor.length; j += 2) {
-      gradient.addColorStop(element.strokeColor[j], element.strokeColor[j + 1]);
+    for (let j = 0; j < element.strokeColor.length; j += 1) {
+      const colorStop = element.strokeColor[j];
+      const stop = colorStop.percent / 100;
+      const color = formatColor(colorStop.color, element.opacity);
+      gradient.addColorStop(stop, color);
     }
     ctx.strokeStyle = gradient;
   } else {
@@ -527,8 +556,11 @@ function drawElement(canvas, element, isCaching = false) {
     }
 
     const gradient = ctx.createLinearGradient(gradientStartX, gradientStartY, gradientEndX, gradientEndY);
-    for (let j = 0; j < element.fillColor.length; j += 2) {
-      gradient.addColorStop(element.fillColor[j], element.fillColor[j + 1]);
+    for (let j = 0; j < element.fillColor.length; j += 1) {
+      const colorStop = element.fillColor[j];
+      const stop = colorStop.percent / 100;
+      const color = formatColor(colorStop.color, element.opacity);
+      gradient.addColorStop(stop, color);
     }
     ctx.fillStyle = gradient;
   } else {
@@ -871,13 +903,14 @@ function onRulerRotate({ target, drag, rotation }) {
           {{ size }}
         </option>
       </select>
+      <!-- <ColorPicker></ColorPicker> -->
       <select v-model="selectedFillColor">
-        <option v-for="(color, index) in colors" :key="index" :value="color">
+        <option v-for="(color, index) in selectedSwatch.colors" :key="index" :value="color">
           {{ color }}
         </option>
       </select>
       <select v-model="selectedStrokeColor">
-        <option v-for="(color, index) in colors" :key="index" :value="color">
+        <option v-for="(color, index) in selectedSwatch.colors" :key="index" :value="color">
           {{ color }}
         </option>
       </select>
