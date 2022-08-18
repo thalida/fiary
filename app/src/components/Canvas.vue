@@ -1,18 +1,49 @@
 <script setup lang="ts">
 import { getStroke } from 'perfect-freehand'
+import Moveable from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
-import { type Ref, ref, computed, watchEffect, onMounted } from 'vue'
+import { type Ref, ref, computed, watchEffect, onMounted, watch } from 'vue'
 
+const debugMode = ref(false);
 const canvas = ref<HTMLCanvasElement>()
 const canvasConfig = ref({
   width: window.innerWidth,
   height: window.innerHeight,
 })
 
+
+const moveable = ref()
+const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
+const ruler = ref({
+  isVisible: false,
+  width: windowDiag,
+  rotation: 0,
+})
+
+let canvasElements = ref([] as any[]);
+
+let isMovingRuler = false;
+let isDrawing = ref(false)
+let isStylus = ref(false);
+let detectedStlyus = ref(false);
+const allowFingerDrawing = ref(true);
+
+const showRulerControls = computed(() => {
+  return !isDrawing.value
+})
+
 onMounted(() => {
-  const dpi = window.devicePixelRatio;
+  if (typeof canvas.value === 'undefined') {
+    return;
+  }
+
   const ctx = canvas.value.getContext('2d')
 
+  if (ctx === null) {
+    return;
+  }
+
+  const dpi = window.devicePixelRatio;
   canvas.value.width = canvasConfig.value.width * dpi;
   canvas.value.height = canvasConfig.value.height * dpi;
 
@@ -22,14 +53,15 @@ onMounted(() => {
   ctx.scale(dpi, dpi);
 })
 
-let canvasElements: any[] = [];
-
-let isDrawing = false
-let isStylus = ref(false);
-let detectedStlyus = ref(false);
-const allowFingerDrawing = ref(true);
+watch(
+  () => debugMode.value,
+  () => {
+    drawElements(canvas.value, canvasElements.value)
+  }
+)
 
 enum Tool {
+  POINTER = 0,
   ERASER = 1,
   CLEAR_ALL = 2,
   PEN = 10,
@@ -42,6 +74,7 @@ enum Tool {
   ARROW = 33,
 }
 const supportedTools = ref([
+  { key: Tool.POINTER, label: 'Pointer' },
   { key: Tool.PEN, label: 'Pen' },
   { key: Tool.MARKER, label: 'Marker' },
   { key: Tool.HIGHLIGHTER, label: 'Highlighter' },
@@ -109,8 +142,8 @@ const selectedComposition = ref(compositionOptions[0]);
 
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
-    canvasElements = [];
-    drawElements(canvas.value, canvasElements);
+    canvasElements.value = [];
+    drawElements(canvas.value, canvasElements.value);
     selectedTool.value = Tool.ERASER;
     event.target.blur();
   }
@@ -123,7 +156,7 @@ function checkIsStylus(event) {
 }
 
 function isDrawingAllowed() {
-  if (!isDrawing || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
+  if (!isDrawing.value || isMovingRuler || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
     return false
   }
 
@@ -132,7 +165,7 @@ function isDrawingAllowed() {
 
 function getPressure(event): number {
   if (selectedTool.value === Tool.PEN) {
-    return isStylus.value ? event.touches[0]["force"] : 0.5;
+    return isStylus.value ? event.touches[0]["force"] : 1;
   }
 
   return 0.5;
@@ -174,15 +207,161 @@ function formatColor(color, opacity) {
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
 }
 
-function getMousePos(canvas, event) {
+function getSmoothPoints(element) {
+  const stroke = getStroke(element.points, {
+    ...element.freehandOptions,
+    size: element.freehandOptions.size * 1.5,
+    thinning: element.freehandOptions.thinning / 1.5,
+  })
+  const path = getStroke(element.points, element.freehandOptions)
+
+  return {
+    stroke,
+    path,
+  }
+}
+
+function calculateDimensions(element) {
+  let xPoints, yPoints;
+  if (lineTools.includes(element.tool)) {
+    xPoints = element.smoothPoints.path.map((point) => point[0]);
+    yPoints = element.smoothPoints.path.map((point) => point[1]);
+  } else {
+    xPoints = element.points.map(({ x }: { x: number }) => x);
+    yPoints = element.points.map(({ y }: { y: number }) => y);
+  }
+
+  const minX = Math.min(...xPoints);
+  const minY = Math.min(...yPoints);
+  const maxX = Math.max(...xPoints);
+  const maxY = Math.max(...yPoints);
+  const width = (maxX - minX);
+  const height = (maxY - minY);
+
+  let outerMinX = minX;
+  let outerMinY = minY;
+  let outerMaxX = maxX;
+  let outerMaxY = maxY;
+
+
+  if (lineTools.includes(element.tool) && element.strokeColor !== 'transparent') {
+    let outerXPoints = element.smoothPoints.stroke.map((point) => point[0]);
+    let outerYPoints = element.smoothPoints.stroke.map((point) => point[1]);
+    outerMinX = Math.min(...outerXPoints);
+    outerMinY = Math.min(...outerYPoints);
+    outerMaxX = Math.max(...outerXPoints);
+    outerMaxY = Math.max(...outerYPoints);
+  } else {
+    let strokeSize = 0;
+
+    if (element.tool === Tool.ARROW) {
+      strokeSize = element.strokeColor !== 'transparent' ? element.size * 0.75 : element.size / 2
+    } else if (element.strokeColor !== 'transparent' || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
+      strokeSize = element.size / 2;
+    }
+
+    outerMinX -= strokeSize;
+    outerMinY -= strokeSize;
+    outerMaxX += strokeSize;
+    outerMaxY += strokeSize;
+  }
+
+  const outerWidth = (outerMaxX - outerMinX);
+  const outerHeight = (outerMaxY - outerMinY);
+  const dimensions = {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    outerMinX,
+    outerMinY,
+    outerMaxX,
+    outerMaxY,
+    width,
+    height,
+    outerWidth,
+    outerHeight,
+    lineLength: null,
+  };
+
+  if (lineTools.includes(element.tool)) {
+    dimensions.lineLength = Math.sqrt(Math.pow(dimensions.width, 2) + Math.pow(dimensions.height, 2));
+  }
+
+
+  return dimensions
+}
+
+function getMousePos(canvas, event, followRuler = false) {
   const rect = canvas.getBoundingClientRect(); // abs. size of element
   const clientX = event.touches ? event.touches[0].clientX : event.clientX;
   const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+  let inputX = clientX;
+  let inputY = clientY;
+  let isRulerLine = false;
 
-  return {
-    x: (clientX - rect.left),
-    y: (clientY - rect.top)
+  if (followRuler && ruler.value.isVisible && moveable.value) {
+    const searchDistance = 25;
+    let foundX, foundY;
+    let searchFor = true;
+    let isFirstLoop = true;
+
+    let dx = 0;
+    while (dx <= searchDistance) {
+      const rx1 = clientX - dx;
+      const rx2 = clientX + dx;
+
+      let dy = 0;
+      while (dy <= searchDistance) {
+        const ry1 = clientY - dy;
+        const ry2 = clientY + dy;
+        const searchDirections = [
+          [rx1, ry1],
+          [rx1, ry2],
+          [rx2, ry1],
+          [rx2, ry2],
+        ];
+
+        for (let i = 0; i < searchDirections.length; i += 1) {
+          const searchDirction = searchDirections[i];
+          const isInside = moveable.value.isInside(searchDirction[0], searchDirction[1]);
+
+          if (isFirstLoop) {
+            searchFor = !isInside;
+            isFirstLoop = false;
+          }
+
+          if (isInside === searchFor) {
+            foundX = searchDirction[0];
+            foundY = searchDirction[1];
+            break;
+          }
+        }
+
+        if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
+          break;
+        }
+
+        dy += 1;
+      }
+
+      if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
+        break;
+      }
+
+      dx += 1;
+    }
+
+    if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
+      isRulerLine = true;
+      inputX = foundX;
+      inputY = foundY;
+    }
   }
+
+  const x = (inputX - rect.left);
+  const y = (inputY - rect.top);
+  return { x, y, isRulerLine }
 }
 
 function getSvgPathFromStroke(stroke) {
@@ -216,17 +395,14 @@ function getFlatSvgPathFromStroke(stroke) {
 }
 
 function cacheElement(element) {
-  const points = element.points.slice();
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const dpi = window.devicePixelRatio;
 
-  const minX = Math.min(...points.map(({ x }: { x: number }) => x)) - element.size;
-  const minY = Math.min(...points.map(({ y }: { y: number }) => y)) - element.size;
-  const maxX = Math.max(...points.map(({ x }: { x: number }) => x)) + element.size;
-  const maxY = Math.max(...points.map(({ y }: { y: number }) => y)) + element.size;
-  const width = (maxX - minX);
-  const height = (maxY - minY);
+  const minX = element.dimensions.outerMinX;
+  const minY = element.dimensions.outerMinY;
+  const width = element.dimensions.outerWidth;
+  const height = element.dimensions.outerHeight;
 
   canvas.width = width * dpi;
   canvas.height = height * dpi;
@@ -254,6 +430,10 @@ function cacheElement(element) {
 function drawElement(canvas, element, isCaching = false) {
   const ctx = canvas.getContext('2d');
 
+  if (element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
+    return
+  }
+
   if (element.isDrawingCached) {
     const cachedCanvas = element.cache.drawing.canvas;
     const ratio = element.cache.drawing.dpi;
@@ -268,6 +448,17 @@ function drawElement(canvas, element, isCaching = false) {
       cachedCanvas.height / ratio
     );
     ctx.restore();
+
+    if (debugMode.value) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.translate(element.cache.drawing.x, element.cache.drawing.y);
+      ctx.rect(0, 0, cachedCanvas.width / ratio, cachedCanvas.height / ratio);
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      ctx.restore();
+    }
     return;
   }
 
@@ -276,14 +467,15 @@ function drawElement(canvas, element, isCaching = false) {
   }
 
   const points = element.points.slice();
-  const minX = Math.min(...points.map(({ x }: { x: number }) => x));
-  const minY = Math.min(...points.map(({ y }: { y: number }) => y));
-  const maxX = Math.max(...points.map(({ x }: { x: number }) => x));
-  const maxY = Math.max(...points.map(({ y }: { y: number }) => y));
+  const { minX, minY, maxX, maxY } = element.dimensions;
 
   ctx.save();
 
-  ctx.globalCompositeOperation = element.composition;
+  if (isCaching && element.tool === Tool.ERASER) {
+    ctx.globalCompositeOperation = 'source-over';
+  } else {
+    ctx.globalCompositeOperation = element.composition;
+  }
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -346,13 +538,9 @@ function drawElement(canvas, element, isCaching = false) {
   if (lineTools.includes(element.tool)) {
     ctx.save()
     ctx.beginPath();
-    const outlineStrokePoints = getStroke(points, {
-      ...element.freehandOptions,
-      size: element.freehandOptions.size * 1.5,
-      thinning: element.freehandOptions.thinning / 1.5,
-    })
-    ctx.moveTo(outlineStrokePoints[0][0], outlineStrokePoints[0][1]);
-    const strokeData = getFlatSvgPathFromStroke(outlineStrokePoints)
+    const strokePoints = element.smoothPoints.stroke;
+    ctx.moveTo(strokePoints[0][0], strokePoints[0][1]);
+    const strokeData = getFlatSvgPathFromStroke(strokePoints)
     const myStroke = new Path2D(strokeData)
     ctx.fillStyle = ctx.strokeStyle;
     ctx.fill(myStroke);
@@ -360,13 +548,13 @@ function drawElement(canvas, element, isCaching = false) {
 
     ctx.save()
     if (element.fillColor === 'transparent') {
-      ctx.globalCompositeOperation = 'xor';
-      ctx.fillStyle = "#ff0000";
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = "#fff";
     }
     ctx.beginPath();
-    const outlinePoints = getStroke(points, element.freehandOptions)
-    ctx.moveTo(outlinePoints[0][0], outlinePoints[0][1]);
-    const pathData = getFlatSvgPathFromStroke(outlinePoints)
+    const pathPoints = element.smoothPoints.path;
+    ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
+    const pathData = getFlatSvgPathFromStroke(pathPoints)
     const myPath = new Path2D(pathData)
     ctx.fill(myPath);
     ctx.restore()
@@ -431,7 +619,7 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.lineTo(points[2].x, points[2].y);
     ctx.stroke();
     ctx.restore();
-  } else {
+  } else if (element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
 
@@ -452,8 +640,11 @@ function drawElement(canvas, element, isCaching = false) {
       ctx.stroke();
       ctx.fill();
       ctx.restore();
-    } else {
+    } else if (element.tool === Tool.ERASER) {
+      ctx.save()
+      ctx.strokeStyle = "#ffffff";
       ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -470,15 +661,16 @@ function drawElements(canvas, elements) {
   }
 }
 
-function handleTouchStart(event) {
-  isDrawing = true;
+function handleCanvasTouchStart(event) {
+  isDrawing.value = true;
   checkIsStylus(event);
 
   if (!isDrawingAllowed() || canvas.value === null) {
     return;
   }
 
-  const pos = getMousePos(canvas.value, event);
+  const pos = getMousePos(canvas.value, event, true);
+  const isRulerLine = pos.isRulerLine;
   const pressure = getPressure(event);
   const opacity = getOpacity();
   const composition = getComposition();
@@ -490,15 +682,18 @@ function handleTouchStart(event) {
     size: penSize.value,
     composition,
     opacity,
+    isRulerLine,
     points: [{ x: pos.x, y: pos.y, pressure }],
     freehandOptions: {
       size: penSize.value,
       simulatePressure: selectedTool.value === Tool.PEN && !isStylus.value,
       thinning: selectedTool.value === Tool.PEN ? 0.95 : 0,
-      streamline: 0.32,
-      smoothing: 0.32,
+      streamline: isRulerLine ? 1 : 0.32,
+      smoothing: isRulerLine ? 1 : 0.32,
       last: false,
     },
+    smoothPoints: {},
+    dimensions: {},
   }
 
   if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.BLOB || newElement.tool === Tool.ERASER) {
@@ -532,20 +727,25 @@ function handleTouchStart(event) {
     newElement.points[3] = { x: pos.x, y: pos.y, pressure };
   }
 
-  canvasElements.push(newElement);
-  drawElements(canvas.value, canvasElements);
+  if (lineTools.includes(newElement.tool)) {
+    newElement.smoothPoints = getSmoothPoints(newElement);
+  }
+  newElement.dimensions = calculateDimensions(newElement);
+  canvasElements.value.push(newElement);
+  drawElements(canvas.value, canvasElements.value);
 }
 
-function handleTouchMove(event) {
+function handleCanvasTouchMove(event) {
   if (!isDrawingAllowed() || canvas.value === null) {
     return;
   }
 
   event.preventDefault();
 
-  const pos = getMousePos(canvas.value, event);
+  const lastElement = canvasElements.value[canvasElements.value.length - 1];
+  const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
+  const pos = getMousePos(canvas.value, event, followRuler);
   const pressure = getPressure(event);
-  const lastElement = canvasElements[canvasElements.length - 1];
 
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
@@ -586,25 +786,74 @@ function handleTouchMove(event) {
 
     lastElement.points[1] = a1;
     lastElement.points[2] = a2;
-    lastElement.points[3] = pos;
+    lastElement.points[3] = { x: pos.x, y: pos.y };
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
 
-  drawElements(canvas.value, canvasElements);
+  lastElement.isRulerLine = pos.isRulerLine;
+
+  if (lineTools.includes(lastElement.tool)) {
+    lastElement.smoothPoints = getSmoothPoints(lastElement);
+  }
+  lastElement.dimensions = calculateDimensions(lastElement);
+  drawElements(canvas.value, canvasElements.value);
 }
 
-function handleTouchEnd(event) {
+function handleCanvasTouchEnd(event) {
   if (!isDrawingAllowed() || canvas.value === null) {
     return;
   }
 
-  isDrawing = false;
-  const lastElement = canvasElements[canvasElements.length - 1];
+  const lastElement = canvasElements.value[canvasElements.value.length - 1];
   lastElement.freehandOptions.last = true;
-
+  lastElement.dimensions = calculateDimensions(lastElement);
   cacheElement(lastElement);
-  drawElements(canvas.value, canvasElements);
+  drawElements(canvas.value, canvasElements.value);
+  isDrawing.value = false;
+}
+
+function onRulerMoveStart() {
+  isMovingRuler = true;
+}
+
+function onRulerMoveEnd() {
+  isMovingRuler = false;
+}
+
+function onRulerDrag({ target, transform, isPinch }) {
+  if (isPinch) {
+    return;
+  }
+
+  target.style.transform = transform;
+}
+
+function onRulerRotate({ target, drag, rotation }) {
+  const translate = drag.translate;
+  const normalizedRotation = rotation % 360;
+  const absRotation = Math.abs(normalizedRotation);
+  let transformRotation = normalizedRotation;
+
+  const direction = normalizedRotation > 0 ? 1 : -1;
+  const snapTargets = [0, 45, 90, 135, 180, 225, 270, 315, 360];
+  const snapThreshold = 5;
+
+  for (let i = 0; i < snapTargets.length; i += 1) {
+    const target = snapTargets[i];
+
+    if (absRotation < target && absRotation + snapThreshold >= target) {
+      transformRotation = target * direction;
+      break;
+    } else if (absRotation > target && absRotation - snapThreshold <= target) {
+      transformRotation = target * direction;
+      break;
+    }
+  }
+
+  let transform = `translate(${translate[0]}px, ${translate[1]}px) rotate(${transformRotation}deg)`;
+  ruler.value.rotation = transformRotation % 360;
+  target.style.transform = transform;
 }
 
 </script>
@@ -637,14 +886,39 @@ function handleTouchEnd(event) {
           {{ composition }}
         </option>
       </select>
+      <label><input type="checkbox" v-model="ruler.isVisible" /> Show Ruler?</label>
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
+      <label><input type="checkbox" v-model="debugMode" /> debug?</label>
     </div>
-    <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleTouchStart"
-      @touchstart="handleTouchStart" @mouseup="handleTouchEnd" @touchend="handleTouchEnd" @mousemove="handleTouchMove"
-      @touchmove="handleTouchMove">
-    </canvas>
+    <div>
+      <div v-show="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
+        <div class="ruler-container" :style="{ width: ruler.width + 'px' }">
+          <div class="ruler-rotation">
+            {{ Math.round(ruler.rotation) }}&deg;
+            <span v-if="canvasElements.length > 0 && isDrawing">
+              <span v-if="canvasElements[canvasElements.length - 1].dimensions.lineLength">
+                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.lineLength) }}px
+              </span>
+              <span v-else>
+                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.outerWidth) }} x
+                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.outerHeight) }}
+              </span>
+            </span>
+          </div>
+          <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
+        </div>
+        <Moveable ref="moveable" v-if="ruler.isVisible" className=" moveable" :target="['.ruler-container']"
+          :pinchable="['rotatable']" :draggable="!isDrawing" :rotatable="!isDrawing" :scalable="false"
+          :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart"
+          @renderEnd="onRulerMoveEnd" />
+      </div>
+      <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
+        @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
+        @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
+      </canvas>
+    </div>
   </div>
 </template>
 
@@ -658,5 +932,47 @@ function handleTouchEnd(event) {
   top: 0;
   left: 0;
   z-index: 9999;
+}
+
+.ruler-container {
+  position: fixed;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+  top: 50%;
+  left: -5%;
+  transform-origin: center center;
+  transform: translate(0, 0) rotate(0deg);
+  z-index: 1;
+}
+
+.ruler-rotation {
+  position: absolute;
+  z-index: 1;
+}
+
+.ruler {
+  height: 100px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.5);
+  background: linear-gradient(to right, rgba(255, 0, 0, 0.5) 0%, rgba(0, 0, 255, 0.5) 100%);
+}
+</style>
+
+<style>
+.hide-ruler-controls .moveable-control-box .moveable-rotation {
+  display: none;
+}
+
+.moveable-control-box .moveable-control.moveable-rotation-control {
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  margin-left: -15px;
+}
+
+.moveable-control-box .moveable-control.moveable-origin {
+  display: none;
 }
 </style>
