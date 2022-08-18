@@ -8,6 +8,7 @@ import { type Ref, ref, computed, watchEffect, onMounted, watch } from 'vue'
 
 const debugMode = ref(false);
 const canvas = ref<HTMLCanvasElement>()
+const pasteCanvas = ref<HTMLCanvasElement>();
 const canvasConfig = ref({
   width: window.innerWidth,
   height: window.innerHeight,
@@ -23,6 +24,7 @@ const ruler = ref({
 })
 
 let canvasElements = ref([] as any[]);
+let cutShape = ref();
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -35,13 +37,14 @@ const showRulerControls = computed(() => {
 })
 
 onMounted(() => {
-  if (typeof canvas.value === 'undefined') {
+  if (typeof canvas.value === 'undefined' || typeof pasteCanvas.value === 'undefined') {
     return;
   }
 
   const ctx = canvas.value.getContext('2d')
+  const pasteCtx = pasteCanvas.value.getContext('2d')
 
-  if (ctx === null) {
+  if (ctx === null || pasteCtx === null) {
     return;
   }
 
@@ -53,6 +56,14 @@ onMounted(() => {
   canvas.value.style.height = `${canvasConfig.value.height}px`;
 
   ctx.scale(dpi, dpi);
+
+  pasteCanvas.value.width = canvasConfig.value.width * dpi;
+  pasteCanvas.value.height = canvasConfig.value.height * dpi;
+
+  pasteCanvas.value.style.width = `${canvasConfig.value.width}px`;
+  pasteCanvas.value.style.height = `${canvasConfig.value.height}px`;
+
+  pasteCtx.scale(dpi, dpi);
 })
 
 watch(
@@ -74,6 +85,7 @@ enum Tool {
   RECTANGLE = 31,
   TRIANGLE = 32,
   ARROW = 33,
+  CUT = 40,
 }
 const supportedTools = ref([
   { key: Tool.POINTER, label: 'Pointer' },
@@ -85,6 +97,7 @@ const supportedTools = ref([
   { key: Tool.RECTANGLE, label: 'Rectangle' },
   { key: Tool.TRIANGLE, label: 'Triangle' },
   { key: Tool.ARROW, label: 'Arrow' },
+  { key: Tool.CUT, label: 'Cut' },
   { key: Tool.ERASER, label: 'Eraser' },
   { key: Tool.CLEAR_ALL, label: 'Clear All' },
 ])
@@ -453,7 +466,7 @@ function cacheElement(element) {
   };
 }
 
-function drawElement(canvas, element, isCaching = false) {
+function drawElement(canvas, element, isCaching = false, closeSelectionPath = false) {
   const ctx = canvas.getContext('2d');
 
   if (element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
@@ -497,7 +510,7 @@ function drawElement(canvas, element, isCaching = false) {
 
   ctx.save();
 
-  if (isCaching && element.tool === Tool.ERASER) {
+  if (isCaching && (element.tool === Tool.ERASER || element.tool === Tool.CUT)) {
     ctx.globalCompositeOperation = 'source-over';
   } else {
     ctx.globalCompositeOperation = element.composition;
@@ -683,14 +696,49 @@ function drawElement(canvas, element, isCaching = false) {
   ctx.restore();
 }
 
-function drawElements(canvas, elements) {
+function clearCanvas(canvas) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawElements(canvas, elements) {
+  clearCanvas(canvas);
 
   for (let i = 0; i < elements.length; i += 1) {
     const element = elements[i];
     drawElement(canvas, element);
   }
+}
+
+function pasteCutSelection(pasteCanvas, canvasElements) {
+  const cutSelection = canvasElements[canvasElements.length - 1];
+  const ctx = pasteCanvas.getContext('2d');
+
+  clearCanvas(pasteCanvas);
+
+  const cachedCanvas = cutSelection.cache.drawing.canvas;
+  const ratio = cutSelection.cache.drawing.dpi;
+  ctx.save();
+  // ctx.globalCompositeOperation = 'destination-over';
+  ctx.translate(cutSelection.cache.drawing.x, cutSelection.cache.drawing.y);
+  for (let i = 0; i < canvasElements.length - 1; i += 1) {
+    const element = canvasElements[i];
+    drawElement(pasteCanvas, element);
+  }
+  // ctx.drawImage(
+  //   cachedCanvas,
+  //   0,
+  //   0,
+  //   cachedCanvas.width / ratio,
+  //   cachedCanvas.height / ratio
+  // );
+  ctx.clip(cachedCanvas);
+  ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
+  for (let i = 0; i < canvasElements.length - 1; i += 1) {
+    const element = canvasElements[i];
+    drawElement(pasteCanvas, element);
+  }
+  ctx.restore();
 }
 
 function handleCanvasTouchStart(event) {
@@ -763,6 +811,7 @@ function handleCanvasTouchStart(event) {
     newElement.smoothPoints = getSmoothPoints(newElement);
   }
   newElement.dimensions = calculateDimensions(newElement);
+
   canvasElements.value.push(newElement);
   drawElements(canvas.value, canvasElements.value);
 }
@@ -829,6 +878,7 @@ function handleCanvasTouchMove(event) {
     lastElement.smoothPoints = getSmoothPoints(lastElement);
   }
   lastElement.dimensions = calculateDimensions(lastElement);
+
   drawElements(canvas.value, canvasElements.value);
 }
 
@@ -840,8 +890,17 @@ function handleCanvasTouchEnd(event) {
   const lastElement = canvasElements.value[canvasElements.value.length - 1];
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = calculateDimensions(lastElement);
-  cacheElement(lastElement);
-  drawElements(canvas.value, canvasElements.value);
+
+  if (lastElement.tool === Tool.CUT) {
+    lastElement.isCompletedCut = true;
+    lastElement.composition = 'destination-out';
+    cacheElement(lastElement);
+    drawElements(canvas.value, canvasElements.value);
+    pasteCutSelection(pasteCanvas.value, canvasElements.value);
+  } else {
+    cacheElement(lastElement);
+    drawElements(canvas.value, canvasElements.value);
+  }
   isDrawing.value = false;
 }
 
@@ -926,9 +985,9 @@ function onRulerRotate({ target, drag, rotation }) {
       <label><input type="checkbox" v-model="debugMode" /> debug?</label>
     </div>
     <div>
-      <div v-show="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
-        <div class="ruler-container" :style="{ width: ruler.width + 'px' }">
-          <div class="ruler-rotation">
+      <div class="ruler-container" v-show="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
+        <div class="ruler" :style="{ width: ruler.width + 'px' }">
+          <div class="ruler__label">
             {{ Math.round(ruler.rotation) }}&deg;
             <span v-if="canvasElements.length > 0 && isDrawing">
               <span v-if="canvasElements[canvasElements.length - 1].dimensions.lineLength">
@@ -940,13 +999,18 @@ function onRulerRotate({ target, drag, rotation }) {
               </span>
             </span>
           </div>
-          <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
+          <div class="ruler__tool" :style="{ width: ruler.width + 'px' }"></div>
         </div>
-        <Moveable ref="moveable" v-if="ruler.isVisible" className=" moveable" :target="['.ruler-container']"
+        <Moveable ref="moveable" v-if="ruler.isVisible" className=" moveable" :target="['.ruler']"
           :pinchable="['rotatable']" :draggable="!isDrawing" :rotatable="!isDrawing" :scalable="false"
           :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart"
           @renderEnd="onRulerMoveEnd" />
       </div>
+
+      <canvas class="paste_canvas" ref="pasteCanvas" @mousedown="handleCanvasTouchStart"
+        @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
+        @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
+      </canvas>
       <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
         @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
         @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
@@ -967,7 +1031,18 @@ function onRulerRotate({ target, drag, rotation }) {
   z-index: 9999;
 }
 
+.paste_canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+
 .ruler-container {
+  z-index: 1;
+}
+
+.ruler {
   position: fixed;
   display: flex;
   flex-flow: row nowrap;
@@ -977,15 +1052,14 @@ function onRulerRotate({ target, drag, rotation }) {
   left: -5%;
   transform-origin: center center;
   transform: translate(0, 0) rotate(0deg);
-  z-index: 1;
 }
 
-.ruler-rotation {
+.ruler__label {
   position: absolute;
   z-index: 1;
 }
 
-.ruler {
+.ruler__tool {
   height: 100px;
   flex-shrink: 0;
   background: rgba(0, 0, 0, 0.5);
