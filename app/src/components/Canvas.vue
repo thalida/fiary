@@ -268,8 +268,7 @@ function calculateDimensions(element) {
 
   const outerWidth = (outerMaxX - outerMinX);
   const outerHeight = (outerMaxY - outerMinY);
-
-  return {
+  const dimensions = {
     minX,
     minY,
     maxX,
@@ -282,7 +281,15 @@ function calculateDimensions(element) {
     height,
     outerWidth,
     outerHeight,
+    lineLength: null,
+  };
+
+  if (lineTools.includes(element.tool)) {
+    dimensions.lineLength = Math.sqrt(Math.pow(dimensions.width, 2) + Math.pow(dimensions.height, 2));
   }
+
+
+  return dimensions
 }
 
 function getMousePos(canvas, event, followRuler = false) {
@@ -889,10 +896,15 @@ function onRulerRotate({ target, drag, rotation }) {
       <div v-show="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
         <div class="ruler-container" :style="{ width: ruler.width + 'px' }">
           <div class="ruler-rotation">
-            {{ Math.round(ruler.rotation) }}&deg; |
+            {{ Math.round(ruler.rotation) }}&deg;
             <span v-if="canvasElements.length > 0 && isDrawing">
-              {{ canvasElements[canvasElements.length - 1].dimensions.outerWidth }} x
-              {{ canvasElements[canvasElements.length - 1].dimensions.outerHeight }}
+              <span v-if="canvasElements[canvasElements.length - 1].dimensions.lineLength">
+                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.lineLength) }}px
+              </span>
+              <span v-else>
+                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.outerWidth) }} x
+                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.outerHeight) }}
+              </span>
             </span>
           </div>
           <div class="ruler" :style="{ width: ruler.width + 'px' }"></div>
