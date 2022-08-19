@@ -4,9 +4,10 @@ import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
 import Moveable from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
-import { type Ref, ref, computed, watchEffect, onMounted, watch } from 'vue'
+import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
 
 const debugMode = ref(false);
+const isPasteMode = ref(false);
 const canvas = ref<HTMLCanvasElement>()
 const pasteCanvas = ref<HTMLCanvasElement>();
 const canvasConfig = ref({
@@ -15,12 +16,18 @@ const canvasConfig = ref({
 })
 
 
-const moveable = ref()
+const moveableRuler = ref()
+const moveablePaste = ref()
+const rulerElement = ref()
 const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
 const ruler = ref({
   isVisible: false,
   width: windowDiag,
-  rotation: 0,
+  transform: {
+    translate: [0, 0],
+    scale: [1, 1],
+    rotate: 35,
+  },
 })
 
 let canvasElements = ref([] as any[]);
@@ -37,14 +44,13 @@ const showRulerControls = computed(() => {
 })
 
 onMounted(() => {
-  if (typeof canvas.value === 'undefined' || typeof pasteCanvas.value === 'undefined') {
+  if (typeof canvas.value === 'undefined') {
     return;
   }
 
   const ctx = canvas.value.getContext('2d')
-  const pasteCtx = pasteCanvas.value.getContext('2d')
 
-  if (ctx === null || pasteCtx === null) {
+  if (ctx === null) {
     return;
   }
 
@@ -56,14 +62,6 @@ onMounted(() => {
   canvas.value.style.height = `${canvasConfig.value.height}px`;
 
   ctx.scale(dpi, dpi);
-
-  pasteCanvas.value.width = canvasConfig.value.width * dpi;
-  pasteCanvas.value.height = canvasConfig.value.height * dpi;
-
-  pasteCanvas.value.style.width = `${canvasConfig.value.width}px`;
-  pasteCanvas.value.style.height = `${canvasConfig.value.height}px`;
-
-  pasteCtx.scale(dpi, dpi);
 })
 
 watch(
@@ -72,6 +70,19 @@ watch(
     drawElements(canvas.value, canvasElements.value)
   }
 )
+
+watchPostEffect(() => {
+  if (ruler.value.isVisible) {
+    setRulerTransform(rulerElement.value, {})
+  }
+})
+
+// watch(
+//   () => ruler.value.isVisible,
+//   () => {
+//   },
+//   { flush: 'post' }
+// )
 
 enum Tool {
   POINTER = 0,
@@ -194,8 +205,9 @@ function checkIsStylus(event) {
   detectedStlyus.value = detectedStlyus.value || isStylus.value;
 }
 
-function isDrawingAllowed() {
-  if (!isDrawing.value || isMovingRuler || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
+function isDrawingAllowed(isDrawingOverride = false) {
+  const activeDrawing = isDrawing.value || isDrawingOverride
+  if (!activeDrawing || isMovingRuler || isPasteMode.value || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
     return false
   }
 
@@ -339,7 +351,7 @@ function getMousePos(canvas, event, followRuler = false) {
   let inputY = clientY;
   let isRulerLine = false;
 
-  if (followRuler && ruler.value.isVisible && moveable.value) {
+  if (followRuler && ruler.value.isVisible && moveableRuler.value) {
     const searchDistance = 25;
     let foundX, foundY;
     let searchFor = true;
@@ -363,7 +375,7 @@ function getMousePos(canvas, event, followRuler = false) {
 
         for (let i = 0; i < searchDirections.length; i += 1) {
           const searchDirction = searchDirections[i];
-          const isInside = moveable.value.isInside(searchDirction[0], searchDirction[1]);
+          const isInside = moveableRuler.value.isInside(searchDirction[0], searchDirction[1]);
 
           if (isFirstLoop) {
             searchFor = !isInside;
@@ -466,14 +478,14 @@ function cacheElement(element) {
   };
 }
 
-function drawElement(canvas, element, isCaching = false, closeSelectionPath = false) {
+function drawElement(canvas, element, isCaching = false, bypassCache = false) {
   const ctx = canvas.getContext('2d');
 
   if (element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
     return
   }
 
-  if (element.isDrawingCached) {
+  if (element.isDrawingCached && !bypassCache) {
     const cachedCanvas = element.cache.drawing.canvas;
     const ratio = element.cache.drawing.dpi;
     ctx.save();
@@ -499,10 +511,6 @@ function drawElement(canvas, element, isCaching = false, closeSelectionPath = fa
       ctx.restore();
     }
     return;
-  }
-
-  if (typeof element.cache === 'undefined') {
-    element.cache = {};
   }
 
   const points = element.points.slice();
@@ -691,6 +699,27 @@ function drawElement(canvas, element, isCaching = false, closeSelectionPath = fa
       ctx.stroke();
       ctx.restore();
     }
+  } else if (element.tool === Tool.CUT) {
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    let i = 0;
+    for (i = 0; i < points.length - 2; i += 1) {
+      var xc = (points[i].x + points[i + 1].x) / 2;
+      var yc = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+    }
+    ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+
+    if (element.isCompletedCut) {
+      ctx.fillStyle = "#ffffff";
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#ff0000";
+      ctx.stroke();
+    }
   }
 
   ctx.restore();
@@ -710,44 +739,49 @@ function drawElements(canvas, elements) {
   }
 }
 
-function pasteCutSelection(pasteCanvas, canvasElements) {
+async function pasteCutSelection(canvasElements) {
+  isPasteMode.value = true;
+  await nextTick();
+
+  if (typeof pasteCanvas.value === 'undefined') {
+    return;
+  }
+
   const cutSelection = canvasElements[canvasElements.length - 1];
-  const ctx = pasteCanvas.getContext('2d');
+  const ctx = pasteCanvas.value.getContext('2d');
 
-  clearCanvas(pasteCanvas);
-
-  const cachedCanvas = cutSelection.cache.drawing.canvas;
-  const ratio = cutSelection.cache.drawing.dpi;
-  ctx.save();
-  // ctx.globalCompositeOperation = 'destination-over';
-  ctx.translate(cutSelection.cache.drawing.x, cutSelection.cache.drawing.y);
-  for (let i = 0; i < canvasElements.length - 1; i += 1) {
-    const element = canvasElements[i];
-    drawElement(pasteCanvas, element);
+  if (ctx === null) {
+    return;
   }
-  // ctx.drawImage(
-  //   cachedCanvas,
-  //   0,
-  //   0,
-  //   cachedCanvas.width / ratio,
-  //   cachedCanvas.height / ratio
-  // );
-  ctx.clip(cachedCanvas);
+
+  const dpi = cutSelection.cache.drawing.dpi;
+  const width = cutSelection.cache.drawing.width;
+  const height = cutSelection.cache.drawing.height;
+
+  pasteCanvas.value.width = width * dpi;
+  pasteCanvas.value.height = height * dpi;
+
+  pasteCanvas.value.style.width = `${width}px`;
+  pasteCanvas.value.style.height = `${height}px`;
+  ctx.scale(dpi, dpi);
+
+  clearCanvas(pasteCanvas.value);
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
+  drawElement(pasteCanvas.value, cutSelection, false, true);
+  ctx.clip();
   for (let i = 0; i < canvasElements.length - 1; i += 1) {
     const element = canvasElements[i];
-    drawElement(pasteCanvas, element);
+    drawElement(pasteCanvas.value, element);
   }
-  ctx.restore();
 }
 
 function handleCanvasTouchStart(event) {
-  isDrawing.value = true;
   checkIsStylus(event);
 
-  if (!isDrawingAllowed() || canvas.value === null) {
+  if (!isDrawingAllowed(true) || canvas.value === null) {
     return;
   }
+  isDrawing.value = true;
 
   const pos = getMousePos(canvas.value, event, true);
   const isRulerLine = pos.isRulerLine;
@@ -774,6 +808,7 @@ function handleCanvasTouchStart(event) {
     },
     smoothPoints: {},
     dimensions: {},
+    cache: {},
   }
 
   if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.BLOB || newElement.tool === Tool.ERASER) {
@@ -891,12 +926,16 @@ function handleCanvasTouchEnd(event) {
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = calculateDimensions(lastElement);
 
+  if (lastElement.dimensions.outerWidth === 0 || lastElement.dimensions.outerHeight === 0) {
+    canvasElements.value.pop();
+  }
+
   if (lastElement.tool === Tool.CUT) {
     lastElement.isCompletedCut = true;
     lastElement.composition = 'destination-out';
     cacheElement(lastElement);
     drawElements(canvas.value, canvasElements.value);
-    pasteCutSelection(pasteCanvas.value, canvasElements.value);
+    pasteCutSelection(canvasElements.value);
   } else {
     cacheElement(lastElement);
     drawElements(canvas.value, canvasElements.value);
@@ -904,7 +943,21 @@ function handleCanvasTouchEnd(event) {
   isDrawing.value = false;
 }
 
-function onRulerMoveStart() {
+
+function setRulerTransform(target, transform) {
+  const nextTransform = {
+    ...ruler.value.transform,
+    ...transform,
+  }
+
+  const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
+  const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
+  const rotate = `rotate(${nextTransform.rotate}deg)`;
+  target.style.transform = `${translate} ${scale} ${rotate}`;
+  ruler.value.transform = nextTransform;
+}
+
+function onRulerMoveStart(e) {
   isMovingRuler = true;
 }
 
@@ -912,12 +965,8 @@ function onRulerMoveEnd() {
   isMovingRuler = false;
 }
 
-function onRulerDrag({ target, transform, isPinch }) {
-  if (isPinch) {
-    return;
-  }
-
-  target.style.transform = transform;
+function onRulerDrag({ target, translate }) {
+  setRulerTransform(target, { translate });
 }
 
 function onRulerRotate({ target, drag, rotation }) {
@@ -942,9 +991,50 @@ function onRulerRotate({ target, drag, rotation }) {
     }
   }
 
-  let transform = `translate(${translate[0]}px, ${translate[1]}px) rotate(${transformRotation}deg)`;
-  ruler.value.rotation = transformRotation % 360;
-  target.style.transform = transform;
+  // let transform = `translate(${translate[0]}px, ${translate[1]}px) rotate(${transformRotation}deg)`;
+  // ruler.value.rotation = transformRotation % 360;
+  // target.style.transform = transform;
+  setRulerTransform(target, { rotate: transformRotation % 360, translate: drag.translate });
+}
+
+function onPasteMoveStart() {
+  // isMovingRuler = true;
+}
+
+function onPasteMoveEnd(res) {
+  // console.log('end', res);
+  // isMovingRuler = false;
+}
+
+const pasteTransform = ref({
+  translate: [0, 0],
+  scale: [1, 1],
+  rotate: 0,
+});
+function setPasteTransform(target, transform) {
+  const nextTransform = {
+    ...pasteTransform.value,
+    ...transform,
+  }
+
+  const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
+  const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
+  const rotate = `rotate(${nextTransform.rotate}deg)`;
+  target.style.transform = `${translate} ${scale} ${rotate}`;
+
+  pasteTransform.value = nextTransform;
+}
+
+function onPasteDrag({ target, translate }) {
+  setPasteTransform(target, { translate });
+}
+
+function onPasteRotate({ target, rotate, drag }) {
+  setPasteTransform(target, { rotate, translate: drag.translate });
+}
+
+function onPasteScale({ target, scale, drag }) {
+  setPasteTransform(target, { scale, translate: drag.translate });
 }
 
 </script>
@@ -985,10 +1075,10 @@ function onRulerRotate({ target, drag, rotation }) {
       <label><input type="checkbox" v-model="debugMode" /> debug?</label>
     </div>
     <div>
-      <div class="ruler-container" v-show="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
-        <div class="ruler" :style="{ width: ruler.width + 'px' }">
+      <div class="ruler-container" v-if="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
+        <div class="ruler" ref="rulerElement" :style="{ width: ruler.width + 'px' }">
           <div class="ruler__label">
-            {{ Math.round(ruler.rotation) }}&deg;
+            {{ Math.round(ruler.transform.rotate) }}&deg;
             <span v-if="canvasElements.length > 0 && isDrawing">
               <span v-if="canvasElements[canvasElements.length - 1].dimensions.lineLength">
                 {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.lineLength) }}px
@@ -1001,16 +1091,18 @@ function onRulerRotate({ target, drag, rotation }) {
           </div>
           <div class="ruler__tool" :style="{ width: ruler.width + 'px' }"></div>
         </div>
-        <Moveable ref="moveable" v-if="ruler.isVisible" className=" moveable" :target="['.ruler']"
+        <Moveable ref="moveableRuler" v-if="ruler.isVisible" className="moveable-ruler" :target="['.ruler']"
           :pinchable="['rotatable']" :draggable="!isDrawing" :rotatable="!isDrawing" :scalable="false"
           :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart"
           @renderEnd="onRulerMoveEnd" />
       </div>
 
-      <canvas class="paste_canvas" ref="pasteCanvas" @mousedown="handleCanvasTouchStart"
-        @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
-        @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
-      </canvas>
+      <div v-if="isPasteMode">
+        <canvas class="paste_canvas" ref="pasteCanvas"></canvas>
+        <Moveable ref="moveablePaste" className="moveable-paste" :target="['.paste_canvas']" :pinchable="true"
+          :draggable="true" :rotatable="true" :scalable="true" :keepRatio="true" @drag="onPasteDrag"
+          @rotate="onPasteRotate" @scale="onPasteScale" @renderStart="onPasteMoveStart" @renderEnd="onPasteMoveEnd" />
+      </div>
       <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
         @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
         @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
@@ -1068,11 +1160,11 @@ function onRulerRotate({ target, drag, rotation }) {
 </style>
 
 <style>
-.hide-ruler-controls .moveable-control-box .moveable-rotation {
+.hide-ruler-controls .moveable-ruler.moveable-control-box .moveable-rotation {
   display: none;
 }
 
-.moveable-control-box .moveable-control.moveable-rotation-control {
+.moveable-ruler.moveable-control-box .moveable-control.moveable-rotation-control {
   width: 30px;
   height: 30px;
   margin-top: -15px;
