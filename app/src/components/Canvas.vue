@@ -437,17 +437,18 @@ function getSvgPathFromStroke(stroke) {
 }
 
 function getFlatSvgPathFromStroke(stroke) {
-  const faces = polygonClipping.union([stroke])
+  return getSvgPathFromStroke(stroke)
+  // const faces = polygonClipping.union([stroke])
 
-  const d = []
+  // const d = []
 
-  faces.forEach((face) =>
-    face.forEach((points) => {
-      d.push(getSvgPathFromStroke(points))
-    })
-  )
+  // faces.forEach((face) =>
+  //   face.forEach((points) => {
+  //     d.push(getSvgPathFromStroke(points))
+  //   })
+  // )
 
-  return d.join(' ')
+  // return d.join(' ')
 }
 
 function cacheElement(element) {
@@ -829,6 +830,9 @@ function endPasteMode(canvasElements) {
   const height = pasteElement.dimensions.outerHeight;
   const rotRad = pasteTransform.value.rotate * Math.PI / 180;
 
+  const imageWidth = pasteTransform.value.scale[0] * pasteCanvas.value.offsetWidth;
+  const imageHeight = pasteTransform.value.scale[1] * pasteCanvas.value.offsetHeight;
+
   pasteCacheCanvas.width = width * dpi;
   pasteCacheCanvas.height = height * dpi;
   pasteCacheCanvas.style.width = `${width}px`;
@@ -843,10 +847,10 @@ function endPasteMode(canvasElements) {
   ctx.rotate(rotRad);
   ctx.drawImage(
     pasteCanvas.value,
-    -pasteCanvas.value.offsetWidth / 2,
-    -pasteCanvas.value.offsetHeight / 2,
-    pasteCanvas.value.offsetWidth,
-    pasteCanvas.value.offsetHeight
+    -imageWidth / 2,
+    -imageHeight / 2,
+    imageWidth,
+    imageHeight
   );
   ctx.restore();
 
