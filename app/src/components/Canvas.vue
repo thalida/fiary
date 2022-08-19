@@ -484,14 +484,14 @@ function cacheElement(element) {
   };
 }
 
-function drawElement(canvas, element, isCaching = false, bypassCache = false) {
+function drawElement(canvas, element, isCaching = false) {
   const ctx = canvas.getContext('2d');
 
   if (element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
     return
   }
 
-  if (element.isDrawingCached && !bypassCache) {
+  if (element.isDrawingCached) {
     const cachedCanvas = element.cache.drawing.canvas;
     const dpi = element.cache.drawing.dpi;
     ctx.save();
@@ -724,12 +724,16 @@ function drawElement(canvas, element, isCaching = false, bypassCache = false) {
     }
 
     if (element.isCompletedCut) {
-      ctx.fillStyle = "#ffffff";
       ctx.closePath();
+      ctx.fillStyle = "#ffffff";
       ctx.fill();
     } else {
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = "#ff0000";
+      ctx.setLineDash([10, 10]);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#0000ff";
       ctx.stroke();
     }
   }
@@ -793,12 +797,15 @@ async function handlePasteStart(canvasElements) {
 
   clearCanvas(pasteCanvas.value);
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
-  drawElement(pasteCanvas.value, cutSelection, false, true);
-  ctx.clip();
   for (let i = 0; i < canvasElements.length - 1; i += 1) {
     const element = canvasElements[i];
     drawElement(pasteCanvas.value, element);
   }
+  const cutSelectionClip = JSON.parse(JSON.stringify(cutSelection));
+  cutSelectionClip.isDrawingCached = false;
+  cutSelectionClip.cache = {};
+  cutSelectionClip.composition = 'destination-in';
+  drawElement(pasteCanvas.value, cutSelectionClip);
 }
 
 function handlePasteComplete(canvasElements) {
