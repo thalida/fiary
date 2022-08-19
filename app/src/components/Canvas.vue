@@ -15,7 +15,6 @@ const canvasConfig = ref({
   height: window.innerHeight,
 })
 
-
 const moveableRuler = ref()
 const moveablePaste = ref()
 const rulerElement = ref()
@@ -29,6 +28,11 @@ const ruler = ref({
     rotate: 35,
   },
 })
+const pasteTransform = ref({
+  translate: [0, 0],
+  scale: [1, 1],
+  rotate: 0,
+});
 
 let canvasElements = ref([] as any[]);
 let cutShape = ref();
@@ -97,6 +101,7 @@ enum Tool {
   TRIANGLE = 32,
   ARROW = 33,
   CUT = 40,
+  PASTE = 41,
 }
 const supportedTools = ref([
   { key: Tool.POINTER, label: 'Pointer' },
@@ -487,7 +492,7 @@ function drawElement(canvas, element, isCaching = false, bypassCache = false) {
 
   if (element.isDrawingCached && !bypassCache) {
     const cachedCanvas = element.cache.drawing.canvas;
-    const ratio = element.cache.drawing.dpi;
+    const dpi = element.cache.drawing.dpi;
     ctx.save();
     ctx.globalCompositeOperation = element.composition;
     ctx.translate(element.cache.drawing.x, element.cache.drawing.y);
@@ -495,8 +500,8 @@ function drawElement(canvas, element, isCaching = false, bypassCache = false) {
       cachedCanvas,
       0,
       0,
-      cachedCanvas.width / ratio,
-      cachedCanvas.height / ratio
+      cachedCanvas.width / dpi,
+      cachedCanvas.height / dpi
     );
     ctx.restore();
 
@@ -504,7 +509,7 @@ function drawElement(canvas, element, isCaching = false, bypassCache = false) {
       ctx.save();
       ctx.beginPath();
       ctx.translate(element.cache.drawing.x, element.cache.drawing.y);
-      ctx.rect(0, 0, cachedCanvas.width / ratio, cachedCanvas.height / ratio);
+      ctx.rect(0, 0, cachedCanvas.width / dpi, cachedCanvas.height / dpi);
       ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
       ctx.lineWidth = 5;
       ctx.stroke();
@@ -682,7 +687,10 @@ function drawElement(canvas, element, isCaching = false, bypassCache = false) {
       var yc = (points[i].y + points[i + 1].y) / 2;
       ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
     }
-    ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+
+    if (points.length >= 2) {
+      ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+    }
 
     if (element.tool === Tool.BLOB) {
       ctx.closePath();
@@ -709,7 +717,10 @@ function drawElement(canvas, element, isCaching = false, bypassCache = false) {
       var yc = (points[i].y + points[i + 1].y) / 2;
       ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
     }
-    ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+
+    if (points.length >= 2) {
+      ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+    }
 
     if (element.isCompletedCut) {
       ctx.fillStyle = "#ffffff";
@@ -739,7 +750,12 @@ function drawElements(canvas, elements) {
   }
 }
 
-async function pasteCutSelection(canvasElements) {
+async function startPasteMode(canvasElements) {
+  pasteTransform.value = {
+    translate: [0, 0],
+    scale: [1, 1],
+    rotate: 0,
+  };
   isPasteMode.value = true;
   await nextTick();
 
@@ -747,12 +763,15 @@ async function pasteCutSelection(canvasElements) {
     return;
   }
 
-  const cutSelection = canvasElements[canvasElements.length - 1];
   const ctx = pasteCanvas.value.getContext('2d');
 
   if (ctx === null) {
     return;
   }
+
+  const cutSelection = canvasElements[canvasElements.length - 1];
+  pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
+  setPasteTransform(pasteCanvas.value, pasteTransform.value);
 
   const dpi = cutSelection.cache.drawing.dpi;
   const width = cutSelection.cache.drawing.width;
@@ -773,6 +792,77 @@ async function pasteCutSelection(canvasElements) {
     const element = canvasElements[i];
     drawElement(pasteCanvas.value, element);
   }
+}
+
+function endPasteMode(canvasElements) {
+  if (typeof pasteCanvas.value === 'undefined') {
+    return;
+  }
+
+  const moveableRect = moveablePaste.value.getRect();
+  const pasteElement = {
+    tool: Tool.PASTE,
+    composition: getComposition(),
+    isDrawingCached: true,
+    dimensions: {
+      outerMinX: moveableRect.left,
+      outerMinY: moveableRect.top,
+      outerWidth: moveableRect.width,
+      outerHeight: moveableRect.height,
+    },
+    cache: {
+      drawing: {},
+    },
+  };
+
+  const pasteCacheCanvas = document.createElement('canvas');
+  const ctx = pasteCacheCanvas.getContext('2d');
+
+  if (ctx === null) {
+    return;
+  }
+
+  const dpi = window.devicePixelRatio;
+  const minX = pasteElement.dimensions.outerMinX;
+  const minY = pasteElement.dimensions.outerMinY;
+  const width = pasteElement.dimensions.outerWidth;
+  const height = pasteElement.dimensions.outerHeight;
+  const rotRad = pasteTransform.value.rotate * Math.PI / 180;
+
+  pasteCacheCanvas.width = width * dpi;
+  pasteCacheCanvas.height = height * dpi;
+  pasteCacheCanvas.style.width = `${width}px`;
+  pasteCacheCanvas.style.height = `${height}px`;
+
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  ctx.save();
+  ctx.scale(dpi, dpi);
+  ctx.translate(centerX, centerY);
+  ctx.rotate(rotRad);
+  ctx.drawImage(
+    pasteCanvas.value,
+    -pasteCanvas.value.offsetWidth / 2,
+    -pasteCanvas.value.offsetHeight / 2,
+    pasteCanvas.value.offsetWidth,
+    pasteCanvas.value.offsetHeight
+  );
+  ctx.restore();
+
+  pasteElement.isDrawingCached = true;
+  pasteElement.cache.drawing = {
+    x: minX,
+    y: minY,
+    width,
+    height,
+    dpi,
+    canvas: pasteCacheCanvas,
+  };
+
+  canvasElements.push(pasteElement);
+  drawElements(canvas.value, canvasElements);
+  isPasteMode.value = false;
 }
 
 function handleCanvasTouchStart(event) {
@@ -918,6 +1008,11 @@ function handleCanvasTouchMove(event) {
 }
 
 function handleCanvasTouchEnd(event) {
+  if (isPasteMode.value) {
+    endPasteMode(canvasElements.value)
+    return;
+  }
+
   if (!isDrawingAllowed() || canvas.value === null) {
     return;
   }
@@ -928,6 +1023,8 @@ function handleCanvasTouchEnd(event) {
 
   if (lastElement.dimensions.outerWidth === 0 || lastElement.dimensions.outerHeight === 0) {
     canvasElements.value.pop();
+    isDrawing.value = false;
+    return;
   }
 
   if (lastElement.tool === Tool.CUT) {
@@ -935,7 +1032,7 @@ function handleCanvasTouchEnd(event) {
     lastElement.composition = 'destination-out';
     cacheElement(lastElement);
     drawElements(canvas.value, canvasElements.value);
-    pasteCutSelection(canvasElements.value);
+    startPasteMode(canvasElements.value);
   } else {
     cacheElement(lastElement);
     drawElements(canvas.value, canvasElements.value);
@@ -991,9 +1088,6 @@ function onRulerRotate({ target, drag, rotation }) {
     }
   }
 
-  // let transform = `translate(${translate[0]}px, ${translate[1]}px) rotate(${transformRotation}deg)`;
-  // ruler.value.rotation = transformRotation % 360;
-  // target.style.transform = transform;
   setRulerTransform(target, { rotate: transformRotation % 360, translate: drag.translate });
 }
 
@@ -1006,11 +1100,6 @@ function onPasteMoveEnd(res) {
   // isMovingRuler = false;
 }
 
-const pasteTransform = ref({
-  translate: [0, 0],
-  scale: [1, 1],
-  rotate: 0,
-});
 function setPasteTransform(target, transform) {
   const nextTransform = {
     ...pasteTransform.value,
