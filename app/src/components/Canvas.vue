@@ -909,12 +909,15 @@ function handleCanvasTouchStart(event) {
   const pressure = getPressure(event);
   const opacity = getOpacity();
   const composition = getComposition();
+  const size = selectedTool.value === Tool.CUT ? 0 : penSize.value;
+  const strokeColor = selectedTool.value === Tool.CUT ? 'transparent' : selectedStrokeColor.value;
+  const fillColor = selectedTool.value === Tool.CUT ? 'transparent' : selectedFillColor.value;
 
   const newElement = {
     tool: selectedTool.value,
-    fillColor: selectedFillColor.value,
-    strokeColor: selectedStrokeColor.value,
-    size: penSize.value,
+    fillColor,
+    strokeColor,
+    size,
     composition,
     opacity,
     isRulerLine,
