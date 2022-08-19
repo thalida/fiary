@@ -751,7 +751,7 @@ function drawElements(canvas, elements) {
   }
 }
 
-async function startPasteMode(canvasElements) {
+async function handlePasteStart(canvasElements) {
   pasteTransform.value = {
     translate: [0, 0],
     scale: [1, 1],
@@ -770,7 +770,13 @@ async function startPasteMode(canvasElements) {
     return;
   }
 
+
   const cutSelection = canvasElements[canvasElements.length - 1];
+  cutSelection.isCompletedCut = true;
+  cutSelection.composition = 'destination-out';
+  cacheElement(cutSelection);
+  drawElements(canvas.value, canvasElements);
+
   pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
   setPasteTransform(pasteCanvas.value, pasteTransform.value);
 
@@ -795,11 +801,12 @@ async function startPasteMode(canvasElements) {
   }
 }
 
-function endPasteMode(canvasElements) {
+function handlePasteComplete(canvasElements) {
   if (typeof pasteCanvas.value === 'undefined') {
     return;
   }
 
+  const cutSelection = canvasElements[canvasElements.length - 1];
   const moveableRect = moveablePaste.value.getRect();
   const pasteElement = {
     tool: Tool.PASTE,
@@ -815,6 +822,18 @@ function endPasteMode(canvasElements) {
       drawing: {},
     },
   };
+
+  if (
+    cutSelection.cache.drawing.x === pasteElement.dimensions.outerMinX
+    && cutSelection.cache.drawing.y === pasteElement.dimensions.outerMinY
+    && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
+    && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
+  ) {
+    canvasElements.pop();
+    drawElements(canvas.value, canvasElements);
+    isPasteMode.value = false;
+    return;
+  }
 
   const pasteCacheCanvas = document.createElement('canvas');
   const ctx = pasteCacheCanvas.getContext('2d');
@@ -1013,7 +1032,7 @@ function handleCanvasTouchMove(event) {
 
 function handleCanvasTouchEnd(event) {
   if (isPasteMode.value) {
-    endPasteMode(canvasElements.value)
+    handlePasteComplete(canvasElements.value)
     return;
   }
 
@@ -1032,11 +1051,7 @@ function handleCanvasTouchEnd(event) {
   }
 
   if (lastElement.tool === Tool.CUT) {
-    lastElement.isCompletedCut = true;
-    lastElement.composition = 'destination-out';
-    cacheElement(lastElement);
-    drawElements(canvas.value, canvasElements.value);
-    startPasteMode(canvasElements.value);
+    handlePasteStart(canvasElements.value);
   } else {
     cacheElement(lastElement);
     drawElements(canvas.value, canvasElements.value);
