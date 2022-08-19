@@ -824,7 +824,8 @@ function handlePasteComplete(canvasElements) {
   };
 
   if (
-    cutSelection.cache.drawing.x === pasteElement.dimensions.outerMinX
+    pasteTransform.value.rotate === 0
+    && cutSelection.cache.drawing.x === pasteElement.dimensions.outerMinX
     && cutSelection.cache.drawing.y === pasteElement.dimensions.outerMinY
     && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
