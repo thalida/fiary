@@ -109,7 +109,6 @@ enum Tool {
   RECTANGLE = 31,
   TRIANGLE = 32,
   LINE = 33,
-  ARROW = 34,
   CUT = 40,
   PASTE = 41,
   IMAGE = 50,
