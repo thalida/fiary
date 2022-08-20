@@ -435,7 +435,10 @@ function calculateLinePoints(element, toPos): any {
       ...endPoints,
       { x: toPos.x, y: toPos.y },
     ]
-  } else if (element.toolOptions.lineEndStyle === LineEndStyle.SQUARE) {
+  } else if (
+    element.toolOptions.lineEndStyle === LineEndStyle.SQUARE ||
+    element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE
+  ) {
     const headSize = element.size * 2;
     const endStartPoint = {
       x: tox - (headSize / 2),
@@ -807,6 +810,19 @@ function drawElement(canvas, element, isCaching = false) {
       }
       ctx.fill();
       ctx.stroke();
+    } else if (element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE) {
+      ctx.lineWidth = element.size / 2;
+      ctx.beginPath();
+      for (let i = 1; i < points.length - 1; i += 2) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+        const centerX = (startPoint.x + endPoint.x) / 2;
+        const centerY = (startPoint.y + endPoint.y) / 2;
+        const radius = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)) / 2;
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      }
+      ctx.fill();
+      ctx.stroke();
     }
     ctx.restore()
 
@@ -833,6 +849,17 @@ function drawElement(canvas, element, isCaching = false) {
         const width = endPoint.x - startPoint.x;
         const height = endPoint.y - startPoint.y;
         ctx.rect(startPoint.x, startPoint.y, width, height);
+      }
+      ctx.fill();
+    } else if (element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE) {
+      ctx.beginPath();
+      for (let i = 1; i < points.length - 1; i += 2) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+        const centerX = (startPoint.x + endPoint.x) / 2;
+        const centerY = (startPoint.y + endPoint.y) / 2;
+        const radius = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)) / 2;
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
       }
       ctx.fill();
     }
