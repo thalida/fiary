@@ -460,6 +460,14 @@ function getFlatSvgPathFromStroke(stroke) {
   // return d.join(' ')
 }
 
+function addCanvasElement(element) {
+  if (redoCanvasElements.value.length > 0) {
+    redoCanvasElements.value = [];
+  }
+
+  canvasElements.value.push(element);
+}
+
 function cacheElement(element) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -802,7 +810,7 @@ function handleClearAll() {
     cache: {},
   };
   clearElement.dimensions = calculateDimensions(clearElement);
-  canvasElements.value.push(clearElement);
+  addCanvasElement(clearElement);
   cacheElement(clearElement);
   drawElements(canvas.value, canvasElements.value);
   selectedTool.value = Tool.ERASER;
@@ -944,7 +952,7 @@ function handlePasteEnd() {
     canvas: pasteCacheCanvas,
   };
 
-  canvasElements.value.push(pasteElement);
+  addCanvasElement(pasteElement);
   drawElements(canvas.value, canvasElements.value);
   isPasteMode.value = false;
 }
@@ -1097,7 +1105,7 @@ function handleAddImageEnd() {
     canvas: imageCacheCanvas,
   };
 
-  canvasElements.value.push(imageElement);
+  addCanvasElement(imageElement);
   drawElements(canvas.value, canvasElements.value);
   isAddImageMode.value = false;
 }
@@ -1187,7 +1195,8 @@ function handleCanvasTouchStart(event) {
   }
   newElement.dimensions = calculateDimensions(newElement);
 
-  canvasElements.value.push(newElement);
+
+  addCanvasElement(newElement);
   drawElements(canvas.value, canvasElements.value);
 }
 
