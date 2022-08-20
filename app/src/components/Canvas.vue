@@ -108,7 +108,7 @@ enum Tool {
   CIRCLE = 30,
   RECTANGLE = 31,
   TRIANGLE = 32,
-  ARROW = 33,
+  LINE = 33,
   CUT = 40,
   PASTE = 41,
   IMAGE = 50,
@@ -122,7 +122,7 @@ const supportedTools = ref([
   { key: Tool.CIRCLE, label: 'Circle' },
   { key: Tool.RECTANGLE, label: 'Rectangle' },
   { key: Tool.TRIANGLE, label: 'Triangle' },
-  { key: Tool.ARROW, label: 'Arrow' },
+  { key: Tool.LINE, label: 'Line' },
   { key: Tool.IMAGE, label: 'Image' },
   { key: Tool.CUT, label: 'Cut' },
   { key: Tool.ERASER, label: 'Eraser' },
@@ -130,6 +130,32 @@ const supportedTools = ref([
 ])
 const selectedTool = ref(Tool.PEN);
 const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
+
+enum LineEndSide {
+  NONE = 0,
+  ONE = 1,
+  BOTH = 2,
+}
+const supportedLineEndSides = ref([
+  { key: LineEndSide.NONE, label: 'None' },
+  { key: LineEndSide.ONE, label: 'One Side' },
+  { key: LineEndSide.BOTH, label: 'Both Sides' },
+])
+const selectedLineEndSide = ref(LineEndSide.NONE);
+
+enum LineEndStyle {
+  NONE = 0,
+  ARROW = 1,
+  CIRCLE = 2,
+  SQUARE = 3,
+}
+const supportedLineEndStyles = ref([
+  { key: LineEndStyle.NONE, label: 'None' },
+  { key: LineEndStyle.ARROW, label: 'Arrow' },
+  { key: LineEndStyle.CIRCLE, label: 'Circle' },
+  { key: LineEndStyle.SQUARE, label: 'Square' },
+])
+const selectedLineEndStyle = ref(LineEndStyle.NONE);
 
 const penSizes = [5, 10, 20, 40, 60];
 const penSize = ref(40); // 20, 40, 60, 80
@@ -316,12 +342,15 @@ function calculateDimensions(element) {
     outerMinY = Math.min(...outerYPoints);
     outerMaxX = Math.max(...outerXPoints);
     outerMaxY = Math.max(...outerYPoints);
+  } else if (element.tool === Tool.LINE) {
+    let strokeSize = element.strokeColor !== 'transparent' ? element.size * 0.75 : element.size / 2
+    outerMinX -= strokeSize;
+    outerMinY -= strokeSize;
+    outerMaxX += strokeSize;
+    outerMaxY += strokeSize;
   } else {
     let strokeSize = 0;
-
-    if (element.tool === Tool.ARROW) {
-      strokeSize = element.strokeColor !== 'transparent' ? element.size * 0.75 : element.size / 2
-    } else if (element.strokeColor !== 'transparent' || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
+    if (element.strokeColor !== 'transparent' || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
       strokeSize = element.size / 2;
     }
 
@@ -346,7 +375,7 @@ function calculateDimensions(element) {
     height,
     outerWidth,
     outerHeight,
-    lineLength: null,
+    lineLength: null as number | null,
   };
 
   if (lineTools.includes(element.tool)) {
@@ -355,6 +384,91 @@ function calculateDimensions(element) {
 
 
   return dimensions
+}
+
+function calculateLinePoints(element, toPos): any {
+  const fromx = element.points[0].x;
+  const fromy = element.points[0].y;
+  const tox = toPos.x;
+  const toy = toPos.y;
+
+  if (
+    element.toolOptions.lineEndStyle === LineEndStyle.NONE ||
+    element.toolOptions.lineEndSide === LineEndSide.NONE
+  ) {
+    return [
+      { x: fromx, y: fromy },
+      { x: toPos.x, y: toPos.y }
+    ]
+  } else if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
+    const headlen = element.size * 2; // length of head in pixels
+    const endAngle = Math.atan2(toy - fromy, tox - fromx);
+    const endA1 = {
+      x: tox - headlen * Math.cos(endAngle - Math.PI / 5),
+      y: toy - headlen * Math.sin(endAngle - Math.PI / 5),
+    };
+    const endA2 = {
+      x: tox - headlen * Math.cos(endAngle + Math.PI / 5),
+      y: toy - headlen * Math.sin(endAngle + Math.PI / 5),
+    };
+    const endPoints = [endA1, endA2]
+
+    let startAngle;
+    let startPoints: any[] = [];
+    if (element.toolOptions.lineEndSide === LineEndSide.BOTH) {
+      startAngle = Math.atan2(fromy - toy, fromx - tox);
+      const startA1 = {
+        x: fromx - headlen * Math.cos(startAngle - Math.PI / 5),
+        y: fromy - headlen * Math.sin(startAngle - Math.PI / 5),
+      };
+      const startA2 = {
+        x: fromx - headlen * Math.cos(startAngle + Math.PI / 5),
+        y: fromy - headlen * Math.sin(startAngle + Math.PI / 5),
+      };
+      startPoints = [startA1, startA2]
+    }
+
+    return [
+      { x: fromx, y: fromy },
+      ...startPoints,
+      ...endPoints,
+      { x: toPos.x, y: toPos.y },
+    ]
+  } else if (
+    element.toolOptions.lineEndStyle === LineEndStyle.SQUARE ||
+    element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE
+  ) {
+    const headSize = element.size * 2;
+    const endStartPoint = {
+      x: tox - (headSize / 2),
+      y: toy - (headSize / 2),
+    };
+    const endEndPoint = {
+      x: tox + (headSize / 2),
+      y: toy + (headSize / 2),
+    };
+    const endPoints = [endStartPoint, endEndPoint]
+
+    let startPoints: any[] = [];
+    if (element.toolOptions.lineEndSide === LineEndSide.BOTH) {
+      const startStartPoint = {
+        x: fromx - (headSize / 2),
+        y: fromy - (headSize / 2),
+      };
+      const startEndPoint = {
+        x: fromx + (headSize / 2),
+        y: fromy + (headSize / 2),
+      };
+      startPoints = [startStartPoint, startEndPoint]
+    }
+
+    return [
+      { x: fromx, y: fromy },
+      ...startPoints,
+      ...endPoints,
+      { x: toPos.x, y: toPos.y },
+    ]
+  }
 }
 
 function getMousePos(canvas, event, followRuler = false) {
@@ -660,25 +774,55 @@ function drawElement(canvas, element, isCaching = false) {
     rectangle.rect(minX, minY, width, height);
     ctx.stroke(rectangle);
     ctx.fill(rectangle);
-  } else if (element.tool === Tool.ARROW) {
+  } else if (element.tool === Tool.LINE) {
+    const numPoints = points.length;
     const fromx = points[0].x;
     const fromy = points[0].y;
-    const tox = points[3].x;
-    const toy = points[3].y;
+    const tox = points[points.length - 1].x;
+    const toy = points[points.length - 1].y;
 
     ctx.save()
     ctx.lineWidth *= 1.5;
+    ctx.fillStyle = ctx.strokeStyle;
     ctx.beginPath();
     ctx.moveTo(fromx, fromy);
     ctx.lineTo(tox, toy);
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(tox, toy);
-    ctx.lineTo(points[1].x, points[1].y);
-    ctx.moveTo(tox, toy);
-    ctx.lineTo(points[2].x, points[2].y);
-    ctx.stroke();
+    if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
+      ctx.beginPath();
+      for (let i = points.length - 2; i > 0; i -= 1) {
+        const targetPoint = (numPoints > 4 && i <= 2) ? points[0] : points[numPoints - 1];
+        ctx.moveTo(targetPoint.x, targetPoint.y);
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.stroke();
+    } else if (element.toolOptions.lineEndStyle === LineEndStyle.SQUARE) {
+      ctx.lineWidth = element.size / 2;
+      ctx.beginPath();
+      for (let i = 1; i < points.length - 1; i += 2) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+        const width = endPoint.x - startPoint.x;
+        const height = endPoint.y - startPoint.y;
+        ctx.rect(startPoint.x, startPoint.y, width, height);
+      }
+      ctx.fill();
+      ctx.stroke();
+    } else if (element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE) {
+      ctx.lineWidth = element.size / 2;
+      ctx.beginPath();
+      for (let i = 1; i < points.length - 1; i += 2) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+        const centerX = (startPoint.x + endPoint.x) / 2;
+        const centerY = (startPoint.y + endPoint.y) / 2;
+        const radius = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)) / 2;
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      }
+      ctx.fill();
+      ctx.stroke();
+    }
     ctx.restore()
 
     ctx.save();
@@ -688,13 +832,38 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.lineTo(tox, toy);
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(tox, toy);
-    ctx.lineTo(points[1].x, points[1].y);
-    ctx.moveTo(tox, toy);
-    ctx.lineTo(points[2].x, points[2].y);
-    ctx.stroke();
+    if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
+      ctx.beginPath();
+      for (let i = points.length - 2; i > 0; i -= 1) {
+        const targetPoint = (numPoints > 4 && i <= 2) ? points[0] : points[numPoints - 1];
+        ctx.moveTo(targetPoint.x, targetPoint.y);
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.stroke();
+    } else if (element.toolOptions.lineEndStyle === LineEndStyle.SQUARE) {
+      ctx.beginPath();
+      for (let i = 1; i < points.length - 1; i += 2) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+        const width = endPoint.x - startPoint.x;
+        const height = endPoint.y - startPoint.y;
+        ctx.rect(startPoint.x, startPoint.y, width, height);
+      }
+      ctx.fill();
+    } else if (element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE) {
+      ctx.beginPath();
+      for (let i = 1; i < points.length - 1; i += 2) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+        const centerX = (startPoint.x + endPoint.x) / 2;
+        const centerY = (startPoint.y + endPoint.y) / 2;
+        const radius = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)) / 2;
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      }
+      ctx.fill();
+    }
     ctx.restore();
+
   } else if (element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
@@ -1146,6 +1315,10 @@ function handleCanvasTouchStart(event) {
     opacity,
     isRulerLine,
     points: [{ x: pos.x, y: pos.y, pressure }],
+    toolOptions: {
+      lineEndSide: selectedLineEndSide.value,
+      lineEndStyle: selectedLineEndStyle.value,
+    },
     freehandOptions: {
       size: penSize.value,
       simulatePressure: selectedTool.value === Tool.PEN && !isStylus.value,
@@ -1164,37 +1337,14 @@ function handleCanvasTouchStart(event) {
   } else if (newElement.tool === Tool.TRIANGLE) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
-  } else if (newElement.tool === Tool.ARROW) {
-    const fromx = pos.x;
-    const fromy = pos.y;
-    const tox = pos.x;
-    const toy = pos.y;
-    var headlen = newElement.size * 2; // length of head in pixels
-    var dx = tox - fromx;
-    var dy = toy - fromy;
-    var angle = Math.atan2(dy, dx);
-
-    let a1 = {
-      x: tox - headlen * Math.cos(angle - Math.PI / 5),
-      y: toy - headlen * Math.sin(angle - Math.PI / 5),
-      pressure,
-    };
-    let a2 = {
-      x: tox - headlen * Math.cos(angle + Math.PI / 5),
-      y: toy - headlen * Math.sin(angle + Math.PI / 5),
-      pressure,
-    };
-
-    newElement.points[1] = a1;
-    newElement.points[2] = a2;
-    newElement.points[3] = { x: pos.x, y: pos.y, pressure };
+  } else if (newElement.tool === Tool.LINE) {
+    newElement.points = calculateLinePoints(newElement, pos);
   }
 
   if (lineTools.includes(newElement.tool)) {
     newElement.smoothPoints = getSmoothPoints(newElement);
   }
   newElement.dimensions = calculateDimensions(newElement);
-
 
   addCanvasElement(newElement);
   drawElements(canvas.value, canvasElements.value);
@@ -1230,28 +1380,8 @@ function handleCanvasTouchMove(event) {
 
     lastElement.points[1] = p2;
     lastElement.points[2] = p3;
-  } else if (lastElement.tool === Tool.ARROW) {
-    const fromx = lastElement.points[0].x;
-    const fromy = lastElement.points[0].y;
-    const tox = pos.x;
-    const toy = pos.y;
-    var headlen = lastElement.size * 2; // length of head in pixels
-    var dx = tox - fromx;
-    var dy = toy - fromy;
-    var angle = Math.atan2(dy, dx);
-
-    let a1 = {
-      x: tox - headlen * Math.cos(angle - Math.PI / 5),
-      y: toy - headlen * Math.sin(angle - Math.PI / 5),
-    };
-    let a2 = {
-      x: tox - headlen * Math.cos(angle + Math.PI / 5),
-      y: toy - headlen * Math.sin(angle + Math.PI / 5),
-    };
-
-    lastElement.points[1] = a1;
-    lastElement.points[2] = a2;
-    lastElement.points[3] = { x: pos.x, y: pos.y };
+  } else if (lastElement.tool === Tool.LINE) {
+    lastElement.points = calculateLinePoints(lastElement, pos);
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
@@ -1261,8 +1391,8 @@ function handleCanvasTouchMove(event) {
   if (lineTools.includes(lastElement.tool)) {
     lastElement.smoothPoints = getSmoothPoints(lastElement);
   }
-  lastElement.dimensions = calculateDimensions(lastElement);
 
+  lastElement.dimensions = calculateDimensions(lastElement);
   drawElements(canvas.value, canvasElements.value);
 }
 
@@ -1460,7 +1590,19 @@ function handleRedoClick() {
           {{ tool.label }}
         </option>
       </select>
-      <label v-if="selectedTool === Tool.IMAGE">
+      <div v-if="selectedTool === Tool.LINE">
+        <select v-model="selectedLineEndSide">
+          <option v-for="endSide in supportedLineEndSides" :key="endSide.key" :value="endSide.key">
+            {{ endSide.label }}
+          </option>
+        </select>
+        <select v-model="selectedLineEndStyle">
+          <option v-for="endStyle in supportedLineEndStyles" :key="endStyle.key" :value="endStyle.key">
+            {{ endStyle.label }}
+          </option>
+        </select>
+      </div>
+      <label v-else-if="selectedTool === Tool.IMAGE">
         <input type="file" accept="image/*" @change="handleImageUpload">
       </label>
       <button v-if="isAddImageMode" @click="handleAddImageEnd">Done</button>
