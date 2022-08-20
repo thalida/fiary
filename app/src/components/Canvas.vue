@@ -343,12 +343,15 @@ function calculateDimensions(element) {
     outerMinY = Math.min(...outerYPoints);
     outerMaxX = Math.max(...outerXPoints);
     outerMaxY = Math.max(...outerYPoints);
+  } else if (element.tool === Tool.LINE) {
+    let strokeSize = element.strokeColor !== 'transparent' ? element.size * 0.75 : element.size / 2
+    outerMinX -= strokeSize;
+    outerMinY -= strokeSize;
+    outerMaxX += strokeSize;
+    outerMaxY += strokeSize;
   } else {
     let strokeSize = 0;
-
-    if (element.tool === Tool.LINE) {
-      strokeSize = element.strokeColor !== 'transparent' ? element.size * 0.75 : element.size / 2
-    } else if (element.strokeColor !== 'transparent' || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
+    if (element.strokeColor !== 'transparent' || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
       strokeSize = element.size / 2;
     }
 
@@ -424,6 +427,37 @@ function calculateLinePoints(element, toPos): any {
         y: fromy - headlen * Math.sin(startAngle + Math.PI / 5),
       };
       startPoints = [startA1, startA2]
+    }
+
+    return [
+      { x: fromx, y: fromy },
+      ...startPoints,
+      ...endPoints,
+      { x: toPos.x, y: toPos.y },
+    ]
+  } else if (element.toolOptions.lineEndStyle === LineEndStyle.SQUARE) {
+    const headSize = element.size * 2;
+    const endStartPoint = {
+      x: tox - (headSize / 2),
+      y: toy - (headSize / 2),
+    };
+    const endEndPoint = {
+      x: tox + (headSize / 2),
+      y: toy + (headSize / 2),
+    };
+    const endPoints = [endStartPoint, endEndPoint]
+
+    let startPoints: any[] = [];
+    if (element.toolOptions.lineEndSide === LineEndSide.BOTH) {
+      const startStartPoint = {
+        x: fromx - (headSize / 2),
+        y: fromy - (headSize / 2),
+      };
+      const startEndPoint = {
+        x: fromx + (headSize / 2),
+        y: fromy + (headSize / 2),
+      };
+      startPoints = [startStartPoint, startEndPoint]
     }
 
     return [
@@ -747,6 +781,7 @@ function drawElement(canvas, element, isCaching = false) {
 
     ctx.save()
     ctx.lineWidth *= 1.5;
+    ctx.fillStyle = ctx.strokeStyle;
     ctx.beginPath();
     ctx.moveTo(fromx, fromy);
     ctx.lineTo(tox, toy);
@@ -759,6 +794,18 @@ function drawElement(canvas, element, isCaching = false) {
         ctx.moveTo(targetPoint.x, targetPoint.y);
         ctx.lineTo(points[i].x, points[i].y);
       }
+      ctx.stroke();
+    } else if (element.toolOptions.lineEndStyle === LineEndStyle.SQUARE) {
+      ctx.lineWidth = element.size / 2;
+      ctx.beginPath();
+      for (let i = 1; i < points.length - 1; i += 2) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+        const width = endPoint.x - startPoint.x;
+        const height = endPoint.y - startPoint.y;
+        ctx.rect(startPoint.x, startPoint.y, width, height);
+      }
+      ctx.fill();
       ctx.stroke();
     }
     ctx.restore()
@@ -778,6 +825,16 @@ function drawElement(canvas, element, isCaching = false) {
         ctx.lineTo(points[i].x, points[i].y);
       }
       ctx.stroke();
+    } else if (element.toolOptions.lineEndStyle === LineEndStyle.SQUARE) {
+      ctx.beginPath();
+      for (let i = 1; i < points.length - 1; i += 2) {
+        const startPoint = points[i];
+        const endPoint = points[i + 1];
+        const width = endPoint.x - startPoint.x;
+        const height = endPoint.y - startPoint.y;
+        ctx.rect(startPoint.x, startPoint.y, width, height);
+      }
+      ctx.fill();
     }
     ctx.restore();
 
