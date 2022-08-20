@@ -13,7 +13,6 @@ const isAddImageMode = ref(false);
 const canvas = ref<HTMLCanvasElement>()
 const imagePreviewCanvas = ref<HTMLCanvasElement>()
 const imageBackdropCanvas = ref<HTMLCanvasElement>()
-const imageClipPreview = ref();
 const imageContainer = ref();
 const pasteCanvas = ref<HTMLCanvasElement>();
 const canvasConfig = ref({
@@ -50,6 +49,9 @@ const imageTransform = ref({
 });
 
 let canvasElements = ref([] as any[]);
+const redoCanvasElements = ref([] as any[]);
+const hasRedo = computed(() => redoCanvasElements.value.length > 0);
+const hasUndo = computed(() => canvasElements.value.length > 0);
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -206,9 +208,7 @@ const selectedComposition = ref(compositionOptions[0]);
 
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
-    canvasElements.value = [];
-    drawElements(canvas.value, canvasElements.value);
-    selectedTool.value = Tool.ERASER;
+    handleClearAll();
     event.target.blur();
   }
 }
@@ -264,7 +264,7 @@ function getOpacity(): number {
   return 1;
 }
 
-function formatColor(color, opacity) {
+function formatColor(color, opacity = 1) {
   if (color === 'transparent') {
     return 'transparent';
   }
@@ -533,7 +533,7 @@ function drawElement(canvas, element, isCaching = false) {
 
   ctx.save();
 
-  if (isCaching && (element.tool === Tool.ERASER || element.tool === Tool.CUT)) {
+  if (isCaching && (element.tool === Tool.ERASER || element.tool === Tool.CUT || element.tool === Tool.CLEAR_ALL)) {
     ctx.globalCompositeOperation = 'source-over';
   } else {
     ctx.globalCompositeOperation = element.composition;
@@ -745,6 +745,13 @@ function drawElement(canvas, element, isCaching = false) {
       ctx.strokeStyle = "#0000ff";
       ctx.stroke();
     }
+  } else if (element.tool === Tool.CLEAR_ALL) {
+    ctx.beginPath();
+    const rectangle = new Path2D();
+    const width = maxX - minX;
+    const height = maxY - minY;
+    rectangle.rect(minX, minY, width, height);
+    ctx.fill(rectangle);
   }
 
   ctx.restore();
@@ -762,6 +769,43 @@ function drawElements(canvas, elements) {
     const element = elements[i];
     drawElement(canvas, element);
   }
+}
+
+function handleClearAll() {
+  if (
+    canvasElements.value.length === 0 ||
+    (
+      canvasElements.value.length > 0 &&
+      canvasElements.value[canvasElements.value.length - 1].tool === Tool.CLEAR_ALL
+    )
+  ) {
+    return;
+  }
+
+  const clearElement = {
+    tool: Tool.CLEAR_ALL,
+    composition: 'destination-out',
+    lineWidth: 0,
+    strokeColor: 'transparent',
+    fillColor: { r: 255, g: 255, b: 255, a: 1 },
+    points: [
+      {
+        x: 0,
+        y: 0,
+      },
+      {
+        x: canvasConfig.value.width,
+        y: canvasConfig.value.height,
+      },
+    ],
+    dimensions: {},
+    cache: {},
+  };
+  clearElement.dimensions = calculateDimensions(clearElement);
+  canvasElements.value.push(clearElement);
+  cacheElement(clearElement);
+  drawElements(canvas.value, canvasElements.value);
+  selectedTool.value = Tool.ERASER;
 }
 
 async function handlePasteStart(canvasElements) {
@@ -1059,6 +1103,16 @@ function handleAddImageEnd() {
 }
 
 function handleCanvasTouchStart(event) {
+  if (
+    canvasElements.value.length === 0 &&
+    (
+      selectedTool.value === Tool.ERASER ||
+      selectedTool.value === Tool.CUT
+    )
+  ) {
+    return;
+  }
+
   checkIsStylus(event);
 
   if (!isDrawingAllowed(true) || canvas.value === null) {
@@ -1367,6 +1421,26 @@ function onImageClip({ target, clipType, clipStyles }) {
   setImageStyles(target, { clipType, clipStyles });
 }
 
+function handleUndoClick() {
+  if (canvasElements.value.length === 0) {
+    return;
+  }
+
+  const lastElement = canvasElements.value.pop();
+  redoCanvasElements.value.push(lastElement);
+  drawElements(canvas.value, canvasElements.value);
+}
+
+function handleRedoClick() {
+  if (redoCanvasElements.value.length === 0) {
+    return;
+  }
+
+  const lastElement = redoCanvasElements.value.pop();
+  canvasElements.value.push(lastElement);
+  drawElements(canvas.value, canvasElements.value);
+}
+
 </script>
 
 <template>
@@ -1408,6 +1482,8 @@ function onImageClip({ target, clipType, clipStyles }) {
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
       <label><input type="checkbox" v-model="debugMode" /> debug?</label>
+      <button :disabled="!hasUndo" @click="handleUndoClick">Undo</button>
+      <button :disabled="!hasRedo" @click="handleRedoClick">Redo</button>
     </div>
     <div>
       <div class="ruler-container" v-if="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
