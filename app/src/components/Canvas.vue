@@ -817,12 +817,12 @@ async function handlePasteStart(canvasElements) {
   drawElement(pasteCanvas.value, cutSelectionClip);
 }
 
-function handlePasteEnd(canvasElements) {
+function handlePasteEnd() {
   if (typeof pasteCanvas.value === 'undefined') {
     return;
   }
 
-  const cutSelection = canvasElements[canvasElements.length - 1];
+  const cutSelection = canvasElements.value[canvasElements.value.length - 1];
   const moveableRect = moveablePaste.value.getRect();
   const pasteElement = {
     tool: Tool.PASTE,
@@ -846,8 +846,8 @@ function handlePasteEnd(canvasElements) {
     && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
-    canvasElements.pop();
-    drawElements(canvas.value, canvasElements);
+    canvasElements.value.pop();
+    drawElements(canvas.value, canvasElements.value);
     isPasteMode.value = false;
     return;
   }
@@ -900,8 +900,13 @@ function handlePasteEnd(canvasElements) {
     canvas: pasteCacheCanvas,
   };
 
-  canvasElements.push(pasteElement);
-  drawElements(canvas.value, canvasElements);
+  canvasElements.value.push(pasteElement);
+  drawElements(canvas.value, canvasElements.value);
+  isPasteMode.value = false;
+}
+
+function handlePasteDelete() {
+  drawElements(canvas.value, canvasElements.value);
   isPasteMode.value = false;
 }
 
@@ -1199,13 +1204,8 @@ function handleCanvasTouchMove(event) {
 }
 
 function handleCanvasTouchEnd(event) {
-  // if (isAddImageMode.value) {
-  //   handleAddImageEnd(canvasElements.value)
-  //   return;
-  // }
-
   if (isPasteMode.value) {
-    handlePasteEnd(canvasElements.value)
+    handlePasteEnd()
     return;
   }
 
@@ -1381,6 +1381,7 @@ function onImageClip({ target, clipType, clipStyles }) {
         <input type="file" accept="image/*" @change="handleImageUpload">
       </label>
       <button v-if="isAddImageMode" @click="handleAddImageEnd">Done</button>
+      <button v-else-if="isPasteMode" @click="handlePasteDelete">Delete Selection</button>
       <select v-model="penSize">
         <option v-for="size in penSizes" :key="size" :value="size">
           {{ size }}
