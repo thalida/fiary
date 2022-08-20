@@ -8,15 +8,23 @@ import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
+const isAddImageMode = ref(false);
+
 const canvas = ref<HTMLCanvasElement>()
+const imagePreviewCanvas = ref<HTMLCanvasElement>()
+const imageBackdropCanvas = ref<HTMLCanvasElement>()
+const imageClipPreview = ref();
+const imageContainer = ref();
 const pasteCanvas = ref<HTMLCanvasElement>();
 const canvasConfig = ref({
   width: window.innerWidth,
   height: window.innerHeight,
+  dpi: window.devicePixelRatio,
 })
 
 const moveableRuler = ref()
 const moveablePaste = ref()
+const moveableImage = ref()
 const rulerElement = ref()
 const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
 const ruler = ref({
@@ -33,9 +41,15 @@ const pasteTransform = ref({
   scale: [1, 1],
   rotate: 0,
 });
+const imageTransform = ref({
+  translate: [0, 0],
+  scale: [1, 1],
+  rotate: 0,
+  clipType: 'inset',
+  clipStyles: [0, 0, 0, 0]
+});
 
 let canvasElements = ref([] as any[]);
-let cutShape = ref();
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -58,7 +72,7 @@ onMounted(() => {
     return;
   }
 
-  const dpi = window.devicePixelRatio;
+  const dpi = canvasConfig.value.dpi;
   canvas.value.width = canvasConfig.value.width * dpi;
   canvas.value.height = canvasConfig.value.height * dpi;
 
@@ -81,13 +95,6 @@ watchPostEffect(() => {
   }
 })
 
-// watch(
-//   () => ruler.value.isVisible,
-//   () => {
-//   },
-//   { flush: 'post' }
-// )
-
 enum Tool {
   POINTER = 0,
   ERASER = 1,
@@ -102,6 +109,7 @@ enum Tool {
   ARROW = 33,
   CUT = 40,
   PASTE = 41,
+  IMAGE = 50,
 }
 const supportedTools = ref([
   { key: Tool.POINTER, label: 'Pointer' },
@@ -113,6 +121,7 @@ const supportedTools = ref([
   { key: Tool.RECTANGLE, label: 'Rectangle' },
   { key: Tool.TRIANGLE, label: 'Triangle' },
   { key: Tool.ARROW, label: 'Arrow' },
+  { key: Tool.IMAGE, label: 'Image' },
   { key: Tool.CUT, label: 'Cut' },
   { key: Tool.ERASER, label: 'Eraser' },
   { key: Tool.CLEAR_ALL, label: 'Clear All' },
@@ -212,7 +221,7 @@ function checkIsStylus(event) {
 
 function isDrawingAllowed(isDrawingOverride = false) {
   const activeDrawing = isDrawing.value || isDrawingOverride
-  if (!activeDrawing || isMovingRuler || isPasteMode.value || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
+  if (!activeDrawing || isMovingRuler || isPasteMode.value || isAddImageMode.value || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
     return false
   }
 
@@ -808,7 +817,7 @@ async function handlePasteStart(canvasElements) {
   drawElement(pasteCanvas.value, cutSelectionClip);
 }
 
-function handlePasteComplete(canvasElements) {
+function handlePasteEnd(canvasElements) {
   if (typeof pasteCanvas.value === 'undefined') {
     return;
   }
@@ -894,6 +903,154 @@ function handlePasteComplete(canvasElements) {
   canvasElements.push(pasteElement);
   drawElements(canvas.value, canvasElements);
   isPasteMode.value = false;
+}
+
+async function handleAddImageStart(image) {
+  if (typeof canvas.value === 'undefined') {
+    return;
+  }
+
+  let imageWidth = image.width;
+  let imageHeight = image.height;
+  let scale = 1;
+  if (image.width > canvasConfig.value.width || image.height > canvasConfig.value.height) {
+    scale = Math.min(canvasConfig.value.width / image.width, canvasConfig.value.height / image.height);
+    imageWidth *= scale;
+    imageHeight *= scale;
+  }
+
+  imageTransform.value = {
+    translate: [
+      canvasConfig.value.width / 2 - imageWidth / 2,
+      canvasConfig.value.height / 2 - imageHeight / 2,
+    ],
+    scale: [scale, scale],
+    rotate: 0,
+    clipType: 'inset',
+    clipStyles: [0, 0, 0, 0],
+  };
+  isAddImageMode.value = true;
+  await nextTick();
+
+  if (typeof imagePreviewCanvas.value === 'undefined' || typeof imageBackdropCanvas.value === 'undefined') {
+    return;
+  }
+
+  const previewCtx = imagePreviewCanvas.value.getContext('2d');
+  const backdropCtx = imageBackdropCanvas.value.getContext('2d');
+
+  if (previewCtx === null || backdropCtx === null) {
+    return;
+  }
+
+  setImageStyles(imagePreviewCanvas.value, imageTransform.value);
+
+  const dpi = canvasConfig.value.dpi;
+  imagePreviewCanvas.value.width = imageWidth * dpi;
+  imagePreviewCanvas.value.height = imageHeight * dpi;
+  imagePreviewCanvas.value.style.width = `${imageWidth}px`;
+  imagePreviewCanvas.value.style.height = `${imageHeight}px`;
+  previewCtx.scale(dpi, dpi);
+
+  imageBackdropCanvas.value.width = imageWidth * dpi;
+  imageBackdropCanvas.value.height = imageHeight * dpi;
+  imageBackdropCanvas.value.style.width = `${imageWidth}px`;
+  imageBackdropCanvas.value.style.height = `${imageHeight}px`;
+  backdropCtx.scale(dpi, dpi);
+
+  clearCanvas(imagePreviewCanvas.value);
+  previewCtx.drawImage(image, 0, 0, imageWidth, imageHeight);
+
+  clearCanvas(imageBackdropCanvas.value);
+  backdropCtx.drawImage(image, 0, 0, imageWidth, imageHeight);
+}
+
+
+function handleAddImageEnd() {
+  if (typeof imagePreviewCanvas.value === 'undefined') {
+    return;
+  }
+
+  const moveableRect = moveableImage.value.getRect();
+  const imageElement = {
+    tool: Tool.IMAGE,
+    composition: getComposition(),
+    isDrawingCached: true,
+    dimensions: {
+      outerMinX: moveableRect.left,
+      outerMinY: moveableRect.top,
+      outerWidth: moveableRect.width,
+      outerHeight: moveableRect.height,
+    },
+    cache: {
+      drawing: {},
+    },
+  };
+
+  const imageCacheCanvas = document.createElement('canvas');
+  const ctx = imageCacheCanvas.getContext('2d');
+
+  if (ctx === null) {
+    return;
+  }
+
+  const dpi = canvasConfig.value.dpi;
+  const minX = imageElement.dimensions.outerMinX;
+  const minY = imageElement.dimensions.outerMinY;
+  const width = imageElement.dimensions.outerWidth;
+  const height = imageElement.dimensions.outerHeight;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  imageCacheCanvas.width = width * dpi;
+  imageCacheCanvas.height = height * dpi;
+  imageCacheCanvas.style.width = `${width}px`;
+  imageCacheCanvas.style.height = `${height}px`;
+
+  const rotRad = imageTransform.value.rotate * Math.PI / 180;
+  const imageWidth = imageTransform.value.scale[0] * imagePreviewCanvas.value.offsetWidth;
+  const imageHeight = imageTransform.value.scale[1] * imagePreviewCanvas.value.offsetHeight;
+  let clipValues = imageTransform.value.clipStyles
+    .map((value: number | string) => typeof value === 'string' ? Number(value.split('px')[0]) : value)
+    .map((value: number) => value < 0 ? 0 : value);
+  clipValues[0] *= imageTransform.value.scale[1];
+  clipValues[1] *= imageTransform.value.scale[0];
+  clipValues[2] *= imageTransform.value.scale[1];
+  clipValues[3] *= imageTransform.value.scale[0];
+  const clipWidth = imageWidth - clipValues[1] - clipValues[3];
+  const clipHeight = imageHeight - clipValues[0] - clipValues[2];
+
+  ctx.save();
+  ctx.scale(dpi, dpi);
+  ctx.translate(centerX, centerY);
+  ctx.rotate(rotRad);
+  ctx.beginPath();
+  ctx.rect((-imageWidth / 2) + clipValues[3], (-imageHeight / 2) + clipValues[0], clipWidth, clipHeight);
+  ctx.clip();
+  ctx.fillStyle = '#ff0000';
+  ctx.fill()
+  ctx.drawImage(
+    imagePreviewCanvas.value,
+    -imageWidth / 2,
+    -imageHeight / 2,
+    imageWidth,
+    imageHeight
+  );
+  ctx.restore();
+
+  imageElement.isDrawingCached = true;
+  imageElement.cache.drawing = {
+    x: minX,
+    y: minY,
+    width,
+    height,
+    dpi,
+    canvas: imageCacheCanvas,
+  };
+
+  canvasElements.value.push(imageElement);
+  drawElements(canvas.value, canvasElements.value);
+  isAddImageMode.value = false;
 }
 
 function handleCanvasTouchStart(event) {
@@ -1042,8 +1199,13 @@ function handleCanvasTouchMove(event) {
 }
 
 function handleCanvasTouchEnd(event) {
+  // if (isAddImageMode.value) {
+  //   handleAddImageEnd(canvasElements.value)
+  //   return;
+  // }
+
   if (isPasteMode.value) {
-    handlePasteComplete(canvasElements.value)
+    handlePasteEnd(canvasElements.value)
     return;
   }
 
@@ -1121,15 +1283,6 @@ function onRulerRotate({ target, drag, rotation }) {
   setRulerTransform(target, { rotate: transformRotation % 360, translate: drag.translate });
 }
 
-function onPasteMoveStart() {
-  // isMovingRuler = true;
-}
-
-function onPasteMoveEnd(res) {
-  // console.log('end', res);
-  // isMovingRuler = false;
-}
-
 function setPasteTransform(target, transform) {
   const nextTransform = {
     ...pasteTransform.value,
@@ -1156,6 +1309,64 @@ function onPasteScale({ target, scale, drag }) {
   setPasteTransform(target, { scale, translate: drag.translate });
 }
 
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+
+  var reader = new FileReader();
+  reader.onload = function (onloadEvent) {
+    if (onloadEvent.target === null || typeof onloadEvent.target.result !== 'string') {
+      return;
+    }
+
+    var img = new Image();
+    img.onload = function () {
+      handleAddImageStart(img);
+    }
+
+    img.src = onloadEvent.target.result;
+  }
+  reader.readAsDataURL(file);
+}
+
+function setImageStyles(target, transform) {
+  if (typeof imagePreviewCanvas.value === 'undefined') {
+    return;
+  }
+  const nextTransform = {
+    ...imageTransform.value,
+    ...transform,
+  }
+
+  const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
+  const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
+  const rotate = `rotate(${nextTransform.rotate}deg)`;
+
+  imagePreviewCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
+  imagePreviewCanvas.value.style.clipPath = `${nextTransform.clipType}(${nextTransform.clipStyles.join(' ')})`;
+
+  if (typeof imageBackdropCanvas.value !== 'undefined') {
+    imageBackdropCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
+  }
+
+  imageTransform.value = nextTransform;
+}
+
+function onImageDrag({ target, translate }) {
+  setImageStyles(target, { translate });
+}
+
+function onImageRotate({ target, rotate, drag }) {
+  setImageStyles(target, { rotate, translate: drag.translate });
+}
+
+function onImageScale({ target, scale, drag }) {
+  setImageStyles(target, { scale, translate: drag.translate });
+}
+
+function onImageClip({ target, clipType, clipStyles }) {
+  setImageStyles(target, { clipType, clipStyles });
+}
+
 </script>
 
 <template>
@@ -1166,6 +1377,10 @@ function onPasteScale({ target, scale, drag }) {
           {{ tool.label }}
         </option>
       </select>
+      <label v-if="selectedTool === Tool.IMAGE">
+        <input type="file" accept="image/*" @change="handleImageUpload">
+      </label>
+      <button v-if="isAddImageMode" @click="handleAddImageEnd">Done</button>
       <select v-model="penSize">
         <option v-for="size in penSizes" :key="size" :value="size">
           {{ size }}
@@ -1216,11 +1431,20 @@ function onPasteScale({ target, scale, drag }) {
           @renderEnd="onRulerMoveEnd" />
       </div>
 
-      <div v-if="isPasteMode">
+      <div v-if="isAddImageMode">
+        <div class="image-container" ref="imageContainer">
+          <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
+          <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>
+        </div>
+        <Moveable ref="moveableImage" className="moveable-image" :target="['.image-canvas--preview']" :pinchable="true"
+          :draggable="true" :rotatable="true" :scalable="true" :clippable="true" :clipTargetBounds="true"
+          :keepRatio="true" @drag="onImageDrag" @rotate="onImageRotate" @scale="onImageScale" @clip="onImageClip" />
+      </div>
+      <div v-else-if="isPasteMode">
         <canvas class="paste_canvas" ref="pasteCanvas"></canvas>
         <Moveable ref="moveablePaste" className="moveable-paste" :target="['.paste_canvas']" :pinchable="true"
           :draggable="true" :rotatable="true" :scalable="true" :keepRatio="true" @drag="onPasteDrag"
-          @rotate="onPasteRotate" @scale="onPasteScale" @renderStart="onPasteMoveStart" @renderEnd="onPasteMoveEnd" />
+          @rotate="onPasteRotate" @scale="onPasteScale" />
       </div>
       <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
         @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
@@ -1242,11 +1466,26 @@ function onPasteScale({ target, scale, drag }) {
   z-index: 9999;
 }
 
-.paste_canvas {
+.paste_canvas,
+.image-container {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 2;
+}
+
+.image-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.image-canvas--preview {
+  z-index: 1;
+}
+
+.image-canvas--backdrop {
+  opacity: 0.5;
 }
 
 .ruler-container {
@@ -1276,11 +1515,27 @@ function onPasteScale({ target, scale, drag }) {
   background: rgba(0, 0, 0, 0.5);
   background: linear-gradient(to right, rgba(255, 0, 0, 0.5) 0%, rgba(0, 0, 255, 0.5) 100%);
 }
+
+.image-clip-preview {
+  position: absolute;
+  z-index: 100;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
 </style>
 
 <style>
 .hide-ruler-controls .moveable-ruler.moveable-control-box .moveable-rotation {
   display: none;
+}
+
+.moveable-image.moveable-control-box .moveable-control.moveable-direction.moveable-nw,
+.moveable-image.moveable-control-box .moveable-control.moveable-direction.moveable-ne,
+.moveable-image.moveable-control-box .moveable-control.moveable-direction.moveable-sw,
+.moveable-image.moveable-control-box .moveable-control.moveable-direction.moveable-se {
+  z-index: 20;
 }
 
 .moveable-ruler.moveable-control-box .moveable-control.moveable-rotation-control {
