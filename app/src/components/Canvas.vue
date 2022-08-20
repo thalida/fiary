@@ -972,7 +972,6 @@ function handleAddImageEnd() {
   }
 
   const moveableRect = moveableImage.value.getRect();
-  console.log(moveableRect);
   const imageElement = {
     tool: Tool.IMAGE,
     composition: getComposition(),
@@ -1000,23 +999,36 @@ function handleAddImageEnd() {
   const minY = imageElement.dimensions.outerMinY;
   const width = imageElement.dimensions.outerWidth;
   const height = imageElement.dimensions.outerHeight;
-
-  const rotRad = imageTransform.value.rotate * Math.PI / 180;
-  const imageWidth = imageTransform.value.scale[0] * imagePreviewCanvas.value.offsetWidth;
-  const imageHeight = imageTransform.value.scale[1] * imagePreviewCanvas.value.offsetHeight;
+  const centerX = width / 2;
+  const centerY = height / 2;
 
   imageCacheCanvas.width = width * dpi;
   imageCacheCanvas.height = height * dpi;
   imageCacheCanvas.style.width = `${width}px`;
   imageCacheCanvas.style.height = `${height}px`;
 
-  const centerX = width / 2;
-  const centerY = height / 2;
+  const rotRad = imageTransform.value.rotate * Math.PI / 180;
+  const imageWidth = imageTransform.value.scale[0] * imagePreviewCanvas.value.offsetWidth;
+  const imageHeight = imageTransform.value.scale[1] * imagePreviewCanvas.value.offsetHeight;
+  let clipValues = imageTransform.value.clipStyles
+    .map((value: number | string) => typeof value === 'string' ? Number(value.split('px')[0]) : value)
+    .map((value: number) => value < 0 ? 0 : value);
+  clipValues[0] *= imageTransform.value.scale[1];
+  clipValues[1] *= imageTransform.value.scale[0];
+  clipValues[2] *= imageTransform.value.scale[1];
+  clipValues[3] *= imageTransform.value.scale[0];
+  const clipWidth = imageWidth - clipValues[1] - clipValues[3];
+  const clipHeight = imageHeight - clipValues[0] - clipValues[2];
 
   ctx.save();
   ctx.scale(dpi, dpi);
   ctx.translate(centerX, centerY);
   ctx.rotate(rotRad);
+  ctx.beginPath();
+  ctx.rect((-imageWidth / 2) + clipValues[3], (-imageHeight / 2) + clipValues[0], clipWidth, clipHeight);
+  ctx.clip();
+  ctx.fillStyle = '#ff0000';
+  ctx.fill()
   ctx.drawImage(
     imagePreviewCanvas.value,
     -imageWidth / 2,
@@ -1317,6 +1329,9 @@ function handleImageUpload(e) {
 }
 
 function setImageStyles(target, transform) {
+  if (typeof imagePreviewCanvas.value === 'undefined') {
+    return;
+  }
   const nextTransform = {
     ...imageTransform.value,
     ...transform,
@@ -1326,13 +1341,12 @@ function setImageStyles(target, transform) {
   const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
   const rotate = `rotate(${nextTransform.rotate}deg)`;
 
-  target.style.transform = `${translate} ${scale} ${rotate}`;
-  target.style.clipPath = `${nextTransform.clipType}(${nextTransform.clipStyles.join(' ')})`;
+  imagePreviewCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
+  imagePreviewCanvas.value.style.clipPath = `${nextTransform.clipType}(${nextTransform.clipStyles.join(' ')})`;
 
   if (typeof imageBackdropCanvas.value !== 'undefined') {
     imageBackdropCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
   }
-  // imageClipPreview.value.style.clipPath = `${nextTransform.clipType}(${nextTransform.clipStyles.join(' ')})`;
 
   imageTransform.value = nextTransform;
 }
