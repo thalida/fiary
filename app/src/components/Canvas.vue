@@ -773,8 +773,11 @@ function drawElements(canvas, elements) {
 
 function handleClearAll() {
   if (
-    canvasElements.value.length > 0 &&
-    canvasElements.value[canvasElements.value.length - 1].tool === Tool.CLEAR_ALL
+    canvasElements.value.length === 0 ||
+    (
+      canvasElements.value.length > 0 &&
+      canvasElements.value[canvasElements.value.length - 1].tool === Tool.CLEAR_ALL
+    )
   ) {
     return;
   }
@@ -1100,6 +1103,16 @@ function handleAddImageEnd() {
 }
 
 function handleCanvasTouchStart(event) {
+  if (
+    canvasElements.value.length === 0 &&
+    (
+      selectedTool.value === Tool.ERASER ||
+      selectedTool.value === Tool.CUT
+    )
+  ) {
+    return;
+  }
+
   checkIsStylus(event);
 
   if (!isDrawingAllowed(true) || canvas.value === null) {
@@ -1469,8 +1482,8 @@ function handleRedoClick() {
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
       <label><input type="checkbox" v-model="debugMode" /> debug?</label>
-      <button @click="handleUndoClick">Undo</button>
-      <button @click="handleRedoClick">Redo</button>
+      <button :disabled="!hasUndo" @click="handleUndoClick">Undo</button>
+      <button :disabled="!hasRedo" @click="handleRedoClick">Redo</button>
     </div>
     <div>
       <div class="ruler-container" v-if="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
