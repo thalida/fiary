@@ -9,7 +9,6 @@ import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch
 const debugMode = ref(false);
 const isPasteMode = ref(false);
 const isAddImageMode = ref(false);
-const isCheckboxMode = ref(false);
 
 const canvas = ref<HTMLCanvasElement>()
 const htmlCanvas = ref()
@@ -51,10 +50,13 @@ const imageTransform = ref({
 });
 
 let canvasElements = ref([] as any[]);
+const clearAllIndexes = ref([] as any[]);
+const activeCanvasIndex = computed(() => clearAllIndexes.value.length > 0 ? clearAllIndexes.value[clearAllIndexes.value.length - 1] : 0);
+const activeCanvasElements = computed(() => canvasElements.value.slice(activeCanvasIndex.value));
 const redoCanvasElements = ref([] as any[]);
 const hasRedo = computed(() => redoCanvasElements.value.length > 0);
 const hasUndo = computed(() => canvasElements.value.length > 0);
-const htmlElements = computed(() => canvasElements.value.filter((el: any) => el.isHTMLElement));
+const htmlElements = computed(() => activeCanvasElements.value.filter((el: any) => el.isHTMLElement));
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -90,7 +92,7 @@ onMounted(() => {
 watch(
   () => debugMode.value,
   () => {
-    drawElements(canvas.value, canvasElements.value)
+    drawElements(canvas.value, activeCanvasElements.value)
   }
 )
 
@@ -240,9 +242,8 @@ const selectedComposition = ref(compositionOptions[0]);
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
     handleClearAll();
-  } else if (selectedTool.value === Tool.CHECKBOX) {
-    handleCheckbox();
   }
+
   event.target.blur();
 }
 
@@ -581,12 +582,16 @@ function getFlatSvgPathFromStroke(stroke) {
   // return d.join(' ')
 }
 
-function addCanvasElement(element) {
-  if (redoCanvasElements.value.length > 0) {
+function addCanvasElement(element, clearRedoStack = true) {
+  if (clearRedoStack && redoCanvasElements.value.length > 0) {
     redoCanvasElements.value = [];
   }
 
   canvasElements.value.push(element);
+
+  if (element.tool === Tool.CLEAR_ALL) {
+    clearAllIndexes.value.push(canvasElements.value.length - 1);
+  }
 }
 
 function cacheElement(element) {
@@ -955,10 +960,6 @@ function drawElements(canvas, elements) {
   }
 }
 
-function handleCheckbox() {
-  isCheckboxMode.value = true;
-}
-
 function handleAddCheckbox(pos) {
   const checkboxElement = {
     tool: Tool.CHECKBOX,
@@ -969,7 +970,7 @@ function handleAddCheckbox(pos) {
     isHTMLElement: true,
   };
 
-  canvasElements.value.push(checkboxElement);
+  addCanvasElement(checkboxElement);
 }
 
 function handleClearAll() {
@@ -1005,7 +1006,7 @@ function handleClearAll() {
   clearElement.dimensions = calculateDimensions(clearElement);
   addCanvasElement(clearElement);
   cacheElement(clearElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
   selectedTool.value = Tool.ERASER;
 }
 
@@ -1033,7 +1034,7 @@ async function handlePasteStart(canvasElements) {
   cutSelection.isCompletedCut = true;
   cutSelection.composition = 'destination-out';
   cacheElement(cutSelection);
-  drawElements(canvas.value, canvasElements);
+  drawElements(canvas.value, activeCanvasElements.value);
 
   pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
   setPasteTransform(pasteCanvas.value, pasteTransform.value);
@@ -1092,7 +1093,7 @@ function handlePasteEnd() {
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
     canvasElements.value.pop();
-    drawElements(canvas.value, canvasElements.value);
+    drawElements(canvas.value, activeCanvasElements.value);
     isPasteMode.value = false;
     return;
   }
@@ -1146,12 +1147,12 @@ function handlePasteEnd() {
   };
 
   addCanvasElement(pasteElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
   isPasteMode.value = false;
 }
 
 function handlePasteDelete() {
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
   isPasteMode.value = false;
 }
 
@@ -1299,13 +1300,13 @@ function handleAddImageEnd() {
   };
 
   addCanvasElement(imageElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
   isAddImageMode.value = false;
 }
 
 function handleCanvasTouchStart(event) {
   if (
-    canvasElements.value.length === 0 &&
+    activeCanvasElements.value.length === 0 &&
     (
       selectedTool.value === Tool.ERASER ||
       selectedTool.value === Tool.CUT
@@ -1314,7 +1315,7 @@ function handleCanvasTouchStart(event) {
     return;
   }
 
-  if (isCheckboxMode.value) {
+  if (selectedTool.value === Tool.CHECKBOX) {
     return;
   }
 
@@ -1375,7 +1376,7 @@ function handleCanvasTouchStart(event) {
   newElement.dimensions = calculateDimensions(newElement);
 
   addCanvasElement(newElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
 }
 
 function handleCanvasTouchMove(event) {
@@ -1421,11 +1422,11 @@ function handleCanvasTouchMove(event) {
   }
 
   lastElement.dimensions = calculateDimensions(lastElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
 }
 
 function handleCanvasTouchEnd(event) {
-  if (isCheckboxMode.value) {
+  if (selectedTool.value === Tool.CHECKBOX) {
     const pos = getMousePos(canvas.value, event);
     handleAddCheckbox(pos);
     return;
@@ -1454,7 +1455,7 @@ function handleCanvasTouchEnd(event) {
     handlePasteStart(canvasElements.value);
   } else {
     cacheElement(lastElement);
-    drawElements(canvas.value, canvasElements.value);
+    drawElements(canvas.value, activeCanvasElements.value);
   }
   isDrawing.value = false;
 }
@@ -1600,8 +1601,11 @@ function handleUndoClick() {
   }
 
   const lastElement = canvasElements.value.pop();
+  if (lastElement.tool === Tool.CLEAR_ALL) {
+    clearAllIndexes.value.pop();
+  }
   redoCanvasElements.value.push(lastElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
 }
 
 function handleRedoClick() {
@@ -1610,8 +1614,8 @@ function handleRedoClick() {
   }
 
   const lastElement = redoCanvasElements.value.pop();
-  canvasElements.value.push(lastElement);
-  drawElements(canvas.value, canvasElements.value);
+  addCanvasElement(lastElement, false);
+  drawElements(canvas.value, activeCanvasElements.value);
 }
 
 </script>
