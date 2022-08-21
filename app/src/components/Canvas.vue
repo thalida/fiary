@@ -9,8 +9,10 @@ import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch
 const debugMode = ref(false);
 const isPasteMode = ref(false);
 const isAddImageMode = ref(false);
+const isCheckboxMode = ref(false);
 
 const canvas = ref<HTMLCanvasElement>()
+const htmlCanvas = ref()
 const imagePreviewCanvas = ref<HTMLCanvasElement>()
 const imageBackdropCanvas = ref<HTMLCanvasElement>()
 const imageContainer = ref();
@@ -52,6 +54,7 @@ let canvasElements = ref([] as any[]);
 const redoCanvasElements = ref([] as any[]);
 const hasRedo = computed(() => redoCanvasElements.value.length > 0);
 const hasUndo = computed(() => canvasElements.value.length > 0);
+const htmlElements = computed(() => canvasElements.value.filter((el: any) => el.isHTMLElement));
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -112,6 +115,7 @@ enum Tool {
   CUT = 40,
   PASTE = 41,
   IMAGE = 50,
+  CHECKBOX = 60,
 }
 const supportedTools = ref([
   { key: Tool.POINTER, label: 'Pointer' },
@@ -124,6 +128,7 @@ const supportedTools = ref([
   { key: Tool.TRIANGLE, label: 'Triangle' },
   { key: Tool.LINE, label: 'Line' },
   { key: Tool.IMAGE, label: 'Image' },
+  { key: Tool.CHECKBOX, label: 'Checkbox' },
   { key: Tool.CUT, label: 'Cut' },
   { key: Tool.ERASER, label: 'Eraser' },
   { key: Tool.CLEAR_ALL, label: 'Clear All' },
@@ -235,8 +240,10 @@ const selectedComposition = ref(compositionOptions[0]);
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
     handleClearAll();
-    event.target.blur();
+  } else if (selectedTool.value === Tool.CHECKBOX) {
+    handleCheckbox();
   }
+  event.target.blur();
 }
 
 function checkIsStylus(event) {
@@ -616,11 +623,11 @@ function cacheElement(element) {
 }
 
 function drawElement(canvas, element, isCaching = false) {
-  const ctx = canvas.getContext('2d');
-
-  if (element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
+  if (element.isHTMLElement || element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
     return
   }
+
+  const ctx = canvas.getContext('2d');
 
   if (element.isDrawingCached) {
     const cachedCanvas = element.cache.drawing.canvas;
@@ -946,6 +953,23 @@ function drawElements(canvas, elements) {
     const element = elements[i];
     drawElement(canvas, element);
   }
+}
+
+function handleCheckbox() {
+  isCheckboxMode.value = true;
+}
+
+function handleAddCheckbox(pos) {
+  const checkboxElement = {
+    tool: Tool.CHECKBOX,
+    toolOptions: {
+      isChecked: false,
+    },
+    points: [pos],
+    isHTMLElement: true,
+  };
+
+  canvasElements.value.push(checkboxElement);
 }
 
 function handleClearAll() {
@@ -1290,6 +1314,10 @@ function handleCanvasTouchStart(event) {
     return;
   }
 
+  if (isCheckboxMode.value) {
+    return;
+  }
+
   checkIsStylus(event);
 
   if (!isDrawingAllowed(true) || canvas.value === null) {
@@ -1397,6 +1425,12 @@ function handleCanvasTouchMove(event) {
 }
 
 function handleCanvasTouchEnd(event) {
+  if (isCheckboxMode.value) {
+    const pos = getMousePos(canvas.value, event);
+    handleAddCheckbox(pos);
+    return;
+  }
+
   if (isPasteMode.value) {
     handlePasteEnd()
     return;
@@ -1674,6 +1708,15 @@ function handleRedoClick() {
           :draggable="true" :rotatable="true" :scalable="true" :keepRatio="true" @drag="onPasteDrag"
           @rotate="onPasteRotate" @scale="onPasteScale" />
       </div>
+      <div ref="htmlCanvas" class="html-canvas" :style="{ width: canvasConfig.width, height: canvasConfig.height }">
+        <template v-for="(element, index) in htmlElements" :key="index">
+          <input v-if="element.tool === Tool.CHECKBOX" :value="element.value" type="checkbox" :style="{
+            position: 'absolute',
+            left: element.points[0].x + 'px',
+            top: element.points[0].y + 'px',
+          }" />
+        </template>
+      </div>
       <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
         @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
         @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
@@ -1692,6 +1735,13 @@ function handleRedoClick() {
   top: 0;
   left: 0;
   z-index: 9999;
+}
+
+.html-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
 }
 
 .paste_canvas,
