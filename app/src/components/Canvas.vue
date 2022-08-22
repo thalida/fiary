@@ -2,16 +2,19 @@
 import { getStroke } from 'perfect-freehand'
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
-import Moveable from "vue3-moveable";
+import Moveable from "moveable";
+import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
 const isAddImageMode = ref(false);
+const isInteractiveEditMode = ref(false);
 
 const canvas = ref<HTMLCanvasElement>()
 const htmlCanvas = ref()
+const interactiveElementRefs = ref<HTMLElement[]>([]);
 const imagePreviewCanvas = ref<HTMLCanvasElement>()
 const imageBackdropCanvas = ref<HTMLCanvasElement>()
 const imageContainer = ref();
@@ -510,8 +513,8 @@ function getMousePos(canvas, event, followRuler = false) {
         ];
 
         for (let i = 0; i < searchDirections.length; i += 1) {
-          const searchDirction = searchDirections[i];
-          const isInside = moveableRuler.value.isInside(searchDirction[0], searchDirction[1]);
+          const searchDirection = searchDirections[i];
+          const isInside = moveableRuler.value.isInside(searchDirection[0], searchDirection[1]);
 
           if (isFirstLoop) {
             searchFor = !isInside;
@@ -519,8 +522,8 @@ function getMousePos(canvas, event, followRuler = false) {
           }
 
           if (isInside === searchFor) {
-            foundX = searchDirction[0];
-            foundY = searchDirction[1];
+            foundX = searchDirection[0];
+            foundY = searchDirection[1];
             break;
           }
         }
@@ -960,11 +963,37 @@ function drawElements(canvas, elements) {
   }
 }
 
+function getInteractiveElementTransform(element): string {
+  const translate = `translate(${element.style.transform.translate[0]}px, ${element.style.transform.translate[1]}px)`;
+  const scale = `scale(${element.style.transform.scale[0]}, ${element.style.transform.scale[1]})`;
+  const rotate = `rotate(${element.style.transform.rotate}deg)`;
+
+  const transformStr = `${translate} ${scale} ${rotate}`;
+  return transformStr;
+}
+
+function setInteractiveElementTransform(element, transform = {}): string {
+  const nextTransform = {
+    ...element.style.transform,
+    ...transform,
+  }
+
+  element.style.transform = nextTransform;
+  return nextTransform;
+}
+
 function handleAddCheckbox(pos) {
   const checkboxElement = {
     tool: Tool.CHECKBOX,
     toolOptions: {
       isChecked: false,
+    },
+    style: {
+      transform: {
+        translate: [pos.x, pos.y],
+        scale: [1, 1],
+        rotate: 0,
+      },
     },
     points: [pos],
     isHTMLElement: true,
@@ -1427,7 +1456,7 @@ function handleCanvasTouchMove(event) {
 
 function handleCanvasTouchEnd(event) {
   if (selectedTool.value === Tool.CHECKBOX) {
-    const pos = getMousePos(canvas.value, event);
+    const pos = getMousePos(canvas.value, event, true);
     handleAddCheckbox(pos);
     return;
   }
@@ -1618,6 +1647,57 @@ function handleRedoClick() {
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
+let moveableElements = []
+function handleStartInteractiveEdit() {
+  moveableElements = []
+  isInteractiveEditMode.value = true;
+  selectedTool.value = Tool.POINTER;
+
+  for (const ref of interactiveElementRefs.value) {
+    const moveable = new Moveable(document.body, {
+      target: ref,
+      draggable: true,
+      rotatable: true,
+      resizable: false,
+      scalable: false,
+      pinchable: true,
+    });
+    moveable.on("drag", handleInteractiveDrag);
+    // moveable.on("resize", handleInteractiveResize);
+    moveable.on("rotate", handleInteractiveRotate);
+    moveableElements.push(moveable);
+  }
+}
+
+function handleEndInteractiveEdit() {
+  isInteractiveEditMode.value = false;
+  for (const moveable of moveableElements) {
+    moveable.destroy();
+  }
+  moveableElements = []
+}
+
+function setInteractiveElementStyles(target, transform) {
+  const index = parseInt(target.getAttribute('data-index'), 10);
+  const element = activeCanvasElements.value[index];
+
+  setInteractiveElementTransform(element, transform);
+  const transformStr = getInteractiveElementTransform(element);
+  target.style.transform = transformStr;
+}
+
+function handleInteractiveDrag({ target, translate }) {
+  setInteractiveElementStyles(target, { translate });
+}
+
+// function handleInteractiveResize({ target, rotate, drag }) {
+//   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
+// }
+
+function handleInteractiveRotate({ target, rotate, drag }) {
+  setInteractiveElementStyles(target, { rotate, translate: drag.translate });
+}
+
 </script>
 
 <template>
@@ -1643,8 +1723,12 @@ function handleRedoClick() {
       <label v-else-if="selectedTool === Tool.IMAGE">
         <input type="file" accept="image/*" @change="handleImageUpload">
       </label>
+      <label v-else-if="selectedTool === Tool.CHECKBOX && !isInteractiveEditMode">
+        <button @click="handleStartInteractiveEdit">Edit</button>
+      </label>
       <button v-if="isAddImageMode" @click="handleAddImageEnd">Done</button>
       <button v-else-if="isPasteMode" @click="handlePasteDelete">Delete Selection</button>
+      <button v-else-if="isInteractiveEditMode" @click="handleEndInteractiveEdit">Done</button>
       <select v-model="penSize">
         <option v-for="size in penSizes" :key="size" :value="size">
           {{ size }}
@@ -1691,7 +1775,7 @@ function handleRedoClick() {
           </div>
           <div class="ruler__tool" :style="{ width: ruler.width + 'px' }"></div>
         </div>
-        <Moveable ref="moveableRuler" v-if="ruler.isVisible" className="moveable-ruler" :target="['.ruler']"
+        <MoveableVue ref="moveableRuler" v-if="ruler.isVisible" className="moveable-ruler" :target="['.ruler']"
           :pinchable="['rotatable']" :draggable="!isDrawing" :rotatable="!isDrawing" :scalable="false"
           :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart"
           @renderEnd="onRulerMoveEnd" />
@@ -1702,23 +1786,24 @@ function handleRedoClick() {
           <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
           <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>
         </div>
-        <Moveable ref="moveableImage" className="moveable-image" :target="['.image-canvas--preview']" :pinchable="true"
-          :draggable="true" :rotatable="true" :scalable="true" :clippable="true" :clipTargetBounds="true"
-          :keepRatio="true" @drag="onImageDrag" @rotate="onImageRotate" @scale="onImageScale" @clip="onImageClip" />
+        <MoveableVue ref="moveableImage" className="moveable-image" :target="['.image-canvas--preview']"
+          :pinchable="true" :draggable="true" :rotatable="true" :scalable="true" :clippable="true"
+          :clipTargetBounds="true" :keepRatio="true" @drag="onImageDrag" @rotate="onImageRotate" @scale="onImageScale"
+          @clip="onImageClip" />
       </div>
       <div v-else-if="isPasteMode">
         <canvas class="paste_canvas" ref="pasteCanvas"></canvas>
-        <Moveable ref="moveablePaste" className="moveable-paste" :target="['.paste_canvas']" :pinchable="true"
+        <MoveableVue ref="moveablePaste" className="moveable-paste" :target="['.paste_canvas']" :pinchable="true"
           :draggable="true" :rotatable="true" :scalable="true" :keepRatio="true" @drag="onPasteDrag"
           @rotate="onPasteRotate" @scale="onPasteScale" />
       </div>
       <div ref="htmlCanvas" class="html-canvas" :style="{ width: canvasConfig.width, height: canvasConfig.height }">
         <template v-for="(element, index) in htmlElements" :key="index">
-          <input v-if="element.tool === Tool.CHECKBOX" :value="element.value" type="checkbox" :style="{
-            position: 'absolute',
-            left: element.points[0].x + 'px',
-            top: element.points[0].y + 'px',
-          }" />
+          <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" :value="element.value"
+            :data-index="index" type="checkbox" :style="{
+              position: 'absolute',
+              transform: getInteractiveElementTransform(element),
+            }" />
         </template>
       </div>
       <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
