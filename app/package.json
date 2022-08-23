@@ -15,9 +15,11 @@
   "dependencies": {
     "@mcistudio/vue-colorpicker": "^2.0.0",
     "konva": "^8.3.11",
+    "moveable": "^0.35.1",
     "perfect-freehand": "^1.1.0",
     "pinia": "^2.0.17",
     "polygon-clipping": "^0.15.3",
+    "selecto": "^1.18.2",
     "vue": "^3.2.37",
     "vue-konva": "^3.0.1",
     "vue-router": "^4.1.3",

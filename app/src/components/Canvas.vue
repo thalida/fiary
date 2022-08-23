@@ -2,15 +2,20 @@
 import { getStroke } from 'perfect-freehand'
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
-import Moveable from "vue3-moveable";
+import Moveable from "moveable";
+import Selecto from "selecto";
+import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
 const isAddImageMode = ref(false);
+const isInteractiveEditMode = ref(false);
 
 const canvas = ref<HTMLCanvasElement>()
+const htmlCanvas = ref()
+const interactiveElementRefs = ref<HTMLElement[]>([]);
 const imagePreviewCanvas = ref<HTMLCanvasElement>()
 const imageBackdropCanvas = ref<HTMLCanvasElement>()
 const imageContainer = ref();
@@ -49,9 +54,13 @@ const imageTransform = ref({
 });
 
 let canvasElements = ref([] as any[]);
+const clearAllIndexes = ref([] as any[]);
+const activeCanvasIndex = computed(() => clearAllIndexes.value.length > 0 ? clearAllIndexes.value[clearAllIndexes.value.length - 1] : 0);
+const activeCanvasElements = computed(() => canvasElements.value.slice(activeCanvasIndex.value));
 const redoCanvasElements = ref([] as any[]);
 const hasRedo = computed(() => redoCanvasElements.value.length > 0);
 const hasUndo = computed(() => canvasElements.value.length > 0);
+const htmlElements = computed(() => activeCanvasElements.value.filter((el: any) => el.isHTMLElement));
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -87,7 +96,7 @@ onMounted(() => {
 watch(
   () => debugMode.value,
   () => {
-    drawElements(canvas.value, canvasElements.value)
+    drawElements(canvas.value, activeCanvasElements.value)
   }
 )
 
@@ -112,6 +121,7 @@ enum Tool {
   CUT = 40,
   PASTE = 41,
   IMAGE = 50,
+  CHECKBOX = 60,
 }
 const supportedTools = ref([
   { key: Tool.POINTER, label: 'Pointer' },
@@ -124,6 +134,7 @@ const supportedTools = ref([
   { key: Tool.TRIANGLE, label: 'Triangle' },
   { key: Tool.LINE, label: 'Line' },
   { key: Tool.IMAGE, label: 'Image' },
+  { key: Tool.CHECKBOX, label: 'Checkbox' },
   { key: Tool.CUT, label: 'Cut' },
   { key: Tool.ERASER, label: 'Eraser' },
   { key: Tool.CLEAR_ALL, label: 'Clear All' },
@@ -235,8 +246,9 @@ const selectedComposition = ref(compositionOptions[0]);
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
     handleClearAll();
-    event.target.blur();
   }
+
+  event.target.blur();
 }
 
 function checkIsStylus(event) {
@@ -246,12 +258,13 @@ function checkIsStylus(event) {
 }
 
 function isDrawingAllowed(isDrawingOverride = false) {
-  const activeDrawing = isDrawing.value || isDrawingOverride
-  if (!activeDrawing || isMovingRuler || isPasteMode.value || isAddImageMode.value || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
-    return false
-  }
+  const activelyDrawing = isDrawing.value || isDrawingOverride
+  const isPointerTool = selectedTool.value === Tool.POINTER
+  const isOverlayMode = isPasteMode.value || isAddImageMode.value || isInteractiveEditMode.value || isMovingRuler
+  const stylusAllowed = detectedStlyus.value && isStylus.value
+  const isFingerAllowed = !isStylus.value && allowFingerDrawing.value
 
-  return true;
+  return !isOverlayMode && !isPointerTool && activelyDrawing && (stylusAllowed || isFingerAllowed)
 }
 
 function getPressure(event): number {
@@ -502,8 +515,8 @@ function getMousePos(canvas, event, followRuler = false) {
         ];
 
         for (let i = 0; i < searchDirections.length; i += 1) {
-          const searchDirction = searchDirections[i];
-          const isInside = moveableRuler.value.isInside(searchDirction[0], searchDirction[1]);
+          const searchDirection = searchDirections[i];
+          const isInside = moveableRuler.value.isInside(searchDirection[0], searchDirection[1]);
 
           if (isFirstLoop) {
             searchFor = !isInside;
@@ -511,8 +524,8 @@ function getMousePos(canvas, event, followRuler = false) {
           }
 
           if (isInside === searchFor) {
-            foundX = searchDirction[0];
-            foundY = searchDirction[1];
+            foundX = searchDirection[0];
+            foundY = searchDirection[1];
             break;
           }
         }
@@ -574,12 +587,16 @@ function getFlatSvgPathFromStroke(stroke) {
   // return d.join(' ')
 }
 
-function addCanvasElement(element) {
-  if (redoCanvasElements.value.length > 0) {
+function addCanvasElement(element, clearRedoStack = true) {
+  if (clearRedoStack && redoCanvasElements.value.length > 0) {
     redoCanvasElements.value = [];
   }
 
   canvasElements.value.push(element);
+
+  if (element.tool === Tool.CLEAR_ALL) {
+    clearAllIndexes.value.push(canvasElements.value.length - 1);
+  }
 }
 
 function cacheElement(element) {
@@ -616,11 +633,11 @@ function cacheElement(element) {
 }
 
 function drawElement(canvas, element, isCaching = false) {
-  const ctx = canvas.getContext('2d');
-
-  if (element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
+  if (element.isHTMLElement || element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
     return
   }
+
+  const ctx = canvas.getContext('2d');
 
   if (element.isDrawingCached) {
     const cachedCanvas = element.cache.drawing.canvas;
@@ -948,6 +965,45 @@ function drawElements(canvas, elements) {
   }
 }
 
+function getInteractiveElementTransform(element): string {
+  const translate = `translate(${element.style.transform.translate[0]}px, ${element.style.transform.translate[1]}px)`;
+  const scale = `scale(${element.style.transform.scale[0]}, ${element.style.transform.scale[1]})`;
+  const rotate = `rotate(${element.style.transform.rotate}deg)`;
+
+  const transformStr = `${translate} ${scale} ${rotate}`;
+  return transformStr;
+}
+
+function setInteractiveElementTransform(element, transform = {}): string {
+  const nextTransform = {
+    ...element.style.transform,
+    ...transform,
+  }
+
+  element.style.transform = nextTransform;
+  return nextTransform;
+}
+
+function handleAddCheckbox(pos) {
+  const checkboxElement = {
+    tool: Tool.CHECKBOX,
+    toolOptions: {
+      isChecked: false,
+    },
+    style: {
+      transform: {
+        translate: [pos.x, pos.y],
+        scale: [1, 1],
+        rotate: 0,
+      },
+    },
+    points: [pos],
+    isHTMLElement: true,
+  };
+
+  addCanvasElement(checkboxElement);
+}
+
 function handleClearAll() {
   if (
     canvasElements.value.length === 0 ||
@@ -981,7 +1037,7 @@ function handleClearAll() {
   clearElement.dimensions = calculateDimensions(clearElement);
   addCanvasElement(clearElement);
   cacheElement(clearElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
   selectedTool.value = Tool.ERASER;
 }
 
@@ -1009,7 +1065,7 @@ async function handlePasteStart(canvasElements) {
   cutSelection.isCompletedCut = true;
   cutSelection.composition = 'destination-out';
   cacheElement(cutSelection);
-  drawElements(canvas.value, canvasElements);
+  drawElements(canvas.value, activeCanvasElements.value);
 
   pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
   setPasteTransform(pasteCanvas.value, pasteTransform.value);
@@ -1068,7 +1124,7 @@ function handlePasteEnd() {
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
     canvasElements.value.pop();
-    drawElements(canvas.value, canvasElements.value);
+    drawElements(canvas.value, activeCanvasElements.value);
     isPasteMode.value = false;
     return;
   }
@@ -1122,12 +1178,12 @@ function handlePasteEnd() {
   };
 
   addCanvasElement(pasteElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
   isPasteMode.value = false;
 }
 
 function handlePasteDelete() {
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
   isPasteMode.value = false;
 }
 
@@ -1275,18 +1331,22 @@ function handleAddImageEnd() {
   };
 
   addCanvasElement(imageElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
   isAddImageMode.value = false;
 }
 
 function handleCanvasTouchStart(event) {
   if (
-    canvasElements.value.length === 0 &&
+    activeCanvasElements.value.length === 0 &&
     (
       selectedTool.value === Tool.ERASER ||
       selectedTool.value === Tool.CUT
     )
   ) {
+    return;
+  }
+
+  if (selectedTool.value === Tool.CHECKBOX) {
     return;
   }
 
@@ -1347,7 +1407,7 @@ function handleCanvasTouchStart(event) {
   newElement.dimensions = calculateDimensions(newElement);
 
   addCanvasElement(newElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
 }
 
 function handleCanvasTouchMove(event) {
@@ -1393,10 +1453,20 @@ function handleCanvasTouchMove(event) {
   }
 
   lastElement.dimensions = calculateDimensions(lastElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
 }
 
 function handleCanvasTouchEnd(event) {
+  if (isInteractiveEditMode.value) {
+    return;
+  }
+
+  if (selectedTool.value === Tool.CHECKBOX) {
+    const pos = getMousePos(canvas.value, event, true);
+    handleAddCheckbox(pos);
+    return;
+  }
+
   if (isPasteMode.value) {
     handlePasteEnd()
     return;
@@ -1420,7 +1490,7 @@ function handleCanvasTouchEnd(event) {
     handlePasteStart(canvasElements.value);
   } else {
     cacheElement(lastElement);
-    drawElements(canvas.value, canvasElements.value);
+    drawElements(canvas.value, activeCanvasElements.value);
   }
   isDrawing.value = false;
 }
@@ -1566,8 +1636,11 @@ function handleUndoClick() {
   }
 
   const lastElement = canvasElements.value.pop();
+  if (lastElement.tool === Tool.CLEAR_ALL) {
+    clearAllIndexes.value.pop();
+  }
   redoCanvasElements.value.push(lastElement);
-  drawElements(canvas.value, canvasElements.value);
+  drawElements(canvas.value, activeCanvasElements.value);
 }
 
 function handleRedoClick() {
@@ -1576,8 +1649,93 @@ function handleRedoClick() {
   }
 
   const lastElement = redoCanvasElements.value.pop();
-  canvasElements.value.push(lastElement);
-  drawElements(canvas.value, canvasElements.value);
+  addCanvasElement(lastElement, false);
+  drawElements(canvas.value, activeCanvasElements.value);
+}
+
+let selectoInteractive, moveableInteractive;
+function handleStartInteractiveEdit() {
+  let moveableElements: any[] = []
+  isInteractiveEditMode.value = true;
+  selectoInteractive = new Selecto({
+    container: htmlCanvas.value,
+    selectableTargets: [".interactiveElement"],
+    selectByClick: true,
+    selectFromInside: false,
+    continueSelect: false,
+    toggleContinueSelect: "shift",
+    hitRate: 0,
+  });
+
+  moveableInteractive = new Moveable(htmlCanvas.value, {
+    draggable: true,
+    rotatable: true,
+    pinchable: true,
+  });
+
+  moveableInteractive
+    .on("clickGroup", e => {
+      selectoInteractive.clickTarget(e.inputEvent, e.inputTarget);
+    })
+    .on("drag", handleInteractiveDrag)
+    .on("dragGroup", e => {
+      e.events.forEach(handleInteractiveDrag);
+    })
+    .on("rotate", handleInteractiveRotate)
+    .on("rotateGroup", e => {
+      e.events.forEach(handleInteractiveRotate);
+    });
+
+  selectoInteractive
+    .on("dragStart", e => {
+      const target = e.inputEvent.target;
+      if (
+        moveableInteractive.isMoveableElement(target) ||
+        moveableElements.some(t => t === target || t.contains(target))
+      ) {
+        e.stop();
+      }
+    })
+    .on("select", e => {
+      moveableElements = e.selected;
+      moveableInteractive.target = moveableElements;
+    })
+    .on("selectEnd", e => {
+      if (e.isDragStart) {
+        e.inputEvent.preventDefault();
+
+        setTimeout(() => {
+          moveableInteractive.dragStart(e.inputEvent);
+        });
+      }
+    });
+}
+
+function handleEndInteractiveEdit() {
+  isInteractiveEditMode.value = false;
+  selectoInteractive.destroy();
+  moveableInteractive.destroy();
+}
+
+function setInteractiveElementStyles(target, transform) {
+  const index = parseInt(target.getAttribute('data-index'), 10);
+  const element = activeCanvasElements.value[index];
+
+  setInteractiveElementTransform(element, transform);
+  const transformStr = getInteractiveElementTransform(element);
+  target.style.transform = transformStr;
+}
+
+function handleInteractiveDrag({ target, translate }) {
+  setInteractiveElementStyles(target, { translate });
+}
+
+// function handleInteractiveResize({ target, rotate, drag }) {
+//   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
+// }
+
+function handleInteractiveRotate({ target, rotate, drag }) {
+  setInteractiveElementStyles(target, { rotate, translate: drag.translate });
 }
 
 </script>
@@ -1605,8 +1763,12 @@ function handleRedoClick() {
       <label v-else-if="selectedTool === Tool.IMAGE">
         <input type="file" accept="image/*" @change="handleImageUpload">
       </label>
+      <label v-else-if="selectedTool === Tool.CHECKBOX && !isInteractiveEditMode">
+        <button @click="handleStartInteractiveEdit">Edit</button>
+      </label>
       <button v-if="isAddImageMode" @click="handleAddImageEnd">Done</button>
       <button v-else-if="isPasteMode" @click="handlePasteDelete">Delete Selection</button>
+      <button v-else-if="isInteractiveEditMode" @click="handleEndInteractiveEdit">Done</button>
       <select v-model="penSize">
         <option v-for="size in penSizes" :key="size" :value="size">
           {{ size }}
@@ -1653,7 +1815,7 @@ function handleRedoClick() {
           </div>
           <div class="ruler__tool" :style="{ width: ruler.width + 'px' }"></div>
         </div>
-        <Moveable ref="moveableRuler" v-if="ruler.isVisible" className="moveable-ruler" :target="['.ruler']"
+        <MoveableVue ref="moveableRuler" v-if="ruler.isVisible" className="moveable-ruler" :target="['.ruler']"
           :pinchable="['rotatable']" :draggable="!isDrawing" :rotatable="!isDrawing" :scalable="false"
           :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart"
           @renderEnd="onRulerMoveEnd" />
@@ -1664,20 +1826,35 @@ function handleRedoClick() {
           <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
           <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>
         </div>
-        <Moveable ref="moveableImage" className="moveable-image" :target="['.image-canvas--preview']" :pinchable="true"
-          :draggable="true" :rotatable="true" :scalable="true" :clippable="true" :clipTargetBounds="true"
-          :keepRatio="true" @drag="onImageDrag" @rotate="onImageRotate" @scale="onImageScale" @clip="onImageClip" />
+        <MoveableVue ref="moveableImage" className="moveable-image" :target="['.image-canvas--preview']"
+          :pinchable="true" :draggable="true" :rotatable="true" :scalable="true" :clippable="true"
+          :clipTargetBounds="true" :keepRatio="true" @drag="onImageDrag" @rotate="onImageRotate" @scale="onImageScale"
+          @clip="onImageClip" />
       </div>
       <div v-else-if="isPasteMode">
         <canvas class="paste_canvas" ref="pasteCanvas"></canvas>
-        <Moveable ref="moveablePaste" className="moveable-paste" :target="['.paste_canvas']" :pinchable="true"
+        <MoveableVue ref="moveablePaste" className="moveable-paste" :target="['.paste_canvas']" :pinchable="true"
           :draggable="true" :rotatable="true" :scalable="true" :keepRatio="true" @drag="onPasteDrag"
           @rotate="onPasteRotate" @scale="onPasteScale" />
       </div>
-      <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
-        @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
-        @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
-      </canvas>
+
+      <div class="drawing-layers" @mousedown="handleCanvasTouchStart" @touchstart="handleCanvasTouchStart"
+        @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd" @mousemove="handleCanvasTouchMove"
+        @touchmove="handleCanvasTouchMove"
+        :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
+        <div ref="htmlCanvas" class="html-canvas"
+          :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
+          <template v-for="(element, index) in htmlElements" :key="index">
+            <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
+              :value="element.value" :data-index="index" type="checkbox" :style="{
+                position: 'absolute',
+                transform: getInteractiveElementTransform(element),
+              }" />
+          </template>
+        </div>
+        <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
+        </canvas>
+      </div>
     </div>
   </div>
 </template>
@@ -1692,6 +1869,13 @@ function handleRedoClick() {
   top: 0;
   left: 0;
   z-index: 9999;
+}
+
+.html-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
 }
 
 .paste_canvas,
