@@ -1657,9 +1657,8 @@ let selectoInteractive, moveableInteractive;
 function handleStartInteractiveEdit() {
   let moveableElements: any[] = []
   isInteractiveEditMode.value = true;
-
   selectoInteractive = new Selecto({
-    container: document.body,
+    container: htmlCanvas.value,
     selectableTargets: [".interactiveElement"],
     selectByClick: true,
     selectFromInside: false,
@@ -1668,7 +1667,7 @@ function handleStartInteractiveEdit() {
     hitRate: 0,
   });
 
-  moveableInteractive = new Moveable(document.body, {
+  moveableInteractive = new Moveable(htmlCanvas.value, {
     draggable: true,
     rotatable: true,
     pinchable: true,
@@ -1838,19 +1837,24 @@ function handleInteractiveRotate({ target, rotate, drag }) {
           :draggable="true" :rotatable="true" :scalable="true" :keepRatio="true" @drag="onPasteDrag"
           @rotate="onPasteRotate" @scale="onPasteScale" />
       </div>
-      <div ref="htmlCanvas" class="html-canvas" :style="{ width: canvasConfig.width, height: canvasConfig.height }">
-        <template v-for="(element, index) in htmlElements" :key="index">
-          <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
-            :value="element.value" :data-index="index" type="checkbox" :style="{
-              position: 'absolute',
-              transform: getInteractiveElementTransform(element),
-            }" />
-        </template>
+
+      <div class="drawing-layers" @mousedown="handleCanvasTouchStart" @touchstart="handleCanvasTouchStart"
+        @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd" @mousemove="handleCanvasTouchMove"
+        @touchmove="handleCanvasTouchMove"
+        :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
+        <div ref="htmlCanvas" class="html-canvas"
+          :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
+          <template v-for="(element, index) in htmlElements" :key="index">
+            <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
+              :value="element.value" :data-index="index" type="checkbox" :style="{
+                position: 'absolute',
+                transform: getInteractiveElementTransform(element),
+              }" />
+          </template>
+        </div>
+        <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
+        </canvas>
       </div>
-      <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height" @mousedown="handleCanvasTouchStart"
-        @touchstart="handleCanvasTouchStart" @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd"
-        @mousemove="handleCanvasTouchMove" @touchmove="handleCanvasTouchMove">
-      </canvas>
     </div>
   </div>
 </template>
