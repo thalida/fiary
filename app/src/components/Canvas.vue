@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
 import { getStroke } from 'perfect-freehand'
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
@@ -6,12 +7,13 @@ import Moveable from "moveable";
 import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
-import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
+import Ftextarea from './Ftextarea.vue'
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
 const isAddImageMode = ref(false);
 const isInteractiveEditMode = ref(false);
+const isTextboxEditMode = ref(false);
 
 const canvas = ref<HTMLCanvasElement>()
 const htmlCanvas = ref()
@@ -122,6 +124,7 @@ enum Tool {
   PASTE = 41,
   IMAGE = 50,
   CHECKBOX = 60,
+  TEXTBOX = 61,
 }
 const supportedTools = ref([
   { key: Tool.POINTER, label: 'Pointer' },
@@ -135,6 +138,7 @@ const supportedTools = ref([
   { key: Tool.LINE, label: 'Line' },
   { key: Tool.IMAGE, label: 'Image' },
   { key: Tool.CHECKBOX, label: 'Checkbox' },
+  { key: Tool.TEXTBOX, label: 'Textbox' },
   { key: Tool.CUT, label: 'Cut' },
   { key: Tool.ERASER, label: 'Eraser' },
   { key: Tool.CLEAR_ALL, label: 'Clear All' },
@@ -260,7 +264,13 @@ function checkIsStylus(event) {
 function isDrawingAllowed(isDrawingOverride = false) {
   const activelyDrawing = isDrawing.value || isDrawingOverride
   const isPointerTool = selectedTool.value === Tool.POINTER
-  const isOverlayMode = isPasteMode.value || isAddImageMode.value || isInteractiveEditMode.value || isMovingRuler
+  const isOverlayMode = (
+    isPasteMode.value ||
+    isAddImageMode.value ||
+    isInteractiveEditMode.value ||
+    isMovingRuler ||
+    isTextboxEditMode.value
+  )
   const stylusAllowed = detectedStlyus.value && isStylus.value
   const isFingerAllowed = !isStylus.value && allowFingerDrawing.value
 
@@ -981,6 +991,7 @@ function setInteractiveElementTransform(element, transform = {}): string {
   }
 
   element.style.transform = nextTransform;
+  element.style.transformStr = getInteractiveElementTransform(element);
   return nextTransform;
 }
 
@@ -996,12 +1007,36 @@ function handleAddCheckbox(pos) {
         scale: [1, 1],
         rotate: 0,
       },
+      transformStr: "",
     },
     points: [pos],
     isHTMLElement: true,
   };
 
+  setInteractiveElementTransform(checkboxElement);
   addCanvasElement(checkboxElement);
+}
+
+function handleAddTextbox(pos) {
+  const textboxElement = {
+    tool: Tool.TEXTBOX,
+    isHTMLElement: true,
+    toolOptions: {
+      textValue: '',
+    },
+    style: {
+      transform: {
+        translate: [pos.x, pos.y],
+        scale: [1, 1],
+        rotate: 0,
+      },
+      transformStr: ''
+    },
+    points: [pos],
+  };
+
+  setInteractiveElementTransform(textboxElement);
+  addCanvasElement(textboxElement);
 }
 
 function handleClearAll() {
@@ -1457,13 +1492,19 @@ function handleCanvasTouchMove(event) {
 }
 
 function handleCanvasTouchEnd(event) {
-  if (isInteractiveEditMode.value) {
+  if (isInteractiveEditMode.value || isTextboxEditMode.value) {
     return;
   }
 
   if (selectedTool.value === Tool.CHECKBOX) {
     const pos = getMousePos(canvas.value, event, true);
     handleAddCheckbox(pos);
+    return;
+  }
+
+  if (selectedTool.value === Tool.TEXTBOX) {
+    const pos = getMousePos(canvas.value, event, true);
+    handleAddTextbox(pos);
     return;
   }
 
@@ -1719,23 +1760,28 @@ function handleEndInteractiveEdit() {
 
 function setInteractiveElementStyles(target, transform) {
   const index = parseInt(target.getAttribute('data-index'), 10);
-  const element = activeCanvasElements.value[index];
+  const element = htmlElements.value[index];
 
   setInteractiveElementTransform(element, transform);
-  const transformStr = getInteractiveElementTransform(element);
-  target.style.transform = transformStr;
+  target.style.transform = element.style.transformStr;
 }
 
 function handleInteractiveDrag({ target, translate }) {
   setInteractiveElementStyles(target, { translate });
 }
 
-// function handleInteractiveResize({ target, rotate, drag }) {
-//   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
-// }
-
 function handleInteractiveRotate({ target, rotate, drag }) {
   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
+}
+
+function handleTextboxFocus() {
+  console.log('focus')
+  isTextboxEditMode.value = true;
+}
+
+function handleTextboxBlur() {
+  console.log('blur')
+  isTextboxEditMode.value = false;
 }
 
 </script>
@@ -1763,7 +1809,7 @@ function handleInteractiveRotate({ target, rotate, drag }) {
       <label v-else-if="selectedTool === Tool.IMAGE">
         <input type="file" accept="image/*" @change="handleImageUpload">
       </label>
-      <label v-else-if="selectedTool === Tool.CHECKBOX && !isInteractiveEditMode">
+      <label v-else-if="(selectedTool === Tool.CHECKBOX || selectedTool === Tool.TEXTBOX) && !isInteractiveEditMode">
         <button @click="handleStartInteractiveEdit">Edit</button>
       </label>
       <button v-if="isAddImageMode" @click="handleAddImageEnd">Done</button>
@@ -1846,10 +1892,13 @@ function handleInteractiveRotate({ target, rotate, drag }) {
           :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
           <template v-for="(element, index) in htmlElements" :key="index">
             <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
-              :value="element.value" :data-index="index" type="checkbox" :style="{
+              :model="element.toolOptions.isChecked" :data-index="index" type="checkbox" :style="{
                 position: 'absolute',
                 transform: getInteractiveElementTransform(element),
-              }" />
+              }" @mousedown.stop @touchstart.stop @mouseup.stop @touchend.stop @mousemove.stop @touchmove.stop />
+            <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" class="interactiveElement"
+              :element="element" @focus="handleTextboxFocus" @blur="handleTextboxBlur" @mousedown.stop @touchstart.stop
+              @mouseup.stop @touchend.stop @mousemove.stop @touchmove.stop />
           </template>
         </div>
         <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
