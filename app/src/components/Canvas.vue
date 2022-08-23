@@ -258,12 +258,13 @@ function checkIsStylus(event) {
 }
 
 function isDrawingAllowed(isDrawingOverride = false) {
-  const activeDrawing = isDrawing.value || isDrawingOverride
-  if (!activeDrawing || isMovingRuler || isPasteMode.value || isAddImageMode.value || isInteractiveEditMode.value || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
-    return false
-  }
+  const activelyDrawing = isDrawing.value || isDrawingOverride
+  const isPointerTool = selectedTool.value === Tool.POINTER
+  const isOverlayMode = isPasteMode.value || isAddImageMode.value || isInteractiveEditMode.value || isMovingRuler
+  const stylusAllowed = detectedStlyus.value && isStylus.value
+  const isFingerAllowed = !isStylus.value && allowFingerDrawing.value
 
-  return true;
+  return !isOverlayMode && !isPointerTool && activelyDrawing && (stylusAllowed || isFingerAllowed)
 }
 
 function getPressure(event): number {
