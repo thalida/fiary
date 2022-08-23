@@ -3,6 +3,7 @@ import { getStroke } from 'perfect-freehand'
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
 import Moveable from "moveable";
+import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
@@ -258,7 +259,7 @@ function checkIsStylus(event) {
 
 function isDrawingAllowed(isDrawingOverride = false) {
   const activeDrawing = isDrawing.value || isDrawingOverride
-  if (!activeDrawing || isMovingRuler || isPasteMode.value || isAddImageMode.value || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
+  if (!activeDrawing || isMovingRuler || isPasteMode.value || isAddImageMode.value || isInteractiveEditMode.value || selectedTool.value === Tool.POINTER || (detectedStlyus.value && !isStylus.value && !allowFingerDrawing.value)) {
     return false
   }
 
@@ -1455,6 +1456,10 @@ function handleCanvasTouchMove(event) {
 }
 
 function handleCanvasTouchEnd(event) {
+  if (isInteractiveEditMode.value) {
+    return;
+  }
+
   if (selectedTool.value === Tool.CHECKBOX) {
     const pos = getMousePos(canvas.value, event, true);
     handleAddCheckbox(pos);
@@ -1647,34 +1652,69 @@ function handleRedoClick() {
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
-let moveableElements = []
+let selectoInteractive, moveableInteractive;
 function handleStartInteractiveEdit() {
-  moveableElements = []
+  let moveableElements: any[] = []
   isInteractiveEditMode.value = true;
-  selectedTool.value = Tool.POINTER;
 
-  for (const ref of interactiveElementRefs.value) {
-    const moveable = new Moveable(document.body, {
-      target: ref,
-      draggable: true,
-      rotatable: true,
-      resizable: false,
-      scalable: false,
-      pinchable: true,
+  selectoInteractive = new Selecto({
+    container: document.body,
+    selectableTargets: [".interactiveElement"],
+    selectByClick: true,
+    selectFromInside: false,
+    continueSelect: false,
+    toggleContinueSelect: "shift",
+    hitRate: 0,
+  });
+
+  moveableInteractive = new Moveable(document.body, {
+    draggable: true,
+    rotatable: true,
+    pinchable: true,
+  });
+
+  moveableInteractive
+    .on("clickGroup", e => {
+      selectoInteractive.clickTarget(e.inputEvent, e.inputTarget);
+    })
+    .on("drag", handleInteractiveDrag)
+    .on("dragGroup", e => {
+      e.events.forEach(handleInteractiveDrag);
+    })
+    .on("rotate", handleInteractiveRotate)
+    .on("rotateGroup", e => {
+      e.events.forEach(handleInteractiveRotate);
     });
-    moveable.on("drag", handleInteractiveDrag);
-    // moveable.on("resize", handleInteractiveResize);
-    moveable.on("rotate", handleInteractiveRotate);
-    moveableElements.push(moveable);
-  }
+
+  selectoInteractive
+    .on("dragStart", e => {
+      const target = e.inputEvent.target;
+      if (
+        moveableInteractive.isMoveableElement(target) ||
+        moveableElements.some(t => t === target || t.contains(target))
+      ) {
+        e.stop();
+      }
+    })
+    .on("select", e => {
+      moveableElements = e.selected;
+      moveableInteractive.target = moveableElements;
+    })
+    .on("selectEnd", e => {
+      if (e.isDragStart) {
+        e.inputEvent.preventDefault();
+
+        setTimeout(() => {
+          moveableInteractive.dragStart(e.inputEvent);
+        });
+      }
+    });
 }
 
 function handleEndInteractiveEdit() {
   isInteractiveEditMode.value = false;
-  for (const moveable of moveableElements) {
-    moveable.destroy();
-  }
-  moveableElements = []
+  selectoInteractive.destroy();
+  moveableInteractive.destroy();
 }
 
 function setInteractiveElementStyles(target, transform) {
@@ -1799,8 +1839,8 @@ function handleInteractiveRotate({ target, rotate, drag }) {
       </div>
       <div ref="htmlCanvas" class="html-canvas" :style="{ width: canvasConfig.width, height: canvasConfig.height }">
         <template v-for="(element, index) in htmlElements" :key="index">
-          <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" :value="element.value"
-            :data-index="index" type="checkbox" :style="{
+          <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
+            :value="element.value" :data-index="index" type="checkbox" :style="{
               position: 'absolute',
               transform: getInteractiveElementTransform(element),
             }" />
