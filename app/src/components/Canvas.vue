@@ -253,6 +253,9 @@ function handleToolChange(event) {
     handleClearAll();
   }
 
+  isTextboxEditMode.value = false
+  activeTextbox.value = null
+
   event.target.blur();
 }
 
@@ -1382,7 +1385,7 @@ function handleCanvasTouchStart(event) {
     return;
   }
 
-  if (selectedTool.value === Tool.CHECKBOX) {
+  if (selectedTool.value === Tool.CHECKBOX || selectedTool.value === Tool.TEXTBOX) {
     return;
   }
 
@@ -1777,7 +1780,12 @@ function handleInteractiveRotate({ target, rotate, drag }) {
 }
 
 function handleTextboxFocus({ elementIndex }) {
+  if (isDrawing.value) {
+    return;
+  }
+
   isTextboxEditMode.value = true;
+  selectedTool.value = Tool.TEXTBOX
   activeTextbox.value = elementIndex
 }
 
@@ -1786,7 +1794,7 @@ function handleTextboxBlur() {
 }
 
 function handleInteractiveElementEvent(e) {
-  if (!isInteractiveEditMode.value) {
+  if (!isInteractiveEditMode.value && !isDrawing.value) {
     e.stopPropagation();
   }
 }
