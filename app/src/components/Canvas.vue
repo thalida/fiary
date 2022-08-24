@@ -17,24 +17,22 @@ const isInteractiveEditMode = ref(false);
 const isTextboxEditMode = ref(false);
 const activeTextbox = ref(null);
 
-const canvas = ref<HTMLCanvasElement>()
-const htmlCanvas = ref()
-const interactiveElementRefs = ref<HTMLElement[]>([]);
-const imagePreviewCanvas = ref<HTMLCanvasElement>()
-const imageBackdropCanvas = ref<HTMLCanvasElement>()
-const imageContainer = ref();
-const pasteCanvas = ref<HTMLCanvasElement>();
 const canvasConfig = ref({
   width: window.innerWidth,
   height: window.innerHeight,
   dpi: window.devicePixelRatio,
 })
+const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
+const canvas = ref<HTMLCanvasElement>()
+const htmlCanvas = ref()
+const imagePreviewCanvas = ref<HTMLCanvasElement>()
+const imageBackdropCanvas = ref<HTMLCanvasElement>()
+const pasteCanvas = ref<HTMLCanvasElement>();
 
 const moveableRuler = ref()
 const moveablePaste = ref()
 const moveableImage = ref()
 const rulerElement = ref()
-const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
 const ruler = ref({
   isVisible: false,
   width: windowDiag,
@@ -1904,7 +1902,7 @@ function handleElementDelete() {
       </div>
 
       <div v-if="isAddImageMode">
-        <div class="image-container" ref="imageContainer">
+        <div class="image-container">
           <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
           <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>
         </div>
@@ -1927,7 +1925,7 @@ function handleElementDelete() {
         <div ref="htmlCanvas" class="html-canvas"
           :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
           <template v-for="(element, index) in htmlElements" :key="index">
-            <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
+            <input v-if="element.tool === Tool.CHECKBOX" class="interactiveElement"
               v-model="element.toolOptions.isChecked" :data-index="index" :data-element-id="element.id" type="checkbox"
               :style="{
                 position: 'absolute',
