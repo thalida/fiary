@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { defineProps, onMounted, ref, watch } from 'vue'
-import MoveableVue from "vue3-moveable";
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import Quill from 'quill'
@@ -38,12 +37,12 @@ onMounted(() => {
   quill = new Quill(editor.value, {
     placeholder: 'Compose an epic...',
     modules: {
-      // syntax: {
-      //   highlight: function (text) {
-      //     const result = hljs.highlightAuto(text);
-      //     return result.value;
-      //   },
-      // },
+      syntax: {
+        highlight: function (text) {
+          const result = hljs.highlightAuto(text);
+          return result.value;
+        },
+      },
       toolbar: toolbar.value,
     },
     theme: 'snow',
