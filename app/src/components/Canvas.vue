@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
 import { getStroke } from 'perfect-freehand'
+import { v4 as uuidv4 } from 'uuid';
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
 import Moveable from "moveable";
@@ -1001,6 +1002,7 @@ function setInteractiveElementTransform(element, transform = {}): string {
 
 function handleAddCheckbox(pos) {
   const checkboxElement = {
+    id: uuidv4(),
     tool: Tool.CHECKBOX,
     toolOptions: {
       isChecked: false,
@@ -1023,6 +1025,7 @@ function handleAddCheckbox(pos) {
 
 function handleAddTextbox(pos) {
   const textboxElement = {
+    id: uuidv4(),
     tool: Tool.TEXTBOX,
     isHTMLElement: true,
     toolOptions: {
@@ -1055,6 +1058,7 @@ function handleClearAll() {
   }
 
   const clearElement = {
+    id: uuidv4(),
     tool: Tool.CLEAR_ALL,
     composition: 'destination-out',
     lineWidth: 0,
@@ -1141,6 +1145,7 @@ function handlePasteEnd() {
   const cutSelection = canvasElements.value[canvasElements.value.length - 1];
   const moveableRect = moveablePaste.value.getRect();
   const pasteElement = {
+    id: uuidv4(),
     tool: Tool.PASTE,
     composition: getComposition(),
     isDrawingCached: true,
@@ -1294,6 +1299,7 @@ function handleAddImageEnd() {
 
   const moveableRect = moveableImage.value.getRect();
   const imageElement = {
+    id: uuidv4(),
     tool: Tool.IMAGE,
     composition: getComposition(),
     isDrawingCached: true,
@@ -1406,6 +1412,7 @@ function handleCanvasTouchStart(event) {
   const fillColor = selectedTool.value === Tool.CUT ? 'transparent' : selectedFillColor.value;
 
   const newElement = {
+    id: uuidv4(),
     tool: selectedTool.value,
     fillColor,
     strokeColor,
@@ -1699,10 +1706,11 @@ function handleRedoClick() {
 }
 
 let selectoInteractive, moveableInteractive;
+let moveableElements: any[] = []
 function handleStartInteractiveEdit() {
-  let moveableElements: any[] = []
   isInteractiveEditMode.value = true;
   activeTextbox.value = null
+  moveableElements = []
   selectoInteractive = new Selecto({
     container: htmlCanvas.value,
     selectableTargets: [".interactiveElement"],
@@ -1798,6 +1806,17 @@ function handleInteractiveElementEvent(e) {
     e.stopPropagation();
   }
 }
+
+function handleElementDelete() {
+  for (let i = 0; i < moveableElements.length; i += 1) {
+    const target = moveableElements[i];
+    const id = target.getAttribute('data-element-id');
+    const index = canvasElements.value.findIndex(e => e.id === id);
+    canvasElements.value.splice(index, 1);
+  }
+  moveableElements = [];
+  moveableInteractive.target = [];
+}
 </script>
 
 <template>
@@ -1828,7 +1847,10 @@ function handleInteractiveElementEvent(e) {
       </label>
       <button v-if="isAddImageMode" @click="handleAddImageEnd">Done</button>
       <button v-else-if="isPasteMode" @click="handlePasteDelete">Delete Selection</button>
-      <button v-else-if="isInteractiveEditMode" @click="handleEndInteractiveEdit">Done</button>
+      <div v-else-if="isInteractiveEditMode">
+        <button @click="handleElementDelete">Delete</button>
+        <button @click="handleEndInteractiveEdit">Done</button>
+      </div>
       <select v-model="penSize">
         <option v-for="size in penSizes" :key="size" :value="size">
           {{ size }}
@@ -1906,15 +1928,16 @@ function handleInteractiveElementEvent(e) {
           :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
           <template v-for="(element, index) in htmlElements" :key="index">
             <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
-              v-model="element.toolOptions.isChecked" :data-index="index" type="checkbox" :style="{
+              v-model="element.toolOptions.isChecked" :data-index="index" :data-element-id="element.id" type="checkbox"
+              :style="{
                 position: 'absolute',
                 transform: getInteractiveElementTransform(element),
               }" @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
               @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
-            <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" class="interactiveElement"
-              :element="element" :element-index="index" :is-active="index === activeTextbox" @focus="handleTextboxFocus"
-              @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
+            <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" :data-element-id="element.id"
+              class="interactiveElement" :element="element" :element-index="index" :is-active="index === activeTextbox"
+              @focus="handleTextboxFocus" @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
               @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
               @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
               @touchmove="handleInteractiveElementEvent" />
