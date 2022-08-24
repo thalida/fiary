@@ -1784,6 +1784,11 @@ function handleTextboxBlur() {
   isTextboxEditMode.value = false;
 }
 
+function handleInteractiveElementEvent(e) {
+  if (!isInteractiveEditMode.value) {
+    e.stopPropagation();
+  }
+}
 </script>
 
 <template>
@@ -1892,13 +1897,17 @@ function handleTextboxBlur() {
           :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
           <template v-for="(element, index) in htmlElements" :key="index">
             <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
-              :model="element.toolOptions.isChecked" :data-index="index" type="checkbox" :style="{
+              v-model="element.toolOptions.isChecked" :data-index="index" type="checkbox" :style="{
                 position: 'absolute',
                 transform: getInteractiveElementTransform(element),
-              }" @mousedown.stop @touchstart.stop @mouseup.stop @touchend.stop @mousemove.stop @touchmove.stop />
+              }" @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
+              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
+              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
             <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" class="interactiveElement"
-              :element="element" @focus="handleTextboxFocus" @blur="handleTextboxBlur" @mousedown.stop @touchstart.stop
-              @mouseup.stop @touchend.stop @mousemove.stop @touchmove.stop />
+              :element="element" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
+              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
+              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
+              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
