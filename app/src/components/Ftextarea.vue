@@ -1,32 +1,65 @@
 <script setup lang="ts">
 import { defineProps, onMounted, ref, watch } from 'vue'
 import MoveableVue from "vue3-moveable";
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github.css';
 import Quill from 'quill'
-import 'quill/dist/quill.snow.css'
-import 'quill/dist/quill.bubble.css'
 const props = defineProps({
   element: {
     type: Object,
     required: true
   },
+  elementIndex: {
+    type: Number,
+    required: true
+  },
+  isActive: {
+    type: Boolean,
+    required: true
+  },
 })
 const emit = defineEmits(['change', 'focus', 'blur'])
+const toolbar = ref(null)
 const editor = ref(null)
 let quill;
 
+// const Syntax = Quill.import('modules/syntax'); // get the module
+// Syntax.DEFAULTS = {
+//   // change (and reference your webpack import here)
+//   // the default implementation of this looks for window.hljs
+//   highlight: function (text) {
+//     const result = hljs.highlightAuto(text);
+//     return result.value;
+//   },
+//   interval: 500 // change interval if desired
+// };
+
 onMounted(() => {
   quill = new Quill(editor.value, {
-    theme: 'bubble',
     placeholder: 'Compose an epic...',
     modules: {
-      toolbar: [
-        [{ header: [1, 2, 3, 4, 5, 6, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ list: 'ordered' }, { list: 'bullet' }],
-        ['link', 'image', 'video'],
-        ['clean'],
-      ],
+      // syntax: {
+      //   highlight: function (text) {
+      //     const result = hljs.highlightAuto(text);
+      //     return result.value;
+      //   },
+      // },
+      toolbar: toolbar.value,
     },
+    theme: 'snow',
+    // theme: 'bubble',
+    // modules: {
+    //   toolbar: [
+    //     [{ font: [] }],
+    //     [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    //     ['link'],
+    //     ['bold', 'italic', 'underline', 'strike', 'blockquote', 'code-block', 'formula'],
+    //     [{ color: [] }, { background: [] }],
+    //     [{ list: 'ordered' }, { list: 'bullet' }],
+    //     [{ align: [] }],
+    //     ['clean'],
+    //   ],
+    // },
   });
 
   quill.on('text-change', () => {
@@ -35,9 +68,9 @@ onMounted(() => {
 
   quill.on('selection-change', (range) => {
     if (range) {
-      emit('focus')
+      emit('focus', { elementIndex: props.elementIndex })
     } else {
-      emit('blur')
+      emit('blur', { elementIndex: props.elementIndex })
     }
   });
 
@@ -47,7 +80,52 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="editor-wrapper" :style="{
+  <div v-show="isActive" class="toolbar" ref="toolbar">
+    <span class="ql-formats">
+      <select class="ql-font"></select>
+      <select class="ql-size"></select>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-bold"></button>
+      <button class="ql-italic"></button>
+      <button class="ql-underline"></button>
+      <button class="ql-strike"></button>
+    </span>
+    <span class="ql-formats">
+      <select class="ql-color"></select>
+      <select class="ql-background"></select>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-script" value="sub"></button>
+      <button class="ql-script" value="super"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-header" value="1"></button>
+      <button class="ql-header" value="2"></button>
+      <button class="ql-blockquote"></button>
+      <button class="ql-code-block"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-list" value="ordered"></button>
+      <button class="ql-list" value="bullet"></button>
+      <button class="ql-indent" value="-1"></button>
+      <button class="ql-indent" value="+1"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-direction" value="rtl"></button>
+      <select class="ql-align"></select>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-link"></button>
+      <button class="ql-image"></button>
+      <button class="ql-video"></button>
+      <button class="ql-formula"></button>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-clean"></button>
+    </span>
+  </div>
+  <div v-bind="$attrs" class="editor-wrapper" :style="{
     position: 'absolute',
     transform: element.style.transformStr,
   }">
@@ -56,12 +134,17 @@ onMounted(() => {
 </template>
 
 <style>
+.toolbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
 .editor-wrapper {
   min-width: 200px;
-  min-height: 100px;
 }
 
 .ql-bubble .ql-tooltip {
-  width: 500px !important;
+  min-width: 500px !important;
 }
 </style>

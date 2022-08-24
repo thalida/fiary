@@ -14,6 +14,7 @@ const isPasteMode = ref(false);
 const isAddImageMode = ref(false);
 const isInteractiveEditMode = ref(false);
 const isTextboxEditMode = ref(false);
+const activeTextbox = ref(null);
 
 const canvas = ref<HTMLCanvasElement>()
 const htmlCanvas = ref()
@@ -1698,6 +1699,7 @@ let selectoInteractive, moveableInteractive;
 function handleStartInteractiveEdit() {
   let moveableElements: any[] = []
   isInteractiveEditMode.value = true;
+  activeTextbox.value = null
   selectoInteractive = new Selecto({
     container: htmlCanvas.value,
     selectableTargets: [".interactiveElement"],
@@ -1774,13 +1776,12 @@ function handleInteractiveRotate({ target, rotate, drag }) {
   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
 }
 
-function handleTextboxFocus() {
-  console.log('focus')
+function handleTextboxFocus({ elementIndex }) {
   isTextboxEditMode.value = true;
+  activeTextbox.value = elementIndex
 }
 
 function handleTextboxBlur() {
-  console.log('blur')
   isTextboxEditMode.value = false;
 }
 
@@ -1904,10 +1905,11 @@ function handleInteractiveElementEvent(e) {
               @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
             <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" class="interactiveElement"
-              :element="element" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
-              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
-              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
-              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
+              :element="element" :element-index="index" :is-active="index === activeTextbox" @focus="handleTextboxFocus"
+              @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
+              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
+              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
+              @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
