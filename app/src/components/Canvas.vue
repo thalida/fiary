@@ -638,12 +638,15 @@ function createCanvasElement(element) {
   return updatedElement;
 }
 
-function deleteCanvasElement(element) {
+function deleteCanvasElement(element, trackHistory = true) {
   const updatedElement = hideCanvasElement(element.id)
-  addHistoryEvent({
-    type: HistoryEvent.REMOVE_CANVAS_ELEMENT,
-    elementId: element.id,
-  });
+
+  if (trackHistory) {
+    addHistoryEvent({
+      type: HistoryEvent.REMOVE_CANVAS_ELEMENT,
+      elementId: element.id,
+    });
+  }
   return updatedElement;
 }
 
@@ -1205,6 +1208,13 @@ async function handlePasteStart(canvasElements) {
   drawElement(pasteCanvas.value, cutSelectionClip);
 }
 
+function cancelPaste() {
+  const cutSelection = canvasElements.value[canvasElements.value.length - 1];
+  deleteCanvasElement(cutSelection, false);
+  history.value.pop();
+  isPasteMode.value = false;
+}
+
 function handlePasteEnd() {
   if (typeof pasteCanvas.value === 'undefined') {
     return;
@@ -1235,9 +1245,8 @@ function handlePasteEnd() {
     && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
-    deleteCanvasElement(cutSelection)
+    cancelPaste()
     drawElements(canvas.value, activeCanvasElements.value);
-    isPasteMode.value = false;
     return;
   }
 
@@ -1753,7 +1762,9 @@ function onImageClip({ target, clipType, clipStyles }) {
 function handleUndoClick() {
   const action = history.value[historyIndex.value];
 
-  if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+  if (isPasteMode.value) {
+    cancelPaste();
+  } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
     hideCanvasElement(action.elementId)
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     showCanvasElement(action.elementId);
@@ -1763,6 +1774,7 @@ function handleUndoClick() {
   }
 
   historyIndex.value -= 1;
+
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
