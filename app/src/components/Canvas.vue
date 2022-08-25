@@ -1097,7 +1097,7 @@ function handleAddTextbox(pos) {
     isHTMLElement: true,
     isDeleted: false,
     toolOptions: {
-      textValue: '',
+      textContents: null,
     },
     style: {
       transform: {
@@ -1895,6 +1895,11 @@ function handleInteractiveEnd(target) {
   delete element.tmpFromStyle
 }
 
+function handleTextboxChange({ elementId, textContents }) {
+  const element = getCanvasElement(elementId);
+  element.toolOptions.textContents = textContents
+}
+
 function handleTextboxFocus({ elementIndex }) {
   if (isDrawing.value) {
     return;
@@ -2044,10 +2049,10 @@ function handleElementDelete() {
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
             <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" :data-element-id="element.id"
               class="interactiveElement" :element="element" :element-index="index" :is-active="index === activeTextbox"
-              @focus="handleTextboxFocus" @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
-              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
-              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
-              @touchmove="handleInteractiveElementEvent" />
+              @change="handleTextboxChange" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
+              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
+              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
+              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
