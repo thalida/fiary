@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
-import { getStroke } from 'perfect-freehand'
 import { v4 as uuidv4 } from 'uuid';
+import cloneDeep from 'lodash/cloneDeep';
+import { getStroke } from 'perfect-freehand'
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
 import Moveable from "moveable";
@@ -58,7 +59,8 @@ const imageTransform = ref({
 enum HistoryEvent {
   ADD_CANVAS_ELEMENT = 1,
   REMOVE_CANVAS_ELEMENT = 2,
-  TRANSFORM_CANVAS_ELEMENT = 3,
+  UPDATE_CANVAS_ELEMENT_STYLES = 3,
+  UPDATE_CANVAS_ELEMENT_OPTIONS = 4,
 }
 
 let history = ref([] as any[]);
@@ -608,28 +610,37 @@ function getFlatSvgPathFromStroke(stroke) {
   // return d.join(' ')
 }
 
-function addToHistory(event) {
+function addHistoryEvent(event) {
   history.value.splice(historyIndex.value + 1)
   history.value.push(event);
   historyIndex.value = history.value.length - 1;
+}
+
+function getCanvasElement(elementId) {
+  const index = canvasElements.value.findIndex(e => e.id === elementId);
+  if (index === -1) {
+    return;
+  }
+
+  const element = canvasElements.value[index];
+  return element;
 }
 
 function createCanvasElement(element) {
   canvasElements.value.push(element);
 
   const updatedElement = showCanvasElement(element.id)
-  addToHistory({
+  addHistoryEvent({
     type: HistoryEvent.ADD_CANVAS_ELEMENT,
     elementId: element.id,
   });
 
-  console.log('createCanvasElement', history.value, historyIndex.value);
   return updatedElement;
 }
 
 function deleteCanvasElement(element) {
   const updatedElement = hideCanvasElement(element.id)
-  addToHistory({
+  addHistoryEvent({
     type: HistoryEvent.REMOVE_CANVAS_ELEMENT,
     elementId: element.id,
   });
@@ -1740,16 +1751,15 @@ function onImageClip({ target, clipType, clipStyles }) {
 }
 
 function handleUndoClick() {
-  if (canvasElements.value.length === 0) {
-    return;
-  }
+  const action = history.value[historyIndex.value];
 
-  const lastAction = history.value[historyIndex.value];
-
-  if (lastAction.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    showCanvasElement(lastAction.elementId);
-  } else if (lastAction.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    hideCanvasElement(lastAction.elementId)
+  if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    hideCanvasElement(action.elementId)
+  } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
+    showCanvasElement(action.elementId);
+  } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
+    const element = getCanvasElement(action.elementId);
+    element.style = cloneDeep(action.from);
   }
 
   historyIndex.value -= 1;
@@ -1757,12 +1767,15 @@ function handleUndoClick() {
 }
 
 function handleRedoClick() {
-  const redoAction = history.value[historyIndex.value + 1];
+  const action = history.value[historyIndex.value + 1];
 
-  if (redoAction.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    showCanvasElement(redoAction.elementId);
-  } else if (redoAction.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    hideCanvasElement(redoAction.elementId)
+  if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    showCanvasElement(action.elementId);
+  } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
+    hideCanvasElement(action.elementId)
+  } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
+    const element = getCanvasElement(action.elementId);
+    element.style = cloneDeep(action.to);
   }
 
   historyIndex.value += 1;
@@ -1792,6 +1805,12 @@ function handleStartInteractiveEdit() {
   });
 
   moveableInteractive
+    .on("renderStart", ({ target }) => {
+      handleInteractiveStart(target)
+    })
+    .on("renderGroupStart", e => {
+      e.targets.forEach(handleInteractiveStart);
+    })
     .on("clickGroup", e => {
       selectoInteractive.clickTarget(e.inputEvent, e.inputTarget);
     })
@@ -1802,7 +1821,13 @@ function handleStartInteractiveEdit() {
     .on("rotate", handleInteractiveRotate)
     .on("rotateGroup", e => {
       e.events.forEach(handleInteractiveRotate);
-    });
+    })
+    .on("renderEnd", ({ target }) => {
+      handleInteractiveEnd(target)
+    })
+    .on("renderGroupEnd", e => {
+      e.targets.forEach(handleInteractiveEnd);
+    })
 
   selectoInteractive
     .on("dragStart", e => {
@@ -1849,6 +1874,25 @@ function handleInteractiveDrag({ target, translate }) {
 
 function handleInteractiveRotate({ target, rotate, drag }) {
   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
+}
+
+function handleInteractiveStart(target) {
+  const index = parseInt(target.getAttribute('data-index'), 10);
+  const element = htmlElements.value[index];
+  element.tmpFromStyle = cloneDeep(element.style);
+}
+
+function handleInteractiveEnd(target) {
+  const index = parseInt(target.getAttribute('data-index'), 10);
+  const element = htmlElements.value[index];
+  addHistoryEvent({
+    type: HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
+    elementId: element.id,
+    to: cloneDeep(element.style),
+    from: cloneDeep(element.tmpFromStyle),
+  });
+
+  delete element.tmpFromStyle
 }
 
 function handleTextboxFocus({ elementIndex }) {
