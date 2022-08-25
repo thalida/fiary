@@ -48,8 +48,13 @@ onMounted(() => {
     theme: 'snow',
   });
 
+  quill.setContents(props.element.toolOptions.textContents);
+
   quill.on('text-change', () => {
-    emit('change', quill.root.innerHTML)
+    emit('change', {
+      elementId: props.element.id,
+      textContents: quill.getContents(),
+    })
   })
 
   quill.on('selection-change', (range) => {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
-import { getStroke } from 'perfect-freehand'
 import { v4 as uuidv4 } from 'uuid';
+import cloneDeep from 'lodash/cloneDeep';
+import { getStroke } from 'perfect-freehand'
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
 import Moveable from "moveable";
@@ -17,24 +18,22 @@ const isInteractiveEditMode = ref(false);
 const isTextboxEditMode = ref(false);
 const activeTextbox = ref(null);
 
-const canvas = ref<HTMLCanvasElement>()
-const htmlCanvas = ref()
-const interactiveElementRefs = ref<HTMLElement[]>([]);
-const imagePreviewCanvas = ref<HTMLCanvasElement>()
-const imageBackdropCanvas = ref<HTMLCanvasElement>()
-const imageContainer = ref();
-const pasteCanvas = ref<HTMLCanvasElement>();
 const canvasConfig = ref({
   width: window.innerWidth,
   height: window.innerHeight,
   dpi: window.devicePixelRatio,
 })
+const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
+const canvas = ref<HTMLCanvasElement>()
+const htmlCanvas = ref()
+const imagePreviewCanvas = ref<HTMLCanvasElement>()
+const imageBackdropCanvas = ref<HTMLCanvasElement>()
+const pasteCanvas = ref<HTMLCanvasElement>();
 
 const moveableRuler = ref()
 const moveablePaste = ref()
 const moveableImage = ref()
 const rulerElement = ref()
-const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
 const ruler = ref({
   isVisible: false,
   width: windowDiag,
@@ -57,14 +56,23 @@ const imageTransform = ref({
   clipStyles: [0, 0, 0, 0]
 });
 
+enum HistoryEvent {
+  ADD_CANVAS_ELEMENT = 1,
+  REMOVE_CANVAS_ELEMENT = 2,
+  UPDATE_CANVAS_ELEMENT_STYLES = 3,
+  UPDATE_CANVAS_ELEMENT_OPTIONS = 4,
+}
+
+let history = ref([] as any[]);
+let historyIndex = ref(-1);
+const hasUndo = computed(() => historyIndex.value >= 0);
+const hasRedo = computed(() => historyIndex.value < history.value.length - 1);
+
 let canvasElements = ref([] as any[]);
 const clearAllIndexes = ref([] as any[]);
 const activeCanvasIndex = computed(() => clearAllIndexes.value.length > 0 ? clearAllIndexes.value[clearAllIndexes.value.length - 1] : 0);
 const activeCanvasElements = computed(() => canvasElements.value.slice(activeCanvasIndex.value));
-const redoCanvasElements = ref([] as any[]);
-const hasRedo = computed(() => redoCanvasElements.value.length > 0);
-const hasUndo = computed(() => canvasElements.value.length > 0);
-const htmlElements = computed(() => activeCanvasElements.value.filter((el: any) => el.isHTMLElement));
+const htmlElements = computed(() => activeCanvasElements.value.filter((el: any) => el.isHTMLElement && !el.isDeleted));
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -602,16 +610,77 @@ function getFlatSvgPathFromStroke(stroke) {
   // return d.join(' ')
 }
 
-function addCanvasElement(element, clearRedoStack = true) {
-  if (clearRedoStack && redoCanvasElements.value.length > 0) {
-    redoCanvasElements.value = [];
+function addHistoryEvent(event) {
+  history.value.splice(historyIndex.value + 1)
+  history.value.push(event);
+  historyIndex.value = history.value.length - 1;
+}
+
+function getCanvasElement(elementId) {
+  const index = canvasElements.value.findIndex(e => e.id === elementId);
+  if (index === -1) {
+    return;
   }
 
+  const element = canvasElements.value[index];
+  return element;
+}
+
+function createCanvasElement(element) {
   canvasElements.value.push(element);
+
+  const updatedElement = showCanvasElement(element.id)
+  addHistoryEvent({
+    type: HistoryEvent.ADD_CANVAS_ELEMENT,
+    elementId: element.id,
+  });
+
+  return updatedElement;
+}
+
+function deleteCanvasElement(element, trackHistory = true) {
+  const updatedElement = hideCanvasElement(element.id)
+
+  if (trackHistory) {
+    addHistoryEvent({
+      type: HistoryEvent.REMOVE_CANVAS_ELEMENT,
+      elementId: element.id,
+    });
+  }
+  return updatedElement;
+}
+
+function showCanvasElement(elementId) {
+  const index = canvasElements.value.findIndex(e => e.id === elementId);
+  if (index === -1) {
+    return;
+  }
+
+  const element = canvasElements.value[index];
+  element.isDeleted = false;
 
   if (element.tool === Tool.CLEAR_ALL) {
     clearAllIndexes.value.push(canvasElements.value.length - 1);
+    clearAllIndexes.value.sort((a, b) => a - b);
   }
+
+  return element;
+}
+
+function hideCanvasElement(elementId) {
+  const index = canvasElements.value.findIndex(e => e.id === elementId);
+  if (index === -1) {
+    return;
+  }
+
+  const element = canvasElements.value[index];
+  element.isDeleted = true;
+
+  if (element.tool === Tool.CLEAR_ALL) {
+    clearAllIndexes.value = clearAllIndexes.value.filter(i => i !== index);
+  }
+
+  return element;
 }
 
 function cacheElement(element) {
@@ -648,7 +717,7 @@ function cacheElement(element) {
 }
 
 function drawElement(canvas, element, isCaching = false) {
-  if (element.isHTMLElement || element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
+  if (element.isHTMLElement || element.isDeleted || element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
     return
   }
 
@@ -1017,10 +1086,11 @@ function handleAddCheckbox(pos) {
     },
     points: [pos],
     isHTMLElement: true,
+    isDeleted: false,
   };
 
   setInteractiveElementTransform(checkboxElement);
-  addCanvasElement(checkboxElement);
+  createCanvasElement(checkboxElement);
 }
 
 function handleAddTextbox(pos) {
@@ -1028,8 +1098,9 @@ function handleAddTextbox(pos) {
     id: uuidv4(),
     tool: Tool.TEXTBOX,
     isHTMLElement: true,
+    isDeleted: false,
     toolOptions: {
-      textValue: '',
+      textContents: null,
     },
     style: {
       transform: {
@@ -1043,7 +1114,7 @@ function handleAddTextbox(pos) {
   };
 
   setInteractiveElementTransform(textboxElement);
-  addCanvasElement(textboxElement);
+  createCanvasElement(textboxElement);
 }
 
 function handleClearAll() {
@@ -1078,7 +1149,7 @@ function handleClearAll() {
     cache: {},
   };
   clearElement.dimensions = calculateDimensions(clearElement);
-  addCanvasElement(clearElement);
+  createCanvasElement(clearElement);
   cacheElement(clearElement);
   drawElements(canvas.value, activeCanvasElements.value);
   selectedTool.value = Tool.ERASER;
@@ -1137,6 +1208,13 @@ async function handlePasteStart(canvasElements) {
   drawElement(pasteCanvas.value, cutSelectionClip);
 }
 
+function cancelPaste() {
+  const cutSelection = canvasElements.value[canvasElements.value.length - 1];
+  deleteCanvasElement(cutSelection, false);
+  history.value.pop();
+  isPasteMode.value = false;
+}
+
 function handlePasteEnd() {
   if (typeof pasteCanvas.value === 'undefined') {
     return;
@@ -1167,9 +1245,8 @@ function handlePasteEnd() {
     && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
-    canvasElements.value.pop();
+    cancelPaste()
     drawElements(canvas.value, activeCanvasElements.value);
-    isPasteMode.value = false;
     return;
   }
 
@@ -1221,7 +1298,7 @@ function handlePasteEnd() {
     canvas: pasteCacheCanvas,
   };
 
-  addCanvasElement(pasteElement);
+  createCanvasElement(pasteElement);
   drawElements(canvas.value, activeCanvasElements.value);
   isPasteMode.value = false;
 }
@@ -1375,7 +1452,7 @@ function handleAddImageEnd() {
     canvas: imageCacheCanvas,
   };
 
-  addCanvasElement(imageElement);
+  createCanvasElement(imageElement);
   drawElements(canvas.value, activeCanvasElements.value);
   isAddImageMode.value = false;
 }
@@ -1452,7 +1529,7 @@ function handleCanvasTouchStart(event) {
   }
   newElement.dimensions = calculateDimensions(newElement);
 
-  addCanvasElement(newElement);
+  createCanvasElement(newElement);
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
@@ -1639,7 +1716,9 @@ function handleImageUpload(e) {
     }
 
     img.src = onloadEvent.target.result;
+    e.target.value = null; 
   }
+
   reader.readAsDataURL(file);
 }
 
@@ -1683,25 +1762,37 @@ function onImageClip({ target, clipType, clipStyles }) {
 }
 
 function handleUndoClick() {
-  if (canvasElements.value.length === 0) {
-    return;
+  const action = history.value[historyIndex.value];
+
+  if (isPasteMode.value) {
+    cancelPaste();
+  } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    hideCanvasElement(action.elementId)
+  } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
+    showCanvasElement(action.elementId);
+  } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
+    const element = getCanvasElement(action.elementId);
+    element.style = cloneDeep(action.from);
   }
 
-  const lastElement = canvasElements.value.pop();
-  if (lastElement.tool === Tool.CLEAR_ALL) {
-    clearAllIndexes.value.pop();
-  }
-  redoCanvasElements.value.push(lastElement);
+  historyIndex.value -= 1;
+
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
 function handleRedoClick() {
-  if (redoCanvasElements.value.length === 0) {
-    return;
+  const action = history.value[historyIndex.value + 1];
+
+  if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    showCanvasElement(action.elementId);
+  } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
+    hideCanvasElement(action.elementId)
+  } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
+    const element = getCanvasElement(action.elementId);
+    element.style = cloneDeep(action.to);
   }
 
-  const lastElement = redoCanvasElements.value.pop();
-  addCanvasElement(lastElement, false);
+  historyIndex.value += 1;
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
@@ -1728,6 +1819,12 @@ function handleStartInteractiveEdit() {
   });
 
   moveableInteractive
+    .on("renderStart", ({ target }) => {
+      handleInteractiveStart(target)
+    })
+    .on("renderGroupStart", e => {
+      e.targets.forEach(handleInteractiveStart);
+    })
     .on("clickGroup", e => {
       selectoInteractive.clickTarget(e.inputEvent, e.inputTarget);
     })
@@ -1738,7 +1835,13 @@ function handleStartInteractiveEdit() {
     .on("rotate", handleInteractiveRotate)
     .on("rotateGroup", e => {
       e.events.forEach(handleInteractiveRotate);
-    });
+    })
+    .on("renderEnd", ({ target }) => {
+      handleInteractiveEnd(target)
+    })
+    .on("renderGroupEnd", e => {
+      e.targets.forEach(handleInteractiveEnd);
+    })
 
   selectoInteractive
     .on("dragStart", e => {
@@ -1787,6 +1890,30 @@ function handleInteractiveRotate({ target, rotate, drag }) {
   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
 }
 
+function handleInteractiveStart(target) {
+  const index = parseInt(target.getAttribute('data-index'), 10);
+  const element = htmlElements.value[index];
+  element.tmpFromStyle = cloneDeep(element.style);
+}
+
+function handleInteractiveEnd(target) {
+  const index = parseInt(target.getAttribute('data-index'), 10);
+  const element = htmlElements.value[index];
+  addHistoryEvent({
+    type: HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
+    elementId: element.id,
+    to: cloneDeep(element.style),
+    from: cloneDeep(element.tmpFromStyle),
+  });
+
+  delete element.tmpFromStyle
+}
+
+function handleTextboxChange({ elementId, textContents }) {
+  const element = getCanvasElement(elementId);
+  element.toolOptions.textContents = textContents
+}
+
 function handleTextboxFocus({ elementIndex }) {
   if (isDrawing.value) {
     return;
@@ -1809,10 +1936,9 @@ function handleInteractiveElementEvent(e) {
 
 function handleElementDelete() {
   for (let i = 0; i < moveableElements.length; i += 1) {
-    const target = moveableElements[i];
-    const id = target.getAttribute('data-element-id');
-    const index = canvasElements.value.findIndex(e => e.id === id);
-    canvasElements.value.splice(index, 1);
+    const id = moveableElements[i].getAttribute('data-element-id');
+    const element = canvasElements.value.find(e => e.id === id);
+    deleteCanvasElement(element);
   }
   moveableElements = [];
   moveableInteractive.target = [];
@@ -1904,7 +2030,7 @@ function handleElementDelete() {
       </div>
 
       <div v-if="isAddImageMode">
-        <div class="image-container" ref="imageContainer">
+        <div class="image-container">
           <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
           <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>
         </div>
@@ -1927,7 +2053,7 @@ function handleElementDelete() {
         <div ref="htmlCanvas" class="html-canvas"
           :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
           <template v-for="(element, index) in htmlElements" :key="index">
-            <input v-if="element.tool === Tool.CHECKBOX" ref="interactiveElementRefs" class="interactiveElement"
+            <input v-if="element.tool === Tool.CHECKBOX" class="interactiveElement"
               v-model="element.toolOptions.isChecked" :data-index="index" :data-element-id="element.id" type="checkbox"
               :style="{
                 position: 'absolute',
@@ -1937,10 +2063,10 @@ function handleElementDelete() {
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
             <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" :data-element-id="element.id"
               class="interactiveElement" :element="element" :element-index="index" :is-active="index === activeTextbox"
-              @focus="handleTextboxFocus" @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
-              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
-              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
-              @touchmove="handleInteractiveElementEvent" />
+              @change="handleTextboxChange" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
+              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
+              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
+              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">

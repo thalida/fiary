@@ -17,6 +17,7 @@
     "highlight.js": "^11.6.0",
     "katex": "^0.16.0",
     "konva": "^8.3.11",
+    "lodash": "^4.17.21",
     "moveable": "^0.35.1",
     "perfect-freehand": "^1.1.0",
     "pinia": "^2.0.17",
