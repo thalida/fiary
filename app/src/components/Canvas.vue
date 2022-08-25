@@ -1716,7 +1716,9 @@ function handleImageUpload(e) {
     }
 
     img.src = onloadEvent.target.result;
+    e.target.value = null; 
   }
+
   reader.readAsDataURL(file);
 }
 
