@@ -55,14 +55,22 @@ const imageTransform = ref({
   clipStyles: [0, 0, 0, 0]
 });
 
+enum HistoryEvent {
+  ADD_CANVAS_ELEMENT = 1,
+  REMOVE_CANVAS_ELEMENT = 2,
+  TRANSFORM_CANVAS_ELEMENT = 3,
+}
+
+let history = ref([] as any[]);
+let historyIndex = ref(-1);
+const hasUndo = computed(() => historyIndex.value >= 0);
+const hasRedo = computed(() => historyIndex.value < history.value.length - 1);
+
 let canvasElements = ref([] as any[]);
 const clearAllIndexes = ref([] as any[]);
 const activeCanvasIndex = computed(() => clearAllIndexes.value.length > 0 ? clearAllIndexes.value[clearAllIndexes.value.length - 1] : 0);
 const activeCanvasElements = computed(() => canvasElements.value.slice(activeCanvasIndex.value));
-const redoCanvasElements = ref([] as any[]);
-const hasRedo = computed(() => redoCanvasElements.value.length > 0);
-const hasUndo = computed(() => canvasElements.value.length > 0);
-const htmlElements = computed(() => activeCanvasElements.value.filter((el: any) => el.isHTMLElement));
+const htmlElements = computed(() => activeCanvasElements.value.filter((el: any) => el.isHTMLElement && !el.isDeleted));
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -600,16 +608,65 @@ function getFlatSvgPathFromStroke(stroke) {
   // return d.join(' ')
 }
 
-function addCanvasElement(element, clearRedoStack = true) {
-  if (clearRedoStack && redoCanvasElements.value.length > 0) {
-    redoCanvasElements.value = [];
+function addToHistory(event) {
+  history.value.splice(historyIndex.value + 1)
+  history.value.push(event);
+  historyIndex.value = history.value.length - 1;
+}
+
+function createCanvasElement(element) {
+  canvasElements.value.push(element);
+
+  const updatedElement = showCanvasElement(element.id)
+  addToHistory({
+    type: HistoryEvent.ADD_CANVAS_ELEMENT,
+    elementId: element.id,
+  });
+
+  console.log('createCanvasElement', history.value, historyIndex.value);
+  return updatedElement;
+}
+
+function deleteCanvasElement(element) {
+  const updatedElement = hideCanvasElement(element.id)
+  addToHistory({
+    type: HistoryEvent.REMOVE_CANVAS_ELEMENT,
+    elementId: element.id,
+  });
+  return updatedElement;
+}
+
+function showCanvasElement(elementId) {
+  const index = canvasElements.value.findIndex(e => e.id === elementId);
+  if (index === -1) {
+    return;
   }
 
-  canvasElements.value.push(element);
+  const element = canvasElements.value[index];
+  element.isDeleted = false;
 
   if (element.tool === Tool.CLEAR_ALL) {
     clearAllIndexes.value.push(canvasElements.value.length - 1);
+    clearAllIndexes.value.sort((a, b) => a - b);
   }
+
+  return element;
+}
+
+function hideCanvasElement(elementId) {
+  const index = canvasElements.value.findIndex(e => e.id === elementId);
+  if (index === -1) {
+    return;
+  }
+
+  const element = canvasElements.value[index];
+  element.isDeleted = true;
+
+  if (element.tool === Tool.CLEAR_ALL) {
+    clearAllIndexes.value = clearAllIndexes.value.filter(i => i !== index);
+  }
+
+  return element;
 }
 
 function cacheElement(element) {
@@ -646,7 +703,7 @@ function cacheElement(element) {
 }
 
 function drawElement(canvas, element, isCaching = false) {
-  if (element.isHTMLElement || element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
+  if (element.isHTMLElement || element.isDeleted || element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
     return
   }
 
@@ -1015,10 +1072,11 @@ function handleAddCheckbox(pos) {
     },
     points: [pos],
     isHTMLElement: true,
+    isDeleted: false,
   };
 
   setInteractiveElementTransform(checkboxElement);
-  addCanvasElement(checkboxElement);
+  createCanvasElement(checkboxElement);
 }
 
 function handleAddTextbox(pos) {
@@ -1026,6 +1084,7 @@ function handleAddTextbox(pos) {
     id: uuidv4(),
     tool: Tool.TEXTBOX,
     isHTMLElement: true,
+    isDeleted: false,
     toolOptions: {
       textValue: '',
     },
@@ -1041,7 +1100,7 @@ function handleAddTextbox(pos) {
   };
 
   setInteractiveElementTransform(textboxElement);
-  addCanvasElement(textboxElement);
+  createCanvasElement(textboxElement);
 }
 
 function handleClearAll() {
@@ -1076,7 +1135,7 @@ function handleClearAll() {
     cache: {},
   };
   clearElement.dimensions = calculateDimensions(clearElement);
-  addCanvasElement(clearElement);
+  createCanvasElement(clearElement);
   cacheElement(clearElement);
   drawElements(canvas.value, activeCanvasElements.value);
   selectedTool.value = Tool.ERASER;
@@ -1165,7 +1224,7 @@ function handlePasteEnd() {
     && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
-    canvasElements.value.pop();
+    deleteCanvasElement(cutSelection)
     drawElements(canvas.value, activeCanvasElements.value);
     isPasteMode.value = false;
     return;
@@ -1219,7 +1278,7 @@ function handlePasteEnd() {
     canvas: pasteCacheCanvas,
   };
 
-  addCanvasElement(pasteElement);
+  createCanvasElement(pasteElement);
   drawElements(canvas.value, activeCanvasElements.value);
   isPasteMode.value = false;
 }
@@ -1373,7 +1432,7 @@ function handleAddImageEnd() {
     canvas: imageCacheCanvas,
   };
 
-  addCanvasElement(imageElement);
+  createCanvasElement(imageElement);
   drawElements(canvas.value, activeCanvasElements.value);
   isAddImageMode.value = false;
 }
@@ -1450,7 +1509,7 @@ function handleCanvasTouchStart(event) {
   }
   newElement.dimensions = calculateDimensions(newElement);
 
-  addCanvasElement(newElement);
+  createCanvasElement(newElement);
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
@@ -1685,21 +1744,28 @@ function handleUndoClick() {
     return;
   }
 
-  const lastElement = canvasElements.value.pop();
-  if (lastElement.tool === Tool.CLEAR_ALL) {
-    clearAllIndexes.value.pop();
+  const lastAction = history.value[historyIndex.value];
+
+  if (lastAction.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
+    showCanvasElement(lastAction.elementId);
+  } else if (lastAction.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    hideCanvasElement(lastAction.elementId)
   }
-  redoCanvasElements.value.push(lastElement);
+
+  historyIndex.value -= 1;
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
 function handleRedoClick() {
-  if (redoCanvasElements.value.length === 0) {
-    return;
+  const redoAction = history.value[historyIndex.value + 1];
+
+  if (redoAction.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    showCanvasElement(redoAction.elementId);
+  } else if (redoAction.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
+    hideCanvasElement(redoAction.elementId)
   }
 
-  const lastElement = redoCanvasElements.value.pop();
-  addCanvasElement(lastElement, false);
+  historyIndex.value += 1;
   drawElements(canvas.value, activeCanvasElements.value);
 }
 
@@ -1807,10 +1873,9 @@ function handleInteractiveElementEvent(e) {
 
 function handleElementDelete() {
   for (let i = 0; i < moveableElements.length; i += 1) {
-    const target = moveableElements[i];
-    const id = target.getAttribute('data-element-id');
-    const index = canvasElements.value.findIndex(e => e.id === id);
-    canvasElements.value.splice(index, 1);
+    const id = moveableElements[i].getAttribute('data-element-id');
+    const element = canvasElements.value.find(e => e.id === id);
+    deleteCanvasElement(element);
   }
   moveableElements = [];
   moveableInteractive.target = [];
