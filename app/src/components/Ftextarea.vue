@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import Quill from 'quill'
