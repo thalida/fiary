@@ -17,6 +17,7 @@ const isAddImageMode = ref(false);
 const isInteractiveEditMode = ref(false);
 const isTextboxEditMode = ref(false);
 const activeTextbox = ref(null);
+const activeImage = ref(null);
 
 const canvasConfig = ref({
   width: window.innerWidth,
@@ -61,6 +62,8 @@ enum HistoryEvent {
   REMOVE_CANVAS_ELEMENT = 2,
   UPDATE_CANVAS_ELEMENT_STYLES = 3,
   UPDATE_CANVAS_ELEMENT_OPTIONS = 4,
+  ADD_IMAGE_START = 10,
+  UPDATE_IMAGE_STYLES = 11,
 }
 
 let history = ref([] as any[]);
@@ -636,10 +639,15 @@ function createCanvasElement(element) {
   canvasElements.value.push(element.id);
 
   const updatedElement = showCanvasElement(element.id)
-  addHistoryEvent({
+  const historyEvent: any = {
     type: HistoryEvent.ADD_CANVAS_ELEMENT,
     elementId: element.id,
-  });
+  };
+
+  if (element.tool === Tool.IMAGE) {
+    historyEvent.image = element.toolOptions.image;
+  }
+  addHistoryEvent(historyEvent);
 
   return updatedElement;
 }
@@ -1319,7 +1327,7 @@ function handlePasteDelete() {
   isPasteMode.value = false;
 }
 
-async function handleAddImageStart(image) {
+async function handleAddImageStart(image, trackHistory = true) {
   if (typeof canvas.value === 'undefined') {
     return;
   }
@@ -1377,6 +1385,14 @@ async function handleAddImageStart(image) {
 
   clearCanvas(imageBackdropCanvas.value);
   backdropCtx.drawImage(image, 0, 0, imageWidth, imageHeight);
+
+  activeImage.value = image;
+  if (trackHistory) {
+    addHistoryEvent({
+      type: HistoryEvent.ADD_IMAGE_START,
+      image,
+    })
+  }
 }
 
 
@@ -1389,6 +1405,9 @@ function handleAddImageEnd() {
   const imageElement = {
     id: uuidv4(),
     tool: Tool.IMAGE,
+    toolOptions: {
+      image: activeImage.value,
+    },
     composition: getComposition(),
     isDrawingCached: true,
     dimensions: {
@@ -1465,6 +1484,11 @@ function handleAddImageEnd() {
 
   createCanvasElement(imageElement);
   drawElements();
+  activeImage.value = null;
+  isAddImageMode.value = false;
+}
+
+function cancelAddImage() {
   isAddImageMode.value = false;
 }
 
@@ -1777,12 +1801,16 @@ function onImageClip({ target, clipType, clipStyles }) {
 function handleUndoClick() {
   const action = history.value[historyIndex.value];
   let redoPaste = false;
+  let redoAddImage = false;
 
   if (isPasteMode.value) {
     cancelPaste();
+  } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
+    cancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
     const element = getCanvasElement(action.elementId);
     redoPaste = element.tool === Tool.PASTE;
+    redoAddImage = element.tool === Tool.IMAGE;
     hideCanvasElement(action.elementId)
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     showCanvasElement(action.elementId);
@@ -1795,6 +1823,9 @@ function handleUndoClick() {
 
   if (redoPaste) {
     handlePasteStart();
+  } else if (redoAddImage) {
+    drawElements();
+    handleAddImageStart(action.image, false);
   } else {
     drawElements();
   }
@@ -1803,6 +1834,7 @@ function handleUndoClick() {
 function handleRedoClick() {
   const action = history.value[historyIndex.value + 1];
   let redoPaste = false;
+  let redoAddImage = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
     const element = getCanvasElement(action.elementId);
@@ -1813,14 +1845,19 @@ function handleRedoClick() {
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
     const element = getCanvasElement(action.elementId);
     element.style = cloneDeep(action.to);
+  } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
+    redoAddImage = true;
   }
 
   historyIndex.value += 1;
 
   if (redoPaste) {
     handlePasteStart();
+  } else if (redoAddImage) {
+    handleAddImageStart(action.image, false);
   } else {
     isPasteMode.value = false;
+    isAddImageMode.value = false;
     drawElements();
   }
 }
