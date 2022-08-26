@@ -1802,8 +1802,11 @@ function handleUndoClick() {
 
 function handleRedoClick() {
   const action = history.value[historyIndex.value + 1];
+  let redoPaste = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    const element = getCanvasElement(action.elementId);
+    redoPaste = element.tool === Tool.CUT;
     showCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     hideCanvasElement(action.elementId)
@@ -1813,7 +1816,13 @@ function handleRedoClick() {
   }
 
   historyIndex.value += 1;
-  drawElements();
+
+  if (redoPaste) {
+    handlePasteStart();
+  } else {
+    isPasteMode.value = false;
+    drawElements();
+  }
 }
 
 let selectoInteractive, moveableInteractive;
