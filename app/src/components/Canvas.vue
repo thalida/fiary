@@ -72,8 +72,11 @@ let elements = ref({} as any);
 let canvasElements = ref([] as string[]);
 const clearAllIndexes = ref([] as number[]);
 const activeCanvasIndex = computed(() => clearAllIndexes.value.length > 0 ? clearAllIndexes.value[clearAllIndexes.value.length - 1] : 0);
-const activeCanvasElements = computed(() => canvasElements.value.slice(activeCanvasIndex.value));
-const lastCanvasElementId = computed(() => canvasElements.value[canvasElements.value.length - 1]);
+const activeCanvasElements = computed(() => {
+  const postClear = canvasElements.value.slice(activeCanvasIndex.value)
+  return postClear.filter(id => !elements.value[id].isDeleted)
+});
+const lastCanvasElementId = computed(() => activeCanvasElements.value[activeCanvasElements.value.length - 1]);
 const htmlElements = computed(() => activeCanvasElements.value.filter((id: any) => elements.value[id].isHTMLElement && !elements.value[id].isDeleted));
 
 let isMovingRuler = false;
@@ -1116,7 +1119,7 @@ function handleAddTextbox(pos) {
 }
 
 function handleClearAll() {
-  const lastElementId = canvasElements.value[canvasElements.value.length - 1];
+  const lastElementId = lastCanvasElementId.value;
   const lastElement = getCanvasElement(lastElementId);
   if (
     canvasElements.value.length === 0 ||
@@ -1155,7 +1158,7 @@ function handleClearAll() {
   selectedTool.value = Tool.ERASER;
 }
 
-async function handlePasteStart(canvasElements) {
+async function handlePasteStart() {
   pasteTransform.value = {
     translate: [0, 0],
     scale: [1, 1],
@@ -1175,11 +1178,15 @@ async function handlePasteStart(canvasElements) {
   }
 
 
-  const cutSelectionId = canvasElements[canvasElements.length - 1];
+  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
   const cutSelection = getCanvasElement(cutSelectionId);
-  cutSelection.isCompletedCut = true;
-  cutSelection.composition = 'destination-out';
-  cacheElement(cutSelection);
+
+  if (!cutSelection.isDrawingCached) {
+    cutSelection.isCompletedCut = true;
+    cutSelection.composition = 'destination-out';
+    cacheElement(cutSelection);
+  }
+
   drawElements();
 
   pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
@@ -1198,12 +1205,12 @@ async function handlePasteStart(canvasElements) {
 
   clearCanvas(pasteCanvas.value);
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
-  for (let i = 0; i < canvasElements.length - 1; i += 1) {
-    const elementId = canvasElements[i];
+  for (let i = 0; i < activeCanvasElements.value.length - 1; i += 1) {
+    const elementId = activeCanvasElements.value[i];
     const element = getCanvasElement(elementId);
     drawElement(pasteCanvas.value, element);
   }
-  const cutSelectionClip = JSON.parse(JSON.stringify(cutSelection));
+  const cutSelectionClip = cloneDeep(cutSelection);
   cutSelectionClip.isDrawingCached = false;
   cutSelectionClip.cache = {};
   cutSelectionClip.composition = 'destination-in';
@@ -1211,9 +1218,8 @@ async function handlePasteStart(canvasElements) {
 }
 
 function cancelPaste() {
-  const cutSelectionId = canvasElements.value[canvasElements.value.length - 1];
+  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
   deleteCanvasElement(cutSelectionId, false);
-  history.value.pop();
   isPasteMode.value = false;
 }
 
@@ -1222,7 +1228,7 @@ function handlePasteEnd() {
     return;
   }
 
-  const cutSelectionId = canvasElements.value[canvasElements.value.length - 1];
+  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
   const cutSelection = getCanvasElement(cutSelectionId);
   const moveableRect = moveablePaste.value.getRect();
   const pasteElement = {
@@ -1248,8 +1254,10 @@ function handlePasteEnd() {
     && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
-    cancelPaste()
+    cancelPaste();
     drawElements();
+    history.value.pop();
+    historyIndex.value -= 1;
     return;
   }
 
@@ -1621,7 +1629,7 @@ function handleCanvasTouchEnd(event) {
   }
 
   if (lastElement.tool === Tool.CUT) {
-    handlePasteStart(canvasElements.value);
+    handlePasteStart();
   } else {
     cacheElement(lastElement);
     drawElements();
@@ -1768,10 +1776,13 @@ function onImageClip({ target, clipType, clipStyles }) {
 
 function handleUndoClick() {
   const action = history.value[historyIndex.value];
+  let redoPaste = false;
 
   if (isPasteMode.value) {
     cancelPaste();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    const element = getCanvasElement(action.elementId);
+    redoPaste = element.tool === Tool.PASTE;
     hideCanvasElement(action.elementId)
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     showCanvasElement(action.elementId);
@@ -1782,7 +1793,11 @@ function handleUndoClick() {
 
   historyIndex.value -= 1;
 
-  drawElements();
+  if (redoPaste) {
+    handlePasteStart();
+  } else {
+    drawElements();
+  }
 }
 
 function handleRedoClick() {
