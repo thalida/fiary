@@ -110,7 +110,7 @@ onMounted(() => {
 watch(
   () => debugMode.value,
   () => {
-    drawElements(canvas.value, activeCanvasElements.value)
+    drawElements();
   }
 )
 
@@ -1035,13 +1035,15 @@ function clearCanvas(canvas) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function drawElements(canvas, drawElementIds) {
-  clearCanvas(canvas);
+function drawElements() {
+  const drawCanvas = canvas.value;
+  const drawElementIds = activeCanvasElements.value;
+  clearCanvas(drawCanvas);
 
   for (let i = 0; i < drawElementIds.length; i += 1) {
     const elementId = drawElementIds[i];
     const element = getCanvasElement(elementId);
-    drawElement(canvas, element);
+    drawElement(drawCanvas, element);
   }
 }
 
@@ -1149,7 +1151,7 @@ function handleClearAll() {
   clearElement.dimensions = calculateDimensions(clearElement);
   createCanvasElement(clearElement);
   cacheElement(clearElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
   selectedTool.value = Tool.ERASER;
 }
 
@@ -1178,7 +1180,7 @@ async function handlePasteStart(canvasElements) {
   cutSelection.isCompletedCut = true;
   cutSelection.composition = 'destination-out';
   cacheElement(cutSelection);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
 
   pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
   setPasteTransform(pasteCanvas.value, pasteTransform.value);
@@ -1247,7 +1249,7 @@ function handlePasteEnd() {
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
     cancelPaste()
-    drawElements(canvas.value, activeCanvasElements.value);
+    drawElements();
     return;
   }
 
@@ -1300,12 +1302,12 @@ function handlePasteEnd() {
   };
 
   createCanvasElement(pasteElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
   isPasteMode.value = false;
 }
 
 function handlePasteDelete() {
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
   isPasteMode.value = false;
 }
 
@@ -1454,7 +1456,7 @@ function handleAddImageEnd() {
   };
 
   createCanvasElement(imageElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
   isAddImageMode.value = false;
 }
 
@@ -1531,7 +1533,7 @@ function handleCanvasTouchStart(event) {
   newElement.dimensions = calculateDimensions(newElement);
 
   createCanvasElement(newElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
 }
 
 function handleCanvasTouchMove(event) {
@@ -1578,7 +1580,7 @@ function handleCanvasTouchMove(event) {
   }
 
   lastElement.dimensions = calculateDimensions(lastElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
 }
 
 function handleCanvasTouchEnd(event) {
@@ -1622,7 +1624,7 @@ function handleCanvasTouchEnd(event) {
     handlePasteStart(canvasElements.value);
   } else {
     cacheElement(lastElement);
-    drawElements(canvas.value, activeCanvasElements.value);
+    drawElements();
   }
   isDrawing.value = false;
 }
@@ -1780,7 +1782,7 @@ function handleUndoClick() {
 
   historyIndex.value -= 1;
 
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
 }
 
 function handleRedoClick() {
@@ -1796,7 +1798,7 @@ function handleRedoClick() {
   }
 
   historyIndex.value += 1;
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
 }
 
 let selectoInteractive, moveableInteractive;
