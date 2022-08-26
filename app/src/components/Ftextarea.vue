@@ -8,10 +8,6 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  elementIndex: {
-    type: Number,
-    required: true
-  },
   isActive: {
     type: Boolean,
     required: true
@@ -59,9 +55,9 @@ onMounted(() => {
 
   quill.on('selection-change', (range) => {
     if (range) {
-      emit('focus', { elementIndex: props.elementIndex })
+      emit('focus', { elementId: props.element.id })
     } else {
-      emit('blur', { elementIndex: props.elementIndex })
+      emit('blur', { elementId: props.element.id })
     }
   });
 

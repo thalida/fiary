@@ -17,6 +17,7 @@ const isAddImageMode = ref(false);
 const isInteractiveEditMode = ref(false);
 const isTextboxEditMode = ref(false);
 const activeTextbox = ref(null);
+const activeImage = ref(null);
 
 const canvasConfig = ref({
   width: window.innerWidth,
@@ -61,6 +62,8 @@ enum HistoryEvent {
   REMOVE_CANVAS_ELEMENT = 2,
   UPDATE_CANVAS_ELEMENT_STYLES = 3,
   UPDATE_CANVAS_ELEMENT_OPTIONS = 4,
+  ADD_IMAGE_START = 10,
+  UPDATE_IMAGE_STYLES = 11,
 }
 
 let history = ref([] as any[]);
@@ -68,11 +71,16 @@ let historyIndex = ref(-1);
 const hasUndo = computed(() => historyIndex.value >= 0);
 const hasRedo = computed(() => historyIndex.value < history.value.length - 1);
 
-let canvasElements = ref([] as any[]);
-const clearAllIndexes = ref([] as any[]);
+let elements = ref({} as any);
+let canvasElements = ref([] as string[]);
+const clearAllIndexes = ref([] as number[]);
 const activeCanvasIndex = computed(() => clearAllIndexes.value.length > 0 ? clearAllIndexes.value[clearAllIndexes.value.length - 1] : 0);
-const activeCanvasElements = computed(() => canvasElements.value.slice(activeCanvasIndex.value));
-const htmlElements = computed(() => activeCanvasElements.value.filter((el: any) => el.isHTMLElement && !el.isDeleted));
+const activeCanvasElements = computed(() => {
+  const postClear = canvasElements.value.slice(activeCanvasIndex.value)
+  return postClear.filter(id => !elements.value[id].isDeleted)
+});
+const lastCanvasElementId = computed(() => activeCanvasElements.value[activeCanvasElements.value.length - 1]);
+const htmlElements = computed(() => activeCanvasElements.value.filter((id: any) => elements.value[id].isHTMLElement && !elements.value[id].isDeleted));
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -108,7 +116,7 @@ onMounted(() => {
 watch(
   () => debugMode.value,
   () => {
-    drawElements(canvas.value, activeCanvasElements.value)
+    drawElements();
   }
 )
 
@@ -617,50 +625,52 @@ function addHistoryEvent(event) {
 }
 
 function getCanvasElement(elementId) {
-  const index = canvasElements.value.findIndex(e => e.id === elementId);
-  if (index === -1) {
-    return;
-  }
+  return elements.value[elementId];
+}
 
-  const element = canvasElements.value[index];
-  return element;
+function setCanvasElement(element) {
+  elements.value[element.id] = element;
+
+  return elements.value[element.id];
 }
 
 function createCanvasElement(element) {
-  canvasElements.value.push(element);
+  setCanvasElement(element);
+  canvasElements.value.push(element.id);
 
   const updatedElement = showCanvasElement(element.id)
-  addHistoryEvent({
+  const historyEvent: any = {
     type: HistoryEvent.ADD_CANVAS_ELEMENT,
     elementId: element.id,
-  });
+  };
+
+  if (element.tool === Tool.IMAGE) {
+    historyEvent.image = element.toolOptions.image;
+  }
+  addHistoryEvent(historyEvent);
 
   return updatedElement;
 }
 
-function deleteCanvasElement(element, trackHistory = true) {
-  const updatedElement = hideCanvasElement(element.id)
+function deleteCanvasElement(elementId, trackHistory = true) {
+  const updatedElement = hideCanvasElement(elementId)
 
   if (trackHistory) {
     addHistoryEvent({
       type: HistoryEvent.REMOVE_CANVAS_ELEMENT,
-      elementId: element.id,
+      elementId: elementId,
     });
   }
   return updatedElement;
 }
 
 function showCanvasElement(elementId) {
-  const index = canvasElements.value.findIndex(e => e.id === elementId);
-  if (index === -1) {
-    return;
-  }
-
-  const element = canvasElements.value[index];
+  const element = getCanvasElement(elementId);
   element.isDeleted = false;
 
   if (element.tool === Tool.CLEAR_ALL) {
-    clearAllIndexes.value.push(canvasElements.value.length - 1);
+    const elementIndex = canvasElements.value.indexOf(elementId);
+    clearAllIndexes.value.push(elementIndex);
     clearAllIndexes.value.sort((a, b) => a - b);
   }
 
@@ -668,16 +678,12 @@ function showCanvasElement(elementId) {
 }
 
 function hideCanvasElement(elementId) {
-  const index = canvasElements.value.findIndex(e => e.id === elementId);
-  if (index === -1) {
-    return;
-  }
-
-  const element = canvasElements.value[index];
+  const element = getCanvasElement(elementId);
   element.isDeleted = true;
 
   if (element.tool === Tool.CLEAR_ALL) {
-    clearAllIndexes.value = clearAllIndexes.value.filter(i => i !== index);
+    const elementIndex = canvasElements.value.indexOf(elementId);
+    clearAllIndexes.value = clearAllIndexes.value.filter(i => i !== elementIndex);
   }
 
   return element;
@@ -1040,12 +1046,15 @@ function clearCanvas(canvas) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function drawElements(canvas, elements) {
-  clearCanvas(canvas);
+function drawElements() {
+  const drawCanvas = canvas.value;
+  const drawElementIds = activeCanvasElements.value;
+  clearCanvas(drawCanvas);
 
-  for (let i = 0; i < elements.length; i += 1) {
-    const element = elements[i];
-    drawElement(canvas, element);
+  for (let i = 0; i < drawElementIds.length; i += 1) {
+    const elementId = drawElementIds[i];
+    const element = getCanvasElement(elementId);
+    drawElement(drawCanvas, element);
   }
 }
 
@@ -1118,11 +1127,13 @@ function handleAddTextbox(pos) {
 }
 
 function handleClearAll() {
+  const lastElementId = lastCanvasElementId.value;
+  const lastElement = getCanvasElement(lastElementId);
   if (
     canvasElements.value.length === 0 ||
     (
       canvasElements.value.length > 0 &&
-      canvasElements.value[canvasElements.value.length - 1].tool === Tool.CLEAR_ALL
+      lastElement.tool === Tool.CLEAR_ALL
     )
   ) {
     return;
@@ -1151,11 +1162,11 @@ function handleClearAll() {
   clearElement.dimensions = calculateDimensions(clearElement);
   createCanvasElement(clearElement);
   cacheElement(clearElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
   selectedTool.value = Tool.ERASER;
 }
 
-async function handlePasteStart(canvasElements) {
+async function handlePasteStart() {
   pasteTransform.value = {
     translate: [0, 0],
     scale: [1, 1],
@@ -1175,11 +1186,16 @@ async function handlePasteStart(canvasElements) {
   }
 
 
-  const cutSelection = canvasElements[canvasElements.length - 1];
-  cutSelection.isCompletedCut = true;
-  cutSelection.composition = 'destination-out';
-  cacheElement(cutSelection);
-  drawElements(canvas.value, activeCanvasElements.value);
+  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
+  const cutSelection = getCanvasElement(cutSelectionId);
+
+  if (!cutSelection.isDrawingCached) {
+    cutSelection.isCompletedCut = true;
+    cutSelection.composition = 'destination-out';
+    cacheElement(cutSelection);
+  }
+
+  drawElements();
 
   pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
   setPasteTransform(pasteCanvas.value, pasteTransform.value);
@@ -1197,11 +1213,12 @@ async function handlePasteStart(canvasElements) {
 
   clearCanvas(pasteCanvas.value);
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
-  for (let i = 0; i < canvasElements.length - 1; i += 1) {
-    const element = canvasElements[i];
+  for (let i = 0; i < activeCanvasElements.value.length - 1; i += 1) {
+    const elementId = activeCanvasElements.value[i];
+    const element = getCanvasElement(elementId);
     drawElement(pasteCanvas.value, element);
   }
-  const cutSelectionClip = JSON.parse(JSON.stringify(cutSelection));
+  const cutSelectionClip = cloneDeep(cutSelection);
   cutSelectionClip.isDrawingCached = false;
   cutSelectionClip.cache = {};
   cutSelectionClip.composition = 'destination-in';
@@ -1209,9 +1226,8 @@ async function handlePasteStart(canvasElements) {
 }
 
 function cancelPaste() {
-  const cutSelection = canvasElements.value[canvasElements.value.length - 1];
-  deleteCanvasElement(cutSelection, false);
-  history.value.pop();
+  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
+  deleteCanvasElement(cutSelectionId, false);
   isPasteMode.value = false;
 }
 
@@ -1220,7 +1236,8 @@ function handlePasteEnd() {
     return;
   }
 
-  const cutSelection = canvasElements.value[canvasElements.value.length - 1];
+  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
+  const cutSelection = getCanvasElement(cutSelectionId);
   const moveableRect = moveablePaste.value.getRect();
   const pasteElement = {
     id: uuidv4(),
@@ -1245,8 +1262,10 @@ function handlePasteEnd() {
     && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
     && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
-    cancelPaste()
-    drawElements(canvas.value, activeCanvasElements.value);
+    cancelPaste();
+    drawElements();
+    history.value.pop();
+    historyIndex.value -= 1;
     return;
   }
 
@@ -1299,16 +1318,16 @@ function handlePasteEnd() {
   };
 
   createCanvasElement(pasteElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
   isPasteMode.value = false;
 }
 
 function handlePasteDelete() {
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
   isPasteMode.value = false;
 }
 
-async function handleAddImageStart(image) {
+async function handleAddImageStart(image, trackHistory = true) {
   if (typeof canvas.value === 'undefined') {
     return;
   }
@@ -1366,6 +1385,14 @@ async function handleAddImageStart(image) {
 
   clearCanvas(imageBackdropCanvas.value);
   backdropCtx.drawImage(image, 0, 0, imageWidth, imageHeight);
+
+  activeImage.value = image;
+  if (trackHistory) {
+    addHistoryEvent({
+      type: HistoryEvent.ADD_IMAGE_START,
+      image,
+    })
+  }
 }
 
 
@@ -1378,6 +1405,9 @@ function handleAddImageEnd() {
   const imageElement = {
     id: uuidv4(),
     tool: Tool.IMAGE,
+    toolOptions: {
+      image: activeImage.value,
+    },
     composition: getComposition(),
     isDrawingCached: true,
     dimensions: {
@@ -1453,7 +1483,12 @@ function handleAddImageEnd() {
   };
 
   createCanvasElement(imageElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
+  activeImage.value = null;
+  isAddImageMode.value = false;
+}
+
+function cancelAddImage() {
   isAddImageMode.value = false;
 }
 
@@ -1530,7 +1565,7 @@ function handleCanvasTouchStart(event) {
   newElement.dimensions = calculateDimensions(newElement);
 
   createCanvasElement(newElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
 }
 
 function handleCanvasTouchMove(event) {
@@ -1540,7 +1575,8 @@ function handleCanvasTouchMove(event) {
 
   event.preventDefault();
 
-  const lastElement = canvasElements.value[canvasElements.value.length - 1];
+  const lastElementId = canvasElements.value[canvasElements.value.length - 1];
+  const lastElement = getCanvasElement(lastElementId);
   const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
   const pos = getMousePos(canvas.value, event, followRuler);
   const pressure = getPressure(event);
@@ -1576,7 +1612,7 @@ function handleCanvasTouchMove(event) {
   }
 
   lastElement.dimensions = calculateDimensions(lastElement);
-  drawElements(canvas.value, activeCanvasElements.value);
+  drawElements();
 }
 
 function handleCanvasTouchEnd(event) {
@@ -1605,7 +1641,8 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
-  const lastElement = canvasElements.value[canvasElements.value.length - 1];
+  const lastElementId = canvasElements.value[canvasElements.value.length - 1];
+  const lastElement = getCanvasElement(lastElementId);
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = calculateDimensions(lastElement);
 
@@ -1616,10 +1653,10 @@ function handleCanvasTouchEnd(event) {
   }
 
   if (lastElement.tool === Tool.CUT) {
-    handlePasteStart(canvasElements.value);
+    handlePasteStart();
   } else {
     cacheElement(lastElement);
-    drawElements(canvas.value, activeCanvasElements.value);
+    drawElements();
   }
   isDrawing.value = false;
 }
@@ -1716,7 +1753,7 @@ function handleImageUpload(e) {
     }
 
     img.src = onloadEvent.target.result;
-    e.target.value = null; 
+    e.target.value = null;
   }
 
   reader.readAsDataURL(file);
@@ -1763,10 +1800,17 @@ function onImageClip({ target, clipType, clipStyles }) {
 
 function handleUndoClick() {
   const action = history.value[historyIndex.value];
+  let redoPaste = false;
+  let redoAddImage = false;
 
   if (isPasteMode.value) {
     cancelPaste();
+  } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
+    cancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    const element = getCanvasElement(action.elementId);
+    redoPaste = element.tool === Tool.PASTE;
+    redoAddImage = element.tool === Tool.IMAGE;
     hideCanvasElement(action.elementId)
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     showCanvasElement(action.elementId);
@@ -1777,23 +1821,45 @@ function handleUndoClick() {
 
   historyIndex.value -= 1;
 
-  drawElements(canvas.value, activeCanvasElements.value);
+  if (redoPaste) {
+    handlePasteStart();
+  } else if (redoAddImage) {
+    drawElements();
+    handleAddImageStart(action.image, false);
+  } else {
+    drawElements();
+  }
 }
 
 function handleRedoClick() {
   const action = history.value[historyIndex.value + 1];
+  let redoPaste = false;
+  let redoAddImage = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
+    const element = getCanvasElement(action.elementId);
+    redoPaste = element.tool === Tool.CUT;
     showCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     hideCanvasElement(action.elementId)
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
     const element = getCanvasElement(action.elementId);
     element.style = cloneDeep(action.to);
+  } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
+    redoAddImage = true;
   }
 
   historyIndex.value += 1;
-  drawElements(canvas.value, activeCanvasElements.value);
+
+  if (redoPaste) {
+    handlePasteStart();
+  } else if (redoAddImage) {
+    handleAddImageStart(action.image, false);
+  } else {
+    isPasteMode.value = false;
+    isAddImageMode.value = false;
+    drawElements();
+  }
 }
 
 let selectoInteractive, moveableInteractive;
@@ -1875,8 +1941,8 @@ function handleEndInteractiveEdit() {
 }
 
 function setInteractiveElementStyles(target, transform) {
-  const index = parseInt(target.getAttribute('data-index'), 10);
-  const element = htmlElements.value[index];
+  const elementId = target.getAttribute('data-element-id');
+  const element = getCanvasElement(elementId);
 
   setInteractiveElementTransform(element, transform);
   target.style.transform = element.style.transformStr;
@@ -1891,14 +1957,14 @@ function handleInteractiveRotate({ target, rotate, drag }) {
 }
 
 function handleInteractiveStart(target) {
-  const index = parseInt(target.getAttribute('data-index'), 10);
-  const element = htmlElements.value[index];
+  const elementId = target.getAttribute('data-element-id');
+  const element = getCanvasElement(elementId);
   element.tmpFromStyle = cloneDeep(element.style);
 }
 
 function handleInteractiveEnd(target) {
-  const index = parseInt(target.getAttribute('data-index'), 10);
-  const element = htmlElements.value[index];
+  const elementId = target.getAttribute('data-element-id');
+  const element = getCanvasElement(elementId);
   addHistoryEvent({
     type: HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
     elementId: element.id,
@@ -1914,14 +1980,14 @@ function handleTextboxChange({ elementId, textContents }) {
   element.toolOptions.textContents = textContents
 }
 
-function handleTextboxFocus({ elementIndex }) {
+function handleTextboxFocus({ elementId }) {
   if (isDrawing.value) {
     return;
   }
 
   isTextboxEditMode.value = true;
   selectedTool.value = Tool.TEXTBOX
-  activeTextbox.value = elementIndex
+  activeTextbox.value = elementId
 }
 
 function handleTextboxBlur() {
@@ -1936,9 +2002,8 @@ function handleInteractiveElementEvent(e) {
 
 function handleElementDelete() {
   for (let i = 0; i < moveableElements.length; i += 1) {
-    const id = moveableElements[i].getAttribute('data-element-id');
-    const element = canvasElements.value.find(e => e.id === id);
-    deleteCanvasElement(element);
+    const elementId = moveableElements[i].getAttribute('data-element-id');
+    deleteCanvasElement(elementId);
   }
   moveableElements = [];
   moveableInteractive.target = [];
@@ -2012,12 +2077,12 @@ function handleElementDelete() {
           <div class="ruler__label">
             {{ Math.round(ruler.transform.rotate) }}&deg;
             <span v-if="canvasElements.length > 0 && isDrawing">
-              <span v-if="canvasElements[canvasElements.length - 1].dimensions.lineLength">
-                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.lineLength) }}px
+              <span v-if="elements[lastCanvasElementId].dimensions.lineLength">
+                {{ Math.round(elements[lastCanvasElementId].dimensions.lineLength) }}px
               </span>
               <span v-else>
-                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.outerWidth) }} x
-                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.outerHeight) }}
+                {{ Math.round(elements[lastCanvasElementId].dimensions.outerWidth) }} x
+                {{ Math.round(elements[lastCanvasElementId].dimensions.outerHeight) }}
               </span>
             </span>
           </div>
@@ -2052,21 +2117,22 @@ function handleElementDelete() {
         :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
         <div ref="htmlCanvas" class="html-canvas"
           :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
-          <template v-for="(element, index) in htmlElements" :key="index">
-            <input v-if="element.tool === Tool.CHECKBOX" class="interactiveElement"
-              v-model="element.toolOptions.isChecked" :data-index="index" :data-element-id="element.id" type="checkbox"
-              :style="{
+          <template v-for="(elementId, index) in htmlElements" :key="index">
+            <input v-if="elements[elementId].tool === Tool.CHECKBOX" class="interactiveElement"
+              v-model="elements[elementId].toolOptions.isChecked" :data-element-id="elements[elementId].id"
+              type="checkbox" :style="{
                 position: 'absolute',
-                transform: getInteractiveElementTransform(element),
+                transform: getInteractiveElementTransform(elements[elementId]),
               }" @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
               @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
-            <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" :data-element-id="element.id"
-              class="interactiveElement" :element="element" :element-index="index" :is-active="index === activeTextbox"
-              @change="handleTextboxChange" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
-              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
-              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
-              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
+            <Ftextarea v-else-if="elements[elementId].tool === Tool.TEXTBOX" :data-element-id="elements[elementId].id"
+              class="interactiveElement" :element="elements[elementId]"
+              :is-active="elements[elementId].id === activeTextbox" @change="handleTextboxChange"
+              @focus="handleTextboxFocus" @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
+              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
+              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
+              @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
