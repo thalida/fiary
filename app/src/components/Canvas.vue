@@ -622,8 +622,14 @@ function getCanvasElement(elementId) {
   return elements.value[elementId];
 }
 
-function createCanvasElement(element) {
+function setCanvasElement(element) {
   elements.value[element.id] = element;
+
+  return elements.value[element.id];
+}
+
+function createCanvasElement(element) {
+  setCanvasElement(element);
   canvasElements.value.push(element.id);
 
   const updatedElement = showCanvasElement(element.id)
@@ -648,7 +654,7 @@ function deleteCanvasElement(elementId, trackHistory = true) {
 }
 
 function showCanvasElement(elementId) {
-  const element = elements.value[elementId];
+  const element = getCanvasElement(elementId);
   element.isDeleted = false;
 
   if (element.tool === Tool.CLEAR_ALL) {
@@ -661,7 +667,7 @@ function showCanvasElement(elementId) {
 }
 
 function hideCanvasElement(elementId) {
-  const element = elements.value[elementId];
+  const element = getCanvasElement(elementId);
   element.isDeleted = true;
 
   if (element.tool === Tool.CLEAR_ALL) {
@@ -1034,7 +1040,7 @@ function drawElements(canvas, drawElementIds) {
 
   for (let i = 0; i < drawElementIds.length; i += 1) {
     const elementId = drawElementIds[i];
-    const element = elements.value[elementId];
+    const element = getCanvasElement(elementId);
     drawElement(canvas, element);
   }
 }
@@ -1109,7 +1115,7 @@ function handleAddTextbox(pos) {
 
 function handleClearAll() {
   const lastElementId = canvasElements.value[canvasElements.value.length - 1];
-  const lastElement = elements.value[lastElementId];
+  const lastElement = getCanvasElement(lastElementId);
   if (
     canvasElements.value.length === 0 ||
     (
@@ -1168,7 +1174,7 @@ async function handlePasteStart(canvasElements) {
 
 
   const cutSelectionId = canvasElements[canvasElements.length - 1];
-  const cutSelection = elements.value[cutSelectionId];
+  const cutSelection = getCanvasElement(cutSelectionId);
   cutSelection.isCompletedCut = true;
   cutSelection.composition = 'destination-out';
   cacheElement(cutSelection);
@@ -1192,7 +1198,7 @@ async function handlePasteStart(canvasElements) {
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
   for (let i = 0; i < canvasElements.length - 1; i += 1) {
     const elementId = canvasElements[i];
-    const element = elements.value[elementId];
+    const element = getCanvasElement(elementId);
     drawElement(pasteCanvas.value, element);
   }
   const cutSelectionClip = JSON.parse(JSON.stringify(cutSelection));
@@ -1215,7 +1221,7 @@ function handlePasteEnd() {
   }
 
   const cutSelectionId = canvasElements.value[canvasElements.value.length - 1];
-  const cutSelection = elements.value[cutSelectionId];
+  const cutSelection = getCanvasElement(cutSelectionId);
   const moveableRect = moveablePaste.value.getRect();
   const pasteElement = {
     id: uuidv4(),
@@ -1536,7 +1542,7 @@ function handleCanvasTouchMove(event) {
   event.preventDefault();
 
   const lastElementId = canvasElements.value[canvasElements.value.length - 1];
-  const lastElement = elements.value[lastElementId];
+  const lastElement = getCanvasElement(lastElementId);
   const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
   const pos = getMousePos(canvas.value, event, followRuler);
   const pressure = getPressure(event);
@@ -1602,7 +1608,7 @@ function handleCanvasTouchEnd(event) {
   }
 
   const lastElementId = canvasElements.value[canvasElements.value.length - 1];
-  const lastElement = elements.value[lastElementId];
+  const lastElement = getCanvasElement(lastElementId);
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = calculateDimensions(lastElement);
 
