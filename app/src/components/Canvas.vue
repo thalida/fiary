@@ -68,11 +68,13 @@ let historyIndex = ref(-1);
 const hasUndo = computed(() => historyIndex.value >= 0);
 const hasRedo = computed(() => historyIndex.value < history.value.length - 1);
 
-let canvasElements = ref([] as any[]);
-const clearAllIndexes = ref([] as any[]);
+let elements = ref({} as any);
+let canvasElements = ref([] as string[]);
+const clearAllIndexes = ref([] as number[]);
 const activeCanvasIndex = computed(() => clearAllIndexes.value.length > 0 ? clearAllIndexes.value[clearAllIndexes.value.length - 1] : 0);
 const activeCanvasElements = computed(() => canvasElements.value.slice(activeCanvasIndex.value));
-const htmlElements = computed(() => activeCanvasElements.value.filter((el: any) => el.isHTMLElement && !el.isDeleted));
+const lastCanvasElementId = computed(() => canvasElements.value[canvasElements.value.length - 1]);
+const htmlElements = computed(() => activeCanvasElements.value.filter((id: any) => elements.value[id].isHTMLElement && !elements.value[id].isDeleted));
 
 let isMovingRuler = false;
 let isDrawing = ref(false)
@@ -617,17 +619,12 @@ function addHistoryEvent(event) {
 }
 
 function getCanvasElement(elementId) {
-  const index = canvasElements.value.findIndex(e => e.id === elementId);
-  if (index === -1) {
-    return;
-  }
-
-  const element = canvasElements.value[index];
-  return element;
+  return elements.value[elementId];
 }
 
 function createCanvasElement(element) {
-  canvasElements.value.push(element);
+  elements.value[element.id] = element;
+  canvasElements.value.push(element.id);
 
   const updatedElement = showCanvasElement(element.id)
   addHistoryEvent({
@@ -638,29 +635,25 @@ function createCanvasElement(element) {
   return updatedElement;
 }
 
-function deleteCanvasElement(element, trackHistory = true) {
-  const updatedElement = hideCanvasElement(element.id)
+function deleteCanvasElement(elementId, trackHistory = true) {
+  const updatedElement = hideCanvasElement(elementId)
 
   if (trackHistory) {
     addHistoryEvent({
       type: HistoryEvent.REMOVE_CANVAS_ELEMENT,
-      elementId: element.id,
+      elementId: elementId,
     });
   }
   return updatedElement;
 }
 
 function showCanvasElement(elementId) {
-  const index = canvasElements.value.findIndex(e => e.id === elementId);
-  if (index === -1) {
-    return;
-  }
-
-  const element = canvasElements.value[index];
+  const element = elements.value[elementId];
   element.isDeleted = false;
 
   if (element.tool === Tool.CLEAR_ALL) {
-    clearAllIndexes.value.push(canvasElements.value.length - 1);
+    const elementIndex = canvasElements.value.indexOf(elementId);
+    clearAllIndexes.value.push(elementIndex);
     clearAllIndexes.value.sort((a, b) => a - b);
   }
 
@@ -668,16 +661,12 @@ function showCanvasElement(elementId) {
 }
 
 function hideCanvasElement(elementId) {
-  const index = canvasElements.value.findIndex(e => e.id === elementId);
-  if (index === -1) {
-    return;
-  }
-
-  const element = canvasElements.value[index];
+  const element = elements.value[elementId];
   element.isDeleted = true;
 
   if (element.tool === Tool.CLEAR_ALL) {
-    clearAllIndexes.value = clearAllIndexes.value.filter(i => i !== index);
+    const elementIndex = canvasElements.value.indexOf(elementId);
+    clearAllIndexes.value = clearAllIndexes.value.filter(i => i !== elementIndex);
   }
 
   return element;
@@ -1040,11 +1029,12 @@ function clearCanvas(canvas) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function drawElements(canvas, elements) {
+function drawElements(canvas, drawElementIds) {
   clearCanvas(canvas);
 
-  for (let i = 0; i < elements.length; i += 1) {
-    const element = elements[i];
+  for (let i = 0; i < drawElementIds.length; i += 1) {
+    const elementId = drawElementIds[i];
+    const element = elements.value[elementId];
     drawElement(canvas, element);
   }
 }
@@ -1118,11 +1108,13 @@ function handleAddTextbox(pos) {
 }
 
 function handleClearAll() {
+  const lastElementId = canvasElements.value[canvasElements.value.length - 1];
+  const lastElement = elements.value[lastElementId];
   if (
     canvasElements.value.length === 0 ||
     (
       canvasElements.value.length > 0 &&
-      canvasElements.value[canvasElements.value.length - 1].tool === Tool.CLEAR_ALL
+      lastElement.tool === Tool.CLEAR_ALL
     )
   ) {
     return;
@@ -1175,7 +1167,8 @@ async function handlePasteStart(canvasElements) {
   }
 
 
-  const cutSelection = canvasElements[canvasElements.length - 1];
+  const cutSelectionId = canvasElements[canvasElements.length - 1];
+  const cutSelection = elements.value[cutSelectionId];
   cutSelection.isCompletedCut = true;
   cutSelection.composition = 'destination-out';
   cacheElement(cutSelection);
@@ -1198,7 +1191,8 @@ async function handlePasteStart(canvasElements) {
   clearCanvas(pasteCanvas.value);
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
   for (let i = 0; i < canvasElements.length - 1; i += 1) {
-    const element = canvasElements[i];
+    const elementId = canvasElements[i];
+    const element = elements.value[elementId];
     drawElement(pasteCanvas.value, element);
   }
   const cutSelectionClip = JSON.parse(JSON.stringify(cutSelection));
@@ -1209,8 +1203,8 @@ async function handlePasteStart(canvasElements) {
 }
 
 function cancelPaste() {
-  const cutSelection = canvasElements.value[canvasElements.value.length - 1];
-  deleteCanvasElement(cutSelection, false);
+  const cutSelectionId = canvasElements.value[canvasElements.value.length - 1];
+  deleteCanvasElement(cutSelectionId, false);
   history.value.pop();
   isPasteMode.value = false;
 }
@@ -1220,7 +1214,8 @@ function handlePasteEnd() {
     return;
   }
 
-  const cutSelection = canvasElements.value[canvasElements.value.length - 1];
+  const cutSelectionId = canvasElements.value[canvasElements.value.length - 1];
+  const cutSelection = elements.value[cutSelectionId];
   const moveableRect = moveablePaste.value.getRect();
   const pasteElement = {
     id: uuidv4(),
@@ -1540,7 +1535,8 @@ function handleCanvasTouchMove(event) {
 
   event.preventDefault();
 
-  const lastElement = canvasElements.value[canvasElements.value.length - 1];
+  const lastElementId = canvasElements.value[canvasElements.value.length - 1];
+  const lastElement = elements.value[lastElementId];
   const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
   const pos = getMousePos(canvas.value, event, followRuler);
   const pressure = getPressure(event);
@@ -1605,7 +1601,8 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
-  const lastElement = canvasElements.value[canvasElements.value.length - 1];
+  const lastElementId = canvasElements.value[canvasElements.value.length - 1];
+  const lastElement = elements.value[lastElementId];
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = calculateDimensions(lastElement);
 
@@ -1716,7 +1713,7 @@ function handleImageUpload(e) {
     }
 
     img.src = onloadEvent.target.result;
-    e.target.value = null; 
+    e.target.value = null;
   }
 
   reader.readAsDataURL(file);
@@ -1875,8 +1872,8 @@ function handleEndInteractiveEdit() {
 }
 
 function setInteractiveElementStyles(target, transform) {
-  const index = parseInt(target.getAttribute('data-index'), 10);
-  const element = htmlElements.value[index];
+  const elementId = target.getAttribute('data-element-id');
+  const element = getCanvasElement(elementId);
 
   setInteractiveElementTransform(element, transform);
   target.style.transform = element.style.transformStr;
@@ -1891,14 +1888,14 @@ function handleInteractiveRotate({ target, rotate, drag }) {
 }
 
 function handleInteractiveStart(target) {
-  const index = parseInt(target.getAttribute('data-index'), 10);
-  const element = htmlElements.value[index];
+  const elementId = target.getAttribute('data-element-id');
+  const element = getCanvasElement(elementId);
   element.tmpFromStyle = cloneDeep(element.style);
 }
 
 function handleInteractiveEnd(target) {
-  const index = parseInt(target.getAttribute('data-index'), 10);
-  const element = htmlElements.value[index];
+  const elementId = target.getAttribute('data-element-id');
+  const element = getCanvasElement(elementId);
   addHistoryEvent({
     type: HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
     elementId: element.id,
@@ -1914,14 +1911,14 @@ function handleTextboxChange({ elementId, textContents }) {
   element.toolOptions.textContents = textContents
 }
 
-function handleTextboxFocus({ elementIndex }) {
+function handleTextboxFocus({ elementId }) {
   if (isDrawing.value) {
     return;
   }
 
   isTextboxEditMode.value = true;
   selectedTool.value = Tool.TEXTBOX
-  activeTextbox.value = elementIndex
+  activeTextbox.value = elementId
 }
 
 function handleTextboxBlur() {
@@ -1936,9 +1933,8 @@ function handleInteractiveElementEvent(e) {
 
 function handleElementDelete() {
   for (let i = 0; i < moveableElements.length; i += 1) {
-    const id = moveableElements[i].getAttribute('data-element-id');
-    const element = canvasElements.value.find(e => e.id === id);
-    deleteCanvasElement(element);
+    const elementId = moveableElements[i].getAttribute('data-element-id');
+    deleteCanvasElement(elementId);
   }
   moveableElements = [];
   moveableInteractive.target = [];
@@ -2012,12 +2008,12 @@ function handleElementDelete() {
           <div class="ruler__label">
             {{ Math.round(ruler.transform.rotate) }}&deg;
             <span v-if="canvasElements.length > 0 && isDrawing">
-              <span v-if="canvasElements[canvasElements.length - 1].dimensions.lineLength">
-                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.lineLength) }}px
+              <span v-if="elements[lastCanvasElementId].dimensions.lineLength">
+                {{ Math.round(elements[lastCanvasElementId].dimensions.lineLength) }}px
               </span>
               <span v-else>
-                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.outerWidth) }} x
-                {{ Math.round(canvasElements[canvasElements.length - 1].dimensions.outerHeight) }}
+                {{ Math.round(elements[lastCanvasElementId].dimensions.outerWidth) }} x
+                {{ Math.round(elements[lastCanvasElementId].dimensions.outerHeight) }}
               </span>
             </span>
           </div>
@@ -2052,21 +2048,22 @@ function handleElementDelete() {
         :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
         <div ref="htmlCanvas" class="html-canvas"
           :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
-          <template v-for="(element, index) in htmlElements" :key="index">
-            <input v-if="element.tool === Tool.CHECKBOX" class="interactiveElement"
-              v-model="element.toolOptions.isChecked" :data-index="index" :data-element-id="element.id" type="checkbox"
-              :style="{
+          <template v-for="(elementId, index) in htmlElements" :key="index">
+            <input v-if="elements[elementId].tool === Tool.CHECKBOX" class="interactiveElement"
+              v-model="elements[elementId].toolOptions.isChecked" :data-element-id="elements[elementId].id"
+              type="checkbox" :style="{
                 position: 'absolute',
-                transform: getInteractiveElementTransform(element),
+                transform: getInteractiveElementTransform(elements[elementId]),
               }" @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
               @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
-            <Ftextarea v-else-if="element.tool === Tool.TEXTBOX" :data-index="index" :data-element-id="element.id"
-              class="interactiveElement" :element="element" :element-index="index" :is-active="index === activeTextbox"
-              @change="handleTextboxChange" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
-              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
-              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
-              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
+            <Ftextarea v-else-if="elements[elementId].tool === Tool.TEXTBOX" :data-element-id="elements[elementId].id"
+              class="interactiveElement" :element="elements[elementId]"
+              :is-active="elements[elementId].id === activeTextbox" @change="handleTextboxChange"
+              @focus="handleTextboxFocus" @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
+              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
+              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
+              @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
