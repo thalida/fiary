@@ -193,9 +193,10 @@ const selectedLineEndStyle = ref(LineEndStyle.NONE);
 const penSizes = [5, 10, 20, 40, 60];
 const penSize = ref(40); // 20, 40, 60, 80
 
-const TRANSPARENT_COLOR = 'transparent';
+const TRANSPARENT_COLOR = { r: 0, g: 0, b: 0, a: 0 };
+const SPECIAL_SWATCH_KEY = 'special';
 const swatches = ref({
-  'special': [
+  [SPECIAL_SWATCH_KEY]: [
     TRANSPARENT_COLOR,
   ],
   'default': [
@@ -339,7 +340,7 @@ function getOpacity(): number {
 }
 
 function formatColor(color, opacity = 1) {
-  if (color === 'transparent') {
+  if (color.a === 0) {
     return 'transparent';
   }
 
@@ -2039,7 +2040,7 @@ function getColorAsCss(color) {
 
 async function handleFillSwatchClick(colorIdx: number, swatchId: string) {
   const isAlreadySelected = selectedFillSwatchId.value === swatchId && selectedFillColorIdx.value === colorIdx
-  if (isAlreadySelected && selectedFillColor.value !== TRANSPARENT_COLOR) {
+  if (isAlreadySelected && swatchId !== SPECIAL_SWATCH_KEY) {
     showEditColorModal.value = true;
   } else {
     showEditColorModal.value = false;
@@ -2049,9 +2050,25 @@ async function handleFillSwatchClick(colorIdx: number, swatchId: string) {
   selectedFillColorIdx.value = colorIdx;
 }
 
+function randomInteger(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+
 function handleAddSwatchClick() {
   const swatchId = uuidv4();
-  const colors = Array(maxSwatchColors.value).fill(TRANSPARENT_COLOR);
+  const colors = [];
+
+  for (let i = 0; i < maxSwatchColors.value; i += 1) {
+    const color = {
+      r: randomInteger(0, 255),
+      g: randomInteger(0, 255),
+      b: randomInteger(0, 255),
+      a: 1,
+    };
+    colors.push(color);
+  }
+  // const colors = Array(maxSwatchColors.value).fill({ r: 255, g: 255, b: 255, a: 1 });
   swatches.value[swatchId] = colors;
   swatchOrder.value.push(swatchId);
 }
@@ -2135,10 +2152,10 @@ function toggleFillSwatchDropdown() {
               @click="handleFillSwatchClick(i, swatchId)"></div>
           </div>
           <div class="swatch">
-            <div class="swatch__color" v-for="(color, i) in swatches.special" :key="color"
+            <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_SWATCH_KEY]" :key="color"
               :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedFillSwatchId === 'special' && selectedFillColorIdx === i }"
-              @click="handleFillSwatchClick(i, 'special')"></div>
+              :class="{ selected: selectedFillSwatchId === SPECIAL_SWATCH_KEY && selectedFillColorIdx === i }"
+              @click="handleFillSwatchClick(i, SPECIAL_SWATCH_KEY)"></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
