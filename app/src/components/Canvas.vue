@@ -347,7 +347,7 @@ function getOpacity(): number {
 }
 
 function isTransparent(color) {
-  return color.a === 0;
+  return (typeof color === 'string' && color === 'transparent') || color.a === 0;
 }
 
 function formatColor(color, opacity = 1) {
