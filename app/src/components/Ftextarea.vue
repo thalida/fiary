@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { defineProps, onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import Quill from 'quill'
+import { computed } from '@vue/reactivity';
 const props = defineProps({
   element: {
     type: Object,
@@ -12,11 +13,49 @@ const props = defineProps({
     type: Boolean,
     required: true
   },
+  colorSwatches: {
+    type: Object,
+    required: true
+  },
 })
 const emit = defineEmits(['change', 'focus', 'blur'])
 const toolbar = ref(null)
 const editor = ref(null)
 let quill;
+
+const allowedSwatches = computed(() => {
+  const { [SPECIAL_SWATCH_KEY]: omit, ...rest } = props.colorSwatches
+  const solidColors: any = {}
+  for (const swatch in rest) {
+    const colors = rest[swatch].filter(color => !Array.isArray(color))
+    if (colors.length > 0) {
+      solidColors[swatch] = colors
+    }
+  }
+  return solidColors
+})
+
+
+const TRANSPARENT_COLOR = { r: 0, g: 0, b: 0, a: 0 };
+const SPECIAL_SWATCH_KEY = 'special';
+function getColorAsCss(color) {
+  if (color === TRANSPARENT_COLOR) {
+    return TRANSPARENT_COLOR;
+  }
+
+  if (Array.isArray(color)) {
+    const gradientStops = []
+    for (let i = 0; i < color.length; i += 1) {
+      const colorStop = getColorAsCss(color[i].color);
+      const percent = color[i].percent;
+      gradientStops.push(`${colorStop} ${percent}%`)
+    }
+
+    return `linear-gradient(135deg, ${gradientStops.join(', ')})`
+  }
+
+  return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
+}
 
 // const Syntax = Quill.import('modules/syntax'); // get the module
 // Syntax.DEFAULTS = {
@@ -80,8 +119,16 @@ onMounted(() => {
         <button class="ql-strike"></button>
       </span>
       <span class="ql-formats">
-        <select class="ql-color"></select>
-        <select class="ql-background"></select>
+        <select class="ql-color">
+          <optgroup v-for="swatch in allowedSwatches">
+            <option v-for="color in swatch" :value="getColorAsCss(color)" :label="getColorAsCss(color)"></option>
+          </optgroup>
+        </select>
+        <select class="ql-background">
+          <optgroup v-for="swatch in allowedSwatches">
+            <option v-for="color in swatch" :value="getColorAsCss(color)" :label="getColorAsCss(color)"></option>
+          </optgroup>
+        </select>
       </span>
       <span class="ql-formats">
         <button class="ql-script" value="sub"></button>
