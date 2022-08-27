@@ -195,6 +195,9 @@ const penSize = ref(40); // 20, 40, 60, 80
 
 const TRANSPARENT_COLOR = 'transparent';
 const swatches = ref({
+  'special': [
+    TRANSPARENT_COLOR,
+  ],
   'default': [
     { r: 0, g: 0, b: 0, a: 1 },
     { r: 255, g: 0, b: 0, a: 1 },
@@ -226,15 +229,13 @@ const swatches = ref({
   ],
 } as any);
 const swatchOrder = ref(['default'])
-const selectedSwatchId = ref('default' as string | null);
-const selectedColorIdx = ref(0 as number | null);
-let selectedFillColor = ref(swatches.value[selectedSwatchId.value][selectedColorIdx.value]);
+const selectedFillSwatchId = ref('default' as string);
+const selectedFillColorIdx = ref(0 as number);
+let selectedFillColor = computed(() => swatches.value[selectedFillSwatchId.value][selectedFillColorIdx.value]);
 let selectedStrokeColor = ref(TRANSPARENT_COLOR);
 const maxSwatchColors = ref(9);
 const isFillSwatchDropdownOpen = ref(false);
-const openStrokeColorDropdown = ref(false);
 const showEditColorModal = ref(false);
-const colorPicker = ref(null as any);
 
 const compositionOptions = [
   'source-over',
@@ -2030,24 +2031,22 @@ function getColorAsCss(color) {
       gradientStops.push(`${colorStop} ${percent}%`)
     }
 
-    return `linear-gradient(${gradientStops.join(', ')})`
+    return `linear-gradient(135deg, ${gradientStops.join(', ')})`
   }
 
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
 }
 
-async function handleFillColorChange(color, colorIdx: number | null = null, swatchId: string | null = null) {
-  selectedFillColor.value = color;
-
-  const isAlreadySelected = selectedSwatchId.value === swatchId && selectedColorIdx.value === colorIdx
+async function handleFillSwatchClick(colorIdx: number, swatchId: string) {
+  const isAlreadySelected = selectedFillSwatchId.value === swatchId && selectedFillColorIdx.value === colorIdx
   if (isAlreadySelected && selectedFillColor.value !== TRANSPARENT_COLOR) {
     showEditColorModal.value = true;
   } else {
     showEditColorModal.value = false;
   }
 
-  selectedSwatchId.value = swatchId;
-  selectedColorIdx.value = colorIdx;
+  selectedFillSwatchId.value = swatchId;
+  selectedFillColorIdx.value = colorIdx;
 }
 
 function handleAddSwatchClick() {
@@ -2055,6 +2054,12 @@ function handleAddSwatchClick() {
   const colors = Array(maxSwatchColors.value).fill(TRANSPARENT_COLOR);
   swatches.value[swatchId] = colors;
   swatchOrder.value.push(swatchId);
+}
+
+function handleFillColorChange({ color }) {
+  const swatchId = selectedFillSwatchId.value;
+  const colorIdx = selectedFillColorIdx.value;
+  swatches.value[swatchId][colorIdx] = color;
 }
 
 function closeFillSwatchDropdown() {
@@ -2066,8 +2071,11 @@ function closeFillSwatchDropdown() {
 }
 
 function toggleFillSwatchDropdown() {
-  isFillSwatchDropdownOpen.value = !isFillSwatchDropdownOpen.value
-  showEditColorModal.value = false
+  if (showEditColorModal.value) {
+    showEditColorModal.value = false;
+  } else {
+    isFillSwatchDropdownOpen.value = !isFillSwatchDropdownOpen.value
+  }
 }
 </script>
 
@@ -2113,19 +2121,24 @@ function toggleFillSwatchDropdown() {
           <div class="swatch__color" :style="{ background: getColorAsCss(selectedFillColor) }"></div>
         </button>
         <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditColorModal" :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']"></ColorPicker>
+          :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
+          :mode="Array.isArray(selectedFillColor) ? 'linear' : 'solid'"
+          :color="Array.isArray(selectedFillColor) ? {} : selectedFillColor"
+          :gradients="Array.isArray(selectedFillColor) ? selectedFillColor : []" @colorChanged="handleFillColorChange">
+        </ColorPicker>
         <div class="color-dropdown" v-if="!showEditColorModal && isFillSwatchDropdownOpen">
-          <div class="swatch" :class="{ selected: selectedSwatchId === swatchId }" v-for="swatchId in swatchOrder"
+          <div class="swatch" :class="{ selected: selectedFillSwatchId === swatchId }" v-for="swatchId in swatchOrder"
             :key="swatchId">
             <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
               :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedSwatchId === swatchId && selectedColorIdx === i }"
-              @click="handleFillColorChange(color, i, swatchId)"></div>
+              :class="{ selected: selectedFillSwatchId === swatchId && selectedFillColorIdx === i }"
+              @click="handleFillSwatchClick(i, swatchId)"></div>
           </div>
           <div class="swatch">
-            <div class="swatch__color"
-              :class="{ selected: selectedSwatchId === null && selectedFillColor === TRANSPARENT_COLOR }"
-              @click="handleFillColorChange(TRANSPARENT_COLOR)"></div>
+            <div class="swatch__color" v-for="(color, i) in swatches.special" :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{ selected: selectedFillSwatchId === 'special' && selectedFillColorIdx === i }"
+              @click="handleFillSwatchClick(i, 'special')"></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
