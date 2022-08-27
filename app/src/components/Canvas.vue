@@ -194,45 +194,47 @@ const penSizes = [5, 10, 20, 40, 60];
 const penSize = ref(40); // 20, 40, 60, 80
 
 const TRANSPARENT_COLOR = 'transparent';
-const swatches = ref([
-  {
-    key: 'lightmode',
-    label: 'Lightmode',
-    colors: [
-      { r: 0, g: 0, b: 0, a: 1 },
-      { r: 255, g: 0, b: 0, a: 1 },
-      { r: 0, g: 255, b: 0, a: 1 },
-      { r: 0, g: 0, b: 255, a: 1 },
-      { r: 255, g: 255, b: 0, a: 1 },
-      { r: 0, g: 255, b: 255, a: 1 },
-      { r: 255, g: 0, b: 255, a: 1 },
-      [
-        {
-          percent: 0,
-          color: { r: 255, g: 0, b: 0, a: 1 },
-        },
-        {
-          percent: 100,
-          color: { r: 0, g: 0, b: 255, a: 1 },
-        },
-      ],
-      [
-        {
-          percent: 0,
-          color: { r: 0, g: 255, b: 0, a: 1 },
-        },
-        {
-          percent: 100,
-          color: { r: 0, g: 0, b: 255, a: 1 },
-        },
-      ]
+const swatches = ref({
+  'default': [
+    { r: 0, g: 0, b: 0, a: 1 },
+    { r: 255, g: 0, b: 0, a: 1 },
+    { r: 0, g: 255, b: 0, a: 1 },
+    { r: 0, g: 0, b: 255, a: 1 },
+    { r: 255, g: 255, b: 0, a: 1 },
+    { r: 0, g: 255, b: 255, a: 1 },
+    { r: 255, g: 0, b: 255, a: 1 },
+    [
+      {
+        percent: 0,
+        color: { r: 255, g: 0, b: 0, a: 1 },
+      },
+      {
+        percent: 100,
+        color: { r: 0, g: 0, b: 255, a: 1 },
+      },
     ],
-  }
-]);
-
-const selectedSwatch = ref(swatches.value[0]);
-const selectedFillColor = ref(selectedSwatch.value.colors[0]);
-const selectedStrokeColor = ref(TRANSPARENT_COLOR);
+    [
+      {
+        percent: 0,
+        color: { r: 0, g: 255, b: 0, a: 1 },
+      },
+      {
+        percent: 100,
+        color: { r: 0, g: 0, b: 255, a: 1 },
+      },
+    ]
+  ],
+} as any);
+const swatchOrder = ref(['default'])
+const selectedSwatchId = ref('default' as string | null);
+const selectedColorIdx = ref(0 as number | null);
+let selectedFillColor = ref(swatches.value[selectedSwatchId.value][selectedColorIdx.value]);
+let selectedStrokeColor = ref(TRANSPARENT_COLOR);
+const maxSwatchColors = ref(9);
+const isFillSwatchDropdownOpen = ref(false);
+const openStrokeColorDropdown = ref(false);
+const showEditColorModal = ref(false);
+const colorPicker = ref(null as any);
 
 const compositionOptions = [
   'source-over',
@@ -286,6 +288,7 @@ function isDrawingAllowed(isDrawingOverride = false) {
   const activelyDrawing = isDrawing.value || isDrawingOverride
   const isPointerTool = selectedTool.value === Tool.POINTER
   const isOverlayMode = (
+    isFillSwatchDropdownOpen.value ||
     isPasteMode.value ||
     isAddImageMode.value ||
     isInteractiveEditMode.value ||
@@ -1493,6 +1496,11 @@ function cancelAddImage() {
 }
 
 function handleCanvasTouchStart(event) {
+  if (isFillSwatchDropdownOpen.value) {
+    closeFillSwatchDropdown();
+    return;
+  }
+
   if (
     activeCanvasElements.value.length === 0 &&
     (
@@ -2008,6 +2016,59 @@ function handleElementDelete() {
   moveableElements = [];
   moveableInteractive.target = [];
 }
+
+function getColorAsCss(color) {
+  if (color === TRANSPARENT_COLOR) {
+    return TRANSPARENT_COLOR;
+  }
+
+  if (Array.isArray(color)) {
+    const gradientStops = []
+    for (let i = 0; i < color.length; i += 1) {
+      const colorStop = getColorAsCss(color[i].color);
+      const percent = color[i].percent;
+      gradientStops.push(`${colorStop} ${percent}%`)
+    }
+
+    return `linear-gradient(${gradientStops.join(', ')})`
+  }
+
+  return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
+}
+
+async function handleFillColorChange(color, colorIdx: number | null = null, swatchId: string | null = null) {
+  selectedFillColor.value = color;
+
+  const isAlreadySelected = selectedSwatchId.value === swatchId && selectedColorIdx.value === colorIdx
+  if (isAlreadySelected && selectedFillColor.value !== TRANSPARENT_COLOR) {
+    showEditColorModal.value = true;
+  } else {
+    showEditColorModal.value = false;
+  }
+
+  selectedSwatchId.value = swatchId;
+  selectedColorIdx.value = colorIdx;
+}
+
+function handleAddSwatchClick() {
+  const swatchId = uuidv4();
+  const colors = Array(maxSwatchColors.value).fill(TRANSPARENT_COLOR);
+  swatches.value[swatchId] = colors;
+  swatchOrder.value.push(swatchId);
+}
+
+function closeFillSwatchDropdown() {
+  if (showEditColorModal.value) {
+    showEditColorModal.value = false;
+  } else {
+    isFillSwatchDropdownOpen.value = false
+  }
+}
+
+function toggleFillSwatchDropdown() {
+  isFillSwatchDropdownOpen.value = !isFillSwatchDropdownOpen.value
+  showEditColorModal.value = false
+}
 </script>
 
 <template>
@@ -2047,8 +2108,29 @@ function handleElementDelete() {
           {{ size }}
         </option>
       </select>
-      <!-- <ColorPicker></ColorPicker> -->
-      <select v-model="selectedFillColor">
+      <div style="display: inline;">
+        <button @click="toggleFillSwatchDropdown">
+          <div class="swatch__color" :style="{ background: getColorAsCss(selectedFillColor) }"></div>
+        </button>
+        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditColorModal" :showPanelOnly="true"
+          :supportedModes="['solid', 'linear']"></ColorPicker>
+        <div class="color-dropdown" v-if="!showEditColorModal && isFillSwatchDropdownOpen">
+          <div class="swatch" :class="{ selected: selectedSwatchId === swatchId }" v-for="swatchId in swatchOrder"
+            :key="swatchId">
+            <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{ selected: selectedSwatchId === swatchId && selectedColorIdx === i }"
+              @click="handleFillColorChange(color, i, swatchId)"></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__color"
+              :class="{ selected: selectedSwatchId === null && selectedFillColor === TRANSPARENT_COLOR }"
+              @click="handleFillColorChange(TRANSPARENT_COLOR)"></div>
+          </div>
+          <button @click="handleAddSwatchClick">Add Swatch</button>
+        </div>
+      </div>
+      <!-- <select v-model="selectedFillColor">
         <option v-for="(color, index) in selectedSwatch.colors" :key="index" :value="color">
           {{ color }}
         </option>
@@ -2057,7 +2139,7 @@ function handleElementDelete() {
         <option v-for="(color, index) in selectedSwatch.colors" :key="index" :value="color">
           {{ color }}
         </option>
-      </select>
+      </select> -->
       <select v-model="selectedComposition">
         <option v-for="composition in compositionOptions" :key="composition" :value="composition">
           {{ composition }}
@@ -2219,9 +2301,67 @@ function handleElementDelete() {
   top: 0;
   left: 0;
 }
+
+.color-dropdown {
+  width: 300px;
+  position: absolute;
+  top: 30px;
+  left: 0;
+  z-index: 2;
+  background: white;
+}
+
+.swatch {
+  display: flex;
+  flex-flow: row nowrap;
+  overflow: hidden;
+}
+
+.swatch__color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid black;
+  overflow: hidden;
+}
+
+.swatch__color.selected {
+  border: 1px solid red;
+}
+
+.swatch__color:after {
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: inherit;
+}
+
+.swatch__color:before {
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0.2;
+  background: url('@/assets/transparent-bg.png') repeat center center;
+}
 </style>
 
 <style>
+.color-picker {
+  position: absolute;
+  top: 30px;
+  left: 0;
+}
+
+.color-picker .panel {
+  top: 0;
+}
+
 .hide-ruler-controls .moveable-ruler.moveable-control-box .moveable-rotation {
   display: none;
 }

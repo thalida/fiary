@@ -13,7 +13,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "@mcistudio/vue-colorpicker": "^2.0.0",
+    "@mcistudio/vue-colorpicker": "github:thalida/colorpicker",
     "highlight.js": "^11.6.0",
     "katex": "^0.16.0",
     "konva": "^8.3.11",
