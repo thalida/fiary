@@ -395,7 +395,7 @@ function calculateDimensions(element) {
   let outerMaxY = maxY;
 
 
-  if (lineTools.includes(element.tool) && !isTransparent(element.strokeColor !== 'transparent') {
+  if (lineTools.includes(element.tool) && !isTransparent(element.strokeColor)) {
     let outerXPoints = element.smoothPoints.stroke.map((point) => point[0]);
     let outerYPoints = element.smoothPoints.stroke.map((point) => point[1]);
     outerMinX = Math.min(...outerXPoints);
@@ -403,14 +403,14 @@ function calculateDimensions(element) {
     outerMaxX = Math.max(...outerXPoints);
     outerMaxY = Math.max(...outerYPoints);
   } else if (element.tool === Tool.LINE) {
-    let strokeSize = element.strokeColor !== 'transparent' ? element.size * 0.75 : element.size / 2
+    let strokeSize = !isTransparent(element.strokeColor) ? element.size * 0.75 : element.size / 2
     outerMinX -= strokeSize;
     outerMinY -= strokeSize;
     outerMaxX += strokeSize;
     outerMaxY += strokeSize;
   } else {
     let strokeSize = 0;
-    if (element.strokeColor !== 'transparent' || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
+    if (!isTransparent(element.strokeColor) || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
       strokeSize = element.size / 2;
     }
 
@@ -860,7 +860,7 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.restore()
 
     ctx.save()
-    if (element.fillColor === 'transparent') {
+    if (isTransparent(element.fillColor)) {
       ctx.globalCompositeOperation = 'destination-out';
       ctx.fillStyle = "#fff";
     }
@@ -1005,7 +1005,7 @@ function drawElement(canvas, element, isCaching = false) {
     if (element.tool === Tool.BLOB) {
       ctx.closePath();
       ctx.save()
-      if (element.strokeColor === 'transparent') {
+      if (isTransparent(element.strokeColor)) {
         ctx.strokeStyle = ctx.fillStyle;
       }
       ctx.stroke();
@@ -1160,7 +1160,7 @@ function handleClearAll() {
     tool: Tool.CLEAR_ALL,
     composition: 'destination-out',
     lineWidth: 0,
-    strokeColor: 'transparent',
+    strokeColor: TRANSPARENT_COLOR,
     fillColor: { r: 255, g: 255, b: 255, a: 1 },
     points: [
       {
@@ -1546,8 +1546,8 @@ function handleCanvasTouchStart(event) {
   const opacity = getOpacity();
   const composition = getComposition();
   const size = selectedTool.value === Tool.CUT ? 0 : penSize.value;
-  const strokeColor = selectedTool.value === Tool.CUT ? 'transparent' : selectedStrokeColor.value;
-  const fillColor = selectedTool.value === Tool.CUT ? 'transparent' : selectedFillColor.value;
+  const strokeColor = selectedTool.value === Tool.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
+  const fillColor = selectedTool.value === Tool.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
 
   const newElement = {
     id: uuidv4(),
