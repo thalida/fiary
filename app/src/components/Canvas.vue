@@ -2306,11 +2306,11 @@ function toggleStrokeSwatchDropdown() {
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
             <Ftextarea v-else-if="elements[elementId].tool === Tool.TEXTBOX" :data-element-id="elements[elementId].id"
               class="interactiveElement" :element="elements[elementId]"
-              :is-active="elements[elementId].id === activeTextbox" @change="handleTextboxChange"
-              @focus="handleTextboxFocus" @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
-              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
-              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
-              @touchmove="handleInteractiveElementEvent" />
+              :is-active="elements[elementId].id === activeTextbox" :colorSwatches="swatches"
+              @change="handleTextboxChange" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
+              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
+              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
+              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
