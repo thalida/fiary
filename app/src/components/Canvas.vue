@@ -229,14 +229,20 @@ const swatches = ref({
     ]
   ],
 } as any);
+const maxSwatchColors = ref(9);
 const swatchOrder = ref(['default'])
+
 const selectedFillSwatchId = ref('default' as string);
 const selectedFillColorIdx = ref(0 as number);
 let selectedFillColor = computed(() => swatches.value[selectedFillSwatchId.value][selectedFillColorIdx.value]);
-let selectedStrokeColor = ref(TRANSPARENT_COLOR);
-const maxSwatchColors = ref(9);
 const isFillSwatchDropdownOpen = ref(false);
-const showEditColorModal = ref(false);
+const showEditFillColorModal = ref(false);
+
+const selectedStrokeSwatchId = ref(SPECIAL_SWATCH_KEY as string);
+const selectedStrokeColorIdx = ref(0 as number);
+let selectedStrokeColor = computed(() => swatches.value[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]);
+const isStrokeSwatchDropdownOpen = ref(false);
+const showEditStrokeColorModal = ref(false);
 
 const compositionOptions = [
   'source-over',
@@ -291,6 +297,7 @@ function isDrawingAllowed(isDrawingOverride = false) {
   const isPointerTool = selectedTool.value === Tool.POINTER
   const isOverlayMode = (
     isFillSwatchDropdownOpen.value ||
+    isStrokeSwatchDropdownOpen.value ||
     isPasteMode.value ||
     isAddImageMode.value ||
     isInteractiveEditMode.value ||
@@ -339,8 +346,12 @@ function getOpacity(): number {
   return 1;
 }
 
+function isTransparent(color) {
+  return color.a === 0;
+}
+
 function formatColor(color, opacity = 1) {
-  if (color.a === 0) {
+  if (isTransparent(color)) {
     return 'transparent';
   }
 
@@ -384,7 +395,7 @@ function calculateDimensions(element) {
   let outerMaxY = maxY;
 
 
-  if (lineTools.includes(element.tool) && element.strokeColor !== 'transparent') {
+  if (lineTools.includes(element.tool) && !isTransparent(element.strokeColor !== 'transparent') {
     let outerXPoints = element.smoothPoints.stroke.map((point) => point[0]);
     let outerYPoints = element.smoothPoints.stroke.map((point) => point[1]);
     outerMinX = Math.min(...outerXPoints);
@@ -1503,6 +1514,11 @@ function handleCanvasTouchStart(event) {
     return;
   }
 
+  if (isStrokeSwatchDropdownOpen.value) {
+    closeStrokeSwatchDropdown();
+    return;
+  }
+
   if (
     activeCanvasElements.value.length === 0 &&
     (
@@ -2038,22 +2054,9 @@ function getColorAsCss(color) {
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
 }
 
-async function handleFillSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected = selectedFillSwatchId.value === swatchId && selectedFillColorIdx.value === colorIdx
-  if (isAlreadySelected && swatchId !== SPECIAL_SWATCH_KEY) {
-    showEditColorModal.value = true;
-  } else {
-    showEditColorModal.value = false;
-  }
-
-  selectedFillSwatchId.value = swatchId;
-  selectedFillColorIdx.value = colorIdx;
-}
-
 function randomInteger(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
 
 function handleAddSwatchClick() {
   const swatchId = uuidv4();
@@ -2068,9 +2071,20 @@ function handleAddSwatchClick() {
     };
     colors.push(color);
   }
-  // const colors = Array(maxSwatchColors.value).fill({ r: 255, g: 255, b: 255, a: 1 });
   swatches.value[swatchId] = colors;
   swatchOrder.value.push(swatchId);
+}
+
+async function handleFillSwatchClick(colorIdx: number, swatchId: string) {
+  const isAlreadySelected = selectedFillSwatchId.value === swatchId && selectedFillColorIdx.value === colorIdx
+  if (isAlreadySelected && swatchId !== SPECIAL_SWATCH_KEY) {
+    showEditFillColorModal.value = true;
+  } else {
+    showEditFillColorModal.value = false;
+  }
+
+  selectedFillSwatchId.value = swatchId;
+  selectedFillColorIdx.value = colorIdx;
 }
 
 function handleFillColorChange({ color }) {
@@ -2080,18 +2094,52 @@ function handleFillColorChange({ color }) {
 }
 
 function closeFillSwatchDropdown() {
-  if (showEditColorModal.value) {
-    showEditColorModal.value = false;
+  if (showEditFillColorModal.value) {
+    showEditFillColorModal.value = false;
   } else {
     isFillSwatchDropdownOpen.value = false
   }
 }
 
 function toggleFillSwatchDropdown() {
-  if (showEditColorModal.value) {
-    showEditColorModal.value = false;
+  if (showEditFillColorModal.value) {
+    showEditFillColorModal.value = false;
   } else {
     isFillSwatchDropdownOpen.value = !isFillSwatchDropdownOpen.value
+  }
+}
+
+async function handleStrokeSwatchClick(colorIdx: number, swatchId: string) {
+  const isAlreadySelected = selectedStrokeSwatchId.value === swatchId && selectedStrokeColorIdx.value === colorIdx
+  if (isAlreadySelected && swatchId !== SPECIAL_SWATCH_KEY) {
+    showEditStrokeColorModal.value = true;
+  } else {
+    showEditStrokeColorModal.value = false;
+  }
+
+  selectedStrokeSwatchId.value = swatchId;
+  selectedStrokeColorIdx.value = colorIdx;
+}
+
+function handleStrokeColorChange({ color }) {
+  const swatchId = selectedStrokeSwatchId.value;
+  const colorIdx = selectedStrokeColorIdx.value;
+  swatches.value[swatchId][colorIdx] = color;
+}
+
+function closeStrokeSwatchDropdown() {
+  if (showEditStrokeColorModal.value) {
+    showEditStrokeColorModal.value = false;
+  } else {
+    isStrokeSwatchDropdownOpen.value = false
+  }
+}
+
+function toggleStrokeSwatchDropdown() {
+  if (showEditStrokeColorModal.value) {
+    showEditStrokeColorModal.value = false;
+  } else {
+    isStrokeSwatchDropdownOpen.value = !isStrokeSwatchDropdownOpen.value
   }
 }
 </script>
@@ -2137,13 +2185,13 @@ function toggleFillSwatchDropdown() {
         <button @click="toggleFillSwatchDropdown">
           <div class="swatch__color" :style="{ background: getColorAsCss(selectedFillColor) }"></div>
         </button>
-        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditColorModal" :showPanelOnly="true"
+        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditFillColorModal" :showPanelOnly="true"
           :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
           :mode="Array.isArray(selectedFillColor) ? 'linear' : 'solid'"
           :color="Array.isArray(selectedFillColor) ? {} : selectedFillColor"
           :gradients="Array.isArray(selectedFillColor) ? selectedFillColor : []" @colorChanged="handleFillColorChange">
         </ColorPicker>
-        <div class="color-dropdown" v-if="!showEditColorModal && isFillSwatchDropdownOpen">
+        <div class="color-dropdown" v-if="!showEditFillColorModal && isFillSwatchDropdownOpen">
           <div class="swatch" :class="{ selected: selectedFillSwatchId === swatchId }" v-for="swatchId in swatchOrder"
             :key="swatchId">
             <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
@@ -2160,16 +2208,34 @@ function toggleFillSwatchDropdown() {
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
-      <!-- <select v-model="selectedFillColor">
-        <option v-for="(color, index) in selectedSwatch.colors" :key="index" :value="color">
-          {{ color }}
-        </option>
-      </select>
-      <select v-model="selectedStrokeColor">
-        <option v-for="(color, index) in selectedSwatch.colors" :key="index" :value="color">
-          {{ color }}
-        </option>
-      </select> -->
+      <div style="display: inline;">
+        <button @click="toggleStrokeSwatchDropdown">
+          <div class="swatch__color" :style="{ background: getColorAsCss(selectedStrokeColor) }"></div>
+        </button>
+        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditStrokeColorModal" :showPanelOnly="true"
+          :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
+          :mode="Array.isArray(selectedStrokeColor) ? 'linear' : 'solid'"
+          :color="Array.isArray(selectedStrokeColor) ? {} : selectedStrokeColor"
+          :gradients="Array.isArray(selectedStrokeColor) ? selectedStrokeColor : []"
+          @colorChanged="handleStrokeColorChange">
+        </ColorPicker>
+        <div class="color-dropdown" v-if="!showEditStrokeColorModal && isStrokeSwatchDropdownOpen">
+          <div class="swatch" :class="{ selected: selectedStrokeSwatchId === swatchId }" v-for="swatchId in swatchOrder"
+            :key="swatchId">
+            <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{ selected: selectedStrokeSwatchId === swatchId && selectedStrokeColorIdx === i }"
+              @click="handleStrokeSwatchClick(i, swatchId)"></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_SWATCH_KEY]" :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{ selected: selectedStrokeSwatchId === SPECIAL_SWATCH_KEY && selectedStrokeColorIdx === i }"
+              @click="handleStrokeSwatchClick(i, SPECIAL_SWATCH_KEY)"></div>
+          </div>
+          <button @click="handleAddSwatchClick">Add Swatch</button>
+        </div>
+      </div>
       <select v-model="selectedComposition">
         <option v-for="composition in compositionOptions" :key="composition" :value="composition">
           {{ composition }}
