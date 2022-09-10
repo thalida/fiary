@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-  size: {
+  lineSize: {
     type: Number,
     default: 3,
   },
@@ -20,12 +20,12 @@ defineExpose({
   label: 'Dotted',
 });
 
-const patternSize = computed(() => props.size + (props.spacing * 2));
-const dotRadius = computed(() => props.size / 2);
+const patternSize = computed(() => props.lineSize + (props.spacing * 2));
+const dotRadius = computed(() => props.lineSize / 2);
 
 </script>
 <template>
   <pattern x="0" y="0" :width="patternSize" :height="patternSize" patternUnits="userSpaceOnUse">
-    <rect :x="spacing" :y="spacing" :width="size" :height="size" :rx="dotRadius" :fill="fillColor" />
+    <rect :x="spacing" :y="spacing" :width="lineSize" :height="lineSize" :rx="dotRadius" :fill="fillColor" />
   </pattern>
 </template>

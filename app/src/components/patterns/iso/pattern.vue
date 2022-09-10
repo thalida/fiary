@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-  size: {
+  lineSize: {
     type: Number,
     default: 1,
   },
@@ -15,16 +15,21 @@ const props = defineProps({
     default: 'black',
   },
 });
-const leftDiag = computed(() => `M0 0L${props.spacing * 2} ${props.spacing}`);
-const rightDiag = computed(() => `M${props.spacing * 2} 0L0 ${props.spacing}`);
 
+const patternWidth = computed(() => (props.spacing * 2) + props.lineSize);
+const patternHeight = computed(() => props.spacing);
+const edgeLineWidth = computed(() => props.lineSize / 2);
+const rightLineXPos = computed(() => patternWidth.value - edgeLineWidth.value);
+const centerLineXPos = computed(() => (patternWidth.value / 2) - (props.lineSize / 2));
+const leftDiag = computed(() => `M0 0L${patternWidth.value} ${patternHeight.value}`);
+const rightDiag = computed(() => `M${patternWidth.value} 0L0 ${patternHeight.value}`);
 </script>
 <template>
-
-  <pattern x="0" y="0" :width="spacing * 2" :height="spacing" patternUnits="userSpaceOnUse">
-    <rect x="0" y="0" :width="size" :height="spacing" :fill="fillColor" />
-    <rect :x="spacing - size" y="0" :width="size" :height="spacing" :fill="fillColor" />
-    <path :d="leftDiag" :stroke="fillColor" />
-    <path :d="rightDiag" :stroke="fillColor" />
+  <pattern x="0" y="0" :width="patternWidth" :height="patternHeight" patternUnits="userSpaceOnUse">
+    <rect x="0" y="0" :width="edgeLineWidth" :height="patternHeight" :fill="fillColor" />
+    <rect :x="rightLineXPos" y="0" :width="edgeLineWidth" :height="patternHeight" :fill="fillColor" />
+    <rect :x="centerLineXPos" y="0" :width="lineSize" :height="patternHeight" :fill="fillColor" />
+    <path :d="leftDiag" :stroke="fillColor" :stroke-width="lineSize" />
+    <path :d="rightDiag" :stroke="fillColor" :stroke-width="lineSize" />
   </pattern>
 </template>

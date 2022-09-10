@@ -260,6 +260,9 @@ let selectedPatternColor = computed(() => swatches.value[selectedPatternSwatchId
 const isPatternSwatchDropdownOpen = ref(false);
 const showEditPatternColorModal = ref(false);
 const selectedPatternOpacity = ref(50);
+const selectedPatternLineSize = ref(10);
+const selectedPatternSpacing = ref(10);
+
 
 const paperPatterns = ref(patternComponents);
 const selectedPaperPatternIdx = ref(0);
@@ -2395,6 +2398,8 @@ function togglePatternSwatchDropdown() {
         </div>
       </div>
       <input v-if="isPaperTool" type="number" min="0" max="100" step="1" v-model="selectedPatternOpacity" />
+      <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternLineSize" />
+      <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternSpacing" />
 
       <label><input type="checkbox" v-model="ruler.isVisible" /> Show Ruler?</label>
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
@@ -2474,7 +2479,8 @@ function togglePatternSwatchDropdown() {
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
           <component :is="selectedPaperPattern.COMPONENT" id="paper-svg-pattern"
-            :fillColor="getColorAsCss(selectedPatternColor)" />
+            :fillColor="getColorAsCss(selectedPatternColor)" :lineSize="selectedPatternLineSize"
+            :spacing="selectedPatternSpacing" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
             :opacity="selectedPatternOpacity / 100"></rect>
         </svg>

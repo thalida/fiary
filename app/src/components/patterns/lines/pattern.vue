@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-  size: {
+  lineSize: {
     type: Number,
     default: 1,
   },
@@ -15,12 +15,11 @@ const props = defineProps({
     default: 'black',
   },
 });
-const patternSize = computed(() => props.spacing);
-const lineYPos = computed(() => props.spacing - props.size);
+const lineYPos = computed(() => props.spacing - props.lineSize);
 
 </script>
 <template>
-  <pattern x="0" y="0" :width="patternSize" :height="patternSize" patternUnits="userSpaceOnUse">
-    <rect x="0" :y="lineYPos" :width="spacing" :height="size" :fill="fillColor" />
+  <pattern x="0" y="0" :width="spacing" :height="spacing" patternUnits="userSpaceOnUse">
+    <rect x="0" :y="lineYPos" :width="spacing" :height="lineSize" :fill="fillColor" />
   </pattern>
 </template>
