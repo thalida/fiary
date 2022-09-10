@@ -11,6 +11,7 @@ import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import Ftextarea from './Ftextarea.vue'
 import DotPattern from '@/components/patterns/DotPattern.vue'
+import SquarePattern from '@/components/patterns/SquarePattern.vue'
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
@@ -2470,7 +2471,8 @@ function togglePatternSwatchDropdown() {
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
-          <DotPattern id="paper-svg-pattern" :fillColor="getColorAsCss(selectedPatternColor)" />
+          <!-- <DotPattern id="paper-svg-pattern" :fillColor="getColorAsCss(selectedPatternColor)" /> -->
+          <SquarePattern id="paper-svg-pattern" :fillColor="getColorAsCss(selectedPatternColor)" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
             :opacity="selectedPatternOpacity / 100"></rect>
         </svg>
