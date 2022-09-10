@@ -212,7 +212,8 @@ const swatches = ref({
   [SPECIAL_PAPER_SWATCH_KEY]: [
     { r: 255, g: 255, b: 255, a: 1 },
     { r: 0, g: 0, b: 0, a: 1 },
-    { r: 255, g: 250, b: 232, a: 1 }
+    { r: 255, g: 250, b: 232, a: 1 },
+    { r: 127, g: 127, b: 127, a: 1 },
   ],
   'default': [
     { r: 0, g: 0, b: 0, a: 1 },
@@ -252,6 +253,13 @@ const selectedPaperColorIdx = ref(0 as number);
 let selectedPaperColor = computed(() => swatches.value[selectedPaperSwatchId.value][selectedPaperColorIdx.value]);
 const isPaperSwatchDropdownOpen = ref(false);
 const showEditPaperColorModal = ref(false);
+
+const selectedPatternSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY as string);
+const selectedPatternColorIdx = ref(3 as number);
+let selectedPatternColor = computed(() => swatches.value[selectedPatternSwatchId.value][selectedPatternColorIdx.value]);
+const isPatternSwatchDropdownOpen = ref(false);
+const showEditPatternColorModal = ref(false);
+const selectedPatternOpacity = ref(50);
 
 const selectedFillSwatchId = ref('default' as string);
 const selectedFillColorIdx = ref(0 as number);
@@ -1534,6 +1542,11 @@ function handleCanvasTouchStart(event) {
     return;
   }
 
+  if (isPatternSwatchDropdownOpen.value) {
+    closePatternSwatchDropdown();
+    return;
+  }
+
   if (
     activeCanvasElements.value.length === 0 &&
     (
@@ -2186,6 +2199,43 @@ function togglePaperSwatchDropdown() {
     isPaperSwatchDropdownOpen.value = !isPaperSwatchDropdownOpen.value
   }
 }
+
+
+
+
+async function handlePatternSwatchClick(colorIdx: number, swatchId: string) {
+  const isAlreadySelected = selectedPatternSwatchId.value === swatchId && selectedPatternColorIdx.value === colorIdx
+  if (isAlreadySelected && swatchId !== SPECIAL_PAPER_SWATCH_KEY) {
+    showEditPatternColorModal.value = true;
+  } else {
+    showEditPatternColorModal.value = false;
+  }
+
+  selectedPatternSwatchId.value = swatchId;
+  selectedPatternColorIdx.value = colorIdx;
+}
+
+function handlePatternColorChange({ color }) {
+  const swatchId = selectedPatternSwatchId.value;
+  const colorIdx = selectedPatternColorIdx.value;
+  swatches.value[swatchId][colorIdx] = color;
+}
+
+function closePatternSwatchDropdown() {
+  if (showEditPatternColorModal.value) {
+    showEditPatternColorModal.value = false;
+  } else {
+    isPatternSwatchDropdownOpen.value = false
+  }
+}
+
+function togglePatternSwatchDropdown() {
+  if (showEditPatternColorModal.value) {
+    showEditPatternColorModal.value = false;
+  } else {
+    isPatternSwatchDropdownOpen.value = !isPatternSwatchDropdownOpen.value
+  }
+}
 </script>
 
 <template>
@@ -2313,6 +2363,35 @@ function togglePaperSwatchDropdown() {
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
+      <div v-if="isPaperTool" style="display: inline;">
+        <button @click="togglePatternSwatchDropdown">
+          <div class="swatch__color" :style="{ background: getColorAsCss(selectedPatternColor) }"></div>
+        </button>
+        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditPatternColorModal" :showPanelOnly="true"
+          :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
+          :mode="Array.isArray(selectedPatternColor) ? 'linear' : 'solid'"
+          :color="Array.isArray(selectedPatternColor) ? {} : selectedPatternColor"
+          :gradients="Array.isArray(selectedPatternColor) ? selectedPatternColor : []"
+          @colorChanged="handlePatternColorChange">
+        </ColorPicker>
+        <div class="color-dropdown" v-if="!showEditPatternColorModal && isPatternSwatchDropdownOpen">
+          <div class="swatch" :class="{ selected: selectedPatternSwatchId === swatchId }"
+            v-for="swatchId in swatchOrder" :key="swatchId">
+            <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{ selected: selectedPatternSwatchId === swatchId && selectedPatternColorIdx === i }"
+              @click="handlePatternSwatchClick(i, swatchId)"></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]" :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{ selected: selectedPatternSwatchId === SPECIAL_PAPER_SWATCH_KEY && selectedPatternColorIdx === i }"
+              @click="handlePatternSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"></div>
+          </div>
+          <button @click="handleAddSwatchClick">Add Swatch</button>
+        </div>
+      </div>
+      <input v-if="isPaperTool" type="number" min="0" max="100" step="1" v-model="selectedPatternOpacity" />
 
       <label><input type="checkbox" v-model="ruler.isVisible" /> Show Ruler?</label>
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
@@ -2387,11 +2466,13 @@ function togglePaperSwatchDropdown() {
         <canvas class="drawing-canvas" ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
         </canvas>
       </div>
+
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
-          <DotPattern id="paper-svg-pattern" />
-          <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"></rect>
+          <DotPattern id="paper-svg-pattern" :fillColor="getColorAsCss(selectedPatternColor)" />
+          <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
+            :opacity="selectedPatternOpacity / 100"></rect>
         </svg>
       </div>
     </div>
