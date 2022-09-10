@@ -10,6 +10,7 @@ import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import Ftextarea from './Ftextarea.vue'
+import DotPattern from '@/components/patterns/DotPattern.vue'
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
@@ -2388,7 +2389,10 @@ function togglePaperSwatchDropdown() {
       </div>
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
-        <div class="paper-pattern"></div>
+        <svg class="paper-pattern" width="100%" height="100%">
+          <DotPattern id="paper-svg-pattern" />
+          <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"></rect>
+        </svg>
       </div>
     </div>
   </div>
