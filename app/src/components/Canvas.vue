@@ -10,8 +10,7 @@ import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import Ftextarea from './Ftextarea.vue'
-import * as DotPattern from '@/components/patterns/dot'
-import * as SquarePattern from '@/components/patterns/square'
+import patternComponents from '@/components/patterns'
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
@@ -262,10 +261,7 @@ const isPatternSwatchDropdownOpen = ref(false);
 const showEditPatternColorModal = ref(false);
 const selectedPatternOpacity = ref(50);
 
-const paperPatterns = ref([
-  DotPattern,
-  SquarePattern,
-]);
+const paperPatterns = ref(patternComponents);
 const selectedPaperPatternIdx = ref(0);
 const selectedPaperPattern = computed(() => paperPatterns.value[selectedPaperPatternIdx.value]);
 
