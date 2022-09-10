@@ -10,8 +10,8 @@ import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import Ftextarea from './Ftextarea.vue'
-import DotPattern from '@/components/patterns/DotPattern.vue'
-import SquarePattern from '@/components/patterns/SquarePattern.vue'
+import * as DotPattern from '@/components/patterns/dot'
+import * as SquarePattern from '@/components/patterns/square'
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
@@ -262,6 +262,13 @@ const isPatternSwatchDropdownOpen = ref(false);
 const showEditPatternColorModal = ref(false);
 const selectedPatternOpacity = ref(50);
 
+const paperPatterns = ref([
+  DotPattern,
+  SquarePattern,
+]);
+const selectedPaperPatternIdx = ref(0);
+const selectedPaperPattern = computed(() => paperPatterns.value[selectedPaperPatternIdx.value]);
+
 const selectedFillSwatchId = ref('default' as string);
 const selectedFillColorIdx = ref(0 as number);
 let selectedFillColor = computed(() => swatches.value[selectedFillSwatchId.value][selectedFillColorIdx.value]);
@@ -273,12 +280,6 @@ const selectedStrokeColorIdx = ref(0 as number);
 let selectedStrokeColor = computed(() => swatches.value[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]);
 const isStrokeSwatchDropdownOpen = ref(false);
 const showEditStrokeColorModal = ref(false);
-
-const paperPatterns = ref([
-  'dots',
-  'squares'
-]);
-const selectedPaperPattern = ref(paperPatterns.value[0]);
 
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
@@ -2336,6 +2337,11 @@ function togglePatternSwatchDropdown() {
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
+      <select v-if="isPaperTool" v-model="selectedPaperPatternIdx">
+        <option v-for="(pattern, index) in paperPatterns" :key="index" :value="index">
+          {{ pattern.LABEL }}
+        </option>
+      </select>
       <div v-if="isPaperTool" style="display: inline;">
         <button @click="togglePaperSwatchDropdown">
           <div class="swatch__color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
@@ -2471,8 +2477,8 @@ function togglePatternSwatchDropdown() {
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
-          <!-- <DotPattern id="paper-svg-pattern" :fillColor="getColorAsCss(selectedPatternColor)" /> -->
-          <SquarePattern id="paper-svg-pattern" :fillColor="getColorAsCss(selectedPatternColor)" />
+          <component :is="selectedPaperPattern.COMPONENT" id="paper-svg-pattern"
+            :fillColor="getColorAsCss(selectedPatternColor)" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
             :opacity="selectedPatternOpacity / 100"></rect>
         </svg>

@@ -16,6 +16,10 @@ const props = defineProps({
   },
 });
 
+defineExpose({
+  label: 'Dotted',
+});
+
 const patternSize = computed(() => props.size + (props.spacing * 2));
 const dotRadius = computed(() => props.size / 2);
 
