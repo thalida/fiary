@@ -211,6 +211,7 @@ const swatches = ref({
   [SPECIAL_PAPER_SWATCH_KEY]: [
     { r: 255, g: 255, b: 255, a: 1 },
     { r: 0, g: 0, b: 0, a: 1 },
+    { r: 255, g: 250, b: 232, a: 1 }
   ],
   'default': [
     { r: 0, g: 0, b: 0, a: 1 },
@@ -269,37 +270,6 @@ const paperPatterns = ref([
 ]);
 const selectedPaperPattern = ref(paperPatterns.value[0]);
 
-const compositionOptions = [
-  'source-over',
-  'source-in',
-  'source-out',
-  'source-atop',
-  'destination-over',
-  'destination-in',
-  'destination-out',
-  'destination-atop',
-  'lighter',
-  'copy',
-  'xor',
-  'multiply',
-  'screen',
-  'overlay',
-  'darken',
-  'lighten',
-  'color-dodge',
-  'color-burn',
-  'hard-light',
-  'soft-light',
-  'difference',
-  'exclusion',
-  'hue',
-  'saturation',
-  'color',
-  'luminosity',
-];
-const selectedComposition = ref(compositionOptions[0]);
-
-
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
     handleClearAll();
@@ -322,6 +292,7 @@ function isDrawingAllowed(isDrawingOverride = false) {
   const isOverlayMode = (
     isFillSwatchDropdownOpen.value ||
     isStrokeSwatchDropdownOpen.value ||
+    isPaperSwatchDropdownOpen.value ||
     isPasteMode.value ||
     isAddImageMode.value ||
     isInteractiveEditMode.value ||
@@ -1557,6 +1528,11 @@ function handleCanvasTouchStart(event) {
     return;
   }
 
+  if (isPaperSwatchDropdownOpen.value) {
+    closePaperSwatchDropdown();
+    return;
+  }
+
   if (
     activeCanvasElements.value.length === 0 &&
     (
@@ -2178,7 +2154,7 @@ function toggleStrokeSwatchDropdown() {
 
 async function handlePaperSwatchClick(colorIdx: number, swatchId: string) {
   const isAlreadySelected = selectedPaperSwatchId.value === swatchId && selectedPaperColorIdx.value === colorIdx
-  if (isAlreadySelected && swatchId !== SPECIAL_TOOL_SWATCH_KEY) {
+  if (isAlreadySelected && swatchId !== SPECIAL_PAPER_SWATCH_KEY) {
     showEditPaperColorModal.value = true;
   } else {
     showEditPaperColorModal.value = false;
@@ -2248,7 +2224,7 @@ function togglePaperSwatchDropdown() {
         <button @click="handleEndInteractiveEdit">Done</button>
       </div>
 
-      <select v-model="penSize">
+      <select v-if="isDrawingTool" v-model="penSize">
         <option v-for="size in penSizes" :key="size" :value="size">
           {{ size }}
         </option>
@@ -2336,11 +2312,7 @@ function togglePaperSwatchDropdown() {
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
-      <select v-model="selectedComposition">
-        <option v-for="composition in compositionOptions" :key="composition" :value="composition">
-          {{ composition }}
-        </option>
-      </select>
+
       <label><input type="checkbox" v-model="ruler.isVisible" /> Show Ruler?</label>
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
@@ -2350,7 +2322,6 @@ function togglePaperSwatchDropdown() {
       <button :disabled="!hasRedo" @click="handleRedoClick">Redo</button>
     </div>
     <!-- END TOOLS -->
-
     <div class="surface" @mousedown="handleCanvasTouchStart" @touchstart="handleCanvasTouchStart"
       @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd" @mousemove="handleCanvasTouchMove"
       @touchmove="handleCanvasTouchMove">
@@ -2416,7 +2387,8 @@ function togglePaperSwatchDropdown() {
         </canvas>
       </div>
       <div class="paper-layer">
-        <div class="canvas-paper"></div>
+        <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
+        <div class="paper-pattern"></div>
       </div>
     </div>
   </div>
@@ -2449,7 +2421,8 @@ function togglePaperSwatchDropdown() {
 .drawing-layer,
 .paste-layer,
 .image-layer,
-.ruler-layer {
+.ruler-layer,
+.paper-layer {
   position: absolute;
   top: 0;
   left: 0;
@@ -2457,20 +2430,24 @@ function togglePaperSwatchDropdown() {
   height: 100vh;
 }
 
-.drawing-layer {
+.paper-layer {
   z-index: 0;
 }
 
-.paste-layer {
+.drawing-layer {
   z-index: 1;
+}
+
+.paste-layer {
+  z-index: 2;
 }
 
 .image-layer {
-  z-index: 1;
+  z-index: 2;
 }
 
 .ruler-layer {
-  z-index: 2;
+  z-index: 3;
 }
 
 .drawing-layer .drawing-canvas,
@@ -2526,6 +2503,16 @@ function togglePaperSwatchDropdown() {
   background: rgba(0, 0, 0, 0.5);
   background: linear-gradient(to right, rgba(255, 0, 0, 0.5) 0%, rgba(0, 0, 255, 0.5) 100%);
 }
+
+
+.paper-layer .paper-color {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
 
 .color-dropdown {
   width: 300px;
