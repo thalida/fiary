@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@mcistudio/vue-colorpicker": "github:thalida/colorpicker",
+    "ef-infinite-canvas": "^0.5.5-alpha",
     "highlight.js": "^11.6.0",
     "lodash": "^4.17.21",
     "moveable": "^0.35.4",

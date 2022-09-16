@@ -3,6 +3,7 @@ import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch
 import { v4 as uuidv4 } from 'uuid';
 import cloneDeep from 'lodash/cloneDeep';
 import { getStroke } from 'perfect-freehand'
+import InfiniteCanvas from 'ef-infinite-canvas'
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
 import Moveable from "moveable";
@@ -26,7 +27,7 @@ const canvasConfig = ref({
   dpi: window.devicePixelRatio,
 })
 const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
-const canvas = ref<HTMLCanvasElement>()
+const drawingCanvas = ref<HTMLCanvasElement>()
 const interactiveCanvas = ref()
 const imagePreviewCanvas = ref<HTMLCanvasElement>()
 const imageBackdropCanvas = ref<HTMLCanvasElement>()
@@ -95,22 +96,22 @@ const showRulerControls = computed(() => {
 })
 
 onMounted(() => {
-  if (typeof canvas.value === 'undefined') {
+  if (typeof drawingCanvas.value === 'undefined') {
     return;
   }
 
-  const ctx = canvas.value.getContext('2d')
+  const ctx = drawingCanvas.value.getContext('2d')
 
   if (ctx === null) {
     return;
   }
 
   const dpi = canvasConfig.value.dpi;
-  canvas.value.width = canvasConfig.value.width * dpi;
-  canvas.value.height = canvasConfig.value.height * dpi;
+  drawingCanvas.value.width = canvasConfig.value.width * dpi;
+  drawingCanvas.value.height = canvasConfig.value.height * dpi;
 
-  canvas.value.style.width = `${canvasConfig.value.width}px`;
-  canvas.value.style.height = `${canvasConfig.value.height}px`;
+  drawingCanvas.value.style.width = `${canvasConfig.value.width}px`;
+  drawingCanvas.value.style.height = `${canvasConfig.value.height}px`;
 
   ctx.scale(dpi, dpi);
 })
@@ -1069,14 +1070,13 @@ function clearCanvas(canvas) {
 }
 
 function drawElements() {
-  const drawCanvas = canvas.value;
   const drawElementIds = activeCanvasElements.value;
-  clearCanvas(drawCanvas);
+  clearCanvas(drawingCanvas.value);
 
   for (let i = 0; i < drawElementIds.length; i += 1) {
     const elementId = drawElementIds[i];
     const element = getCanvasElement(elementId);
-    drawElement(drawCanvas, element);
+    drawElement(drawingCanvas.value, element);
   }
 }
 
@@ -1363,10 +1363,6 @@ function handlePasteDelete() {
 }
 
 async function handleAddImageStart(image, trackHistory = true) {
-  if (typeof canvas.value === 'undefined') {
-    return;
-  }
-
   let imageWidth = image.width;
   let imageHeight = image.height;
   let scale = 1;
@@ -1564,12 +1560,12 @@ function handleCanvasTouchStart(event) {
 
   checkIsStylus(event);
 
-  if (!isDrawingAllowed(true) || canvas.value === null) {
+  if (!isDrawingAllowed(true) || drawingCanvas.value === null) {
     return;
   }
   isDrawing.value = true;
 
-  const pos = getMousePos(canvas.value, event, true);
+  const pos = getMousePos(drawingCanvas.value, event, true);
   const isRulerLine = pos.isRulerLine;
   const pressure = getPressure(event);
   const opacity = getOpacity();
@@ -1624,7 +1620,7 @@ function handleCanvasTouchStart(event) {
 }
 
 function handleCanvasTouchMove(event) {
-  if (!isDrawingAllowed() || canvas.value === null) {
+  if (!isDrawingAllowed() || drawingCanvas.value === null) {
     return;
   }
 
@@ -1633,7 +1629,7 @@ function handleCanvasTouchMove(event) {
   const lastElementId = canvasElements.value[canvasElements.value.length - 1];
   const lastElement = getCanvasElement(lastElementId);
   const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
-  const pos = getMousePos(canvas.value, event, followRuler);
+  const pos = getMousePos(drawingCanvas.value, event, followRuler);
   const pressure = getPressure(event);
 
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
@@ -1676,18 +1672,18 @@ function handleCanvasTouchEnd(event) {
   }
 
   if (selectedTool.value === Tool.CHECKBOX) {
-    const pos = getMousePos(canvas.value, event, true);
+    const pos = getMousePos(drawingCanvas.value, event, true);
     handleAddCheckbox(pos);
     return;
   }
 
   if (selectedTool.value === Tool.TEXTBOX) {
-    const pos = getMousePos(canvas.value, event, true);
+    const pos = getMousePos(drawingCanvas.value, event, true);
     handleAddTextbox(pos);
     return;
   }
 
-  if (!isDrawingAllowed() || canvas.value === null) {
+  if (!isDrawingAllowed() || drawingCanvas.value === null) {
     return;
   }
 
@@ -2471,7 +2467,7 @@ function togglePatternSwatchDropdown() {
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
-        <canvas class="drawing-canvas" ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
+        <canvas class="drawing-canvas" ref="drawingCanvas" :width="canvasConfig.width" :height="canvasConfig.height">
         </canvas>
       </div>
 
