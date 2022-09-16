@@ -10,6 +10,5 @@ const patterns = [
   iso,
 ]
 
-export const defaultPatternProps = patterns.map(pattern => pattern.DEFAULT_PROPS);
-
 export default patterns;
+export const defaultPatternProps = patterns.map(pattern => pattern.DEFAULT_PROPS);

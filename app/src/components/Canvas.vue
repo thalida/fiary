@@ -3,7 +3,6 @@ import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch
 import { v4 as uuidv4 } from 'uuid';
 import cloneDeep from 'lodash/cloneDeep';
 import { getStroke } from 'perfect-freehand'
-import InfiniteCanvas from 'ef-infinite-canvas'
 import ColorPicker from '@mcistudio/vue-colorpicker'
 import '@mcistudio/vue-colorpicker/dist/style.css'
 import Moveable from "moveable";
