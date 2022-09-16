@@ -3,9 +3,13 @@ import * as square from './square'
 import * as lines from './lines'
 import * as iso from './iso'
 
-export default [
+const patterns = [
   dot,
   square,
   lines,
   iso,
 ]
+
+export const defaultPatternProps = patterns.map(pattern => pattern.DEFAULT_PROPS);
+
+export default patterns;

@@ -16,8 +16,8 @@ const props = defineProps({
   },
 });
 
-const patternWidth = computed(() => (props.spacing * 2) + props.lineSize);
-const patternHeight = computed(() => props.spacing);
+const patternWidth = computed(() => props.spacing + props.lineSize);
+const patternHeight = computed(() => props.spacing / 2);
 const edgeLineWidth = computed(() => props.lineSize / 2);
 const rightLineXPos = computed(() => patternWidth.value - edgeLineWidth.value);
 const centerLineXPos = computed(() => (patternWidth.value / 2) - (props.lineSize / 2));
