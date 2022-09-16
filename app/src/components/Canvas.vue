@@ -17,6 +17,7 @@ const isPasteMode = ref(false);
 const isAddImageMode = ref(false);
 const isInteractiveEditMode = ref(false);
 const isTextboxEditMode = ref(false);
+const isPanning = ref(false);
 const activeTextbox = ref(null);
 const activeImage = ref(null);
 
@@ -1069,9 +1070,23 @@ function clearCanvas(canvas) {
 }
 
 function drawElements() {
-  const drawElementIds = activeCanvasElements.value;
+  if (typeof drawingCanvas.value === 'undefined') {
+    return;
+  }
+
+  const ctx = drawingCanvas.value.getContext('2d');
+  if (ctx === null) {
+    return;
+  }
+
+  const matrix = ctx.getTransform()
+  matrix.e = transformOrigin.x
+  matrix.f = transformOrigin.y
+  ctx.setTransform(matrix)
+
   clearCanvas(drawingCanvas.value);
 
+  const drawElementIds = activeCanvasElements.value;
   for (let i = 0; i < drawElementIds.length; i += 1) {
     const elementId = drawElementIds[i];
     const element = getCanvasElement(elementId);
@@ -1522,6 +1537,26 @@ function cancelAddImage() {
   isAddImageMode.value = false;
 }
 
+let transformOrigin = { x: 0, y: 0 };
+let activePanCoords = [];
+let cameraZoom = 1;
+
+function handlePanTransform(event, isStart = false) {
+  const pos = getMousePos(drawingCanvas.value, event);
+
+  if (isStart) {
+    activePanCoords = [{ x: pos.x - transformOrigin.x, y: pos.y - transformOrigin.y }];
+  }
+
+  activePanCoords[1] = { x: pos.x, y: pos.y };
+
+  transformOrigin = {
+    x: activePanCoords[1].x - activePanCoords[0].x,
+    y: activePanCoords[1].y - activePanCoords[0].y,
+  };
+  drawElements()
+}
+
 function handleCanvasTouchStart(event) {
   if (isFillSwatchDropdownOpen.value) {
     closeFillSwatchDropdown();
@@ -1554,6 +1589,12 @@ function handleCanvasTouchStart(event) {
   }
 
   if (selectedTool.value === Tool.CHECKBOX || selectedTool.value === Tool.TEXTBOX) {
+    return;
+  }
+
+  if (selectedTool.value === Tool.POINTER) {
+    isPanning.value = true;
+    handlePanTransform(event, true);
     return;
   }
 
@@ -1619,11 +1660,16 @@ function handleCanvasTouchStart(event) {
 }
 
 function handleCanvasTouchMove(event) {
-  if (!isDrawingAllowed() || drawingCanvas.value === null) {
+  if (!(isPanning.value || isDrawingAllowed()) || drawingCanvas.value === null) {
     return;
   }
 
   event.preventDefault();
+
+  if (isPanning.value) {
+    handlePanTransform(event);
+    return;
+  }
 
   const lastElementId = canvasElements.value[canvasElements.value.length - 1];
   const lastElement = getCanvasElement(lastElementId);
@@ -1679,6 +1725,12 @@ function handleCanvasTouchEnd(event) {
   if (selectedTool.value === Tool.TEXTBOX) {
     const pos = getMousePos(drawingCanvas.value, event, true);
     handleAddTextbox(pos);
+    return;
+  }
+
+  if (isPanning.value) {
+    handlePanTransform(event);
+    isPanning.value = false;
     return;
   }
 
