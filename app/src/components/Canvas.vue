@@ -10,7 +10,7 @@ import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
 import polygonClipping from 'polygon-clipping'
 import Ftextarea from './Ftextarea.vue'
-import patternComponents from '@/components/patterns'
+import patternComponents, { defaultPatternProps } from '@/components/patterns'
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
@@ -257,16 +257,16 @@ const showEditPaperColorModal = ref(false);
 const selectedPatternSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY as string);
 const selectedPatternColorIdx = ref(3 as number);
 let selectedPatternColor = computed(() => swatches.value[selectedPatternSwatchId.value][selectedPatternColorIdx.value]);
+const selectedPatternOpacity = ref(50 as number);
 const isPatternSwatchDropdownOpen = ref(false);
 const showEditPatternColorModal = ref(false);
-const selectedPatternOpacity = ref(50);
-const selectedPatternLineSize = ref(10);
-const selectedPatternSpacing = ref(10);
-
 
 const paperPatterns = ref(patternComponents);
+const patternStyles = ref(defaultPatternProps);
 const selectedPaperPatternIdx = ref(0);
 const selectedPaperPattern = computed(() => paperPatterns.value[selectedPaperPatternIdx.value]);
+const selectedPatternStyles = computed(() => patternStyles.value[selectedPaperPatternIdx.value])
+
 
 const selectedFillSwatchId = ref('default' as string);
 const selectedFillColorIdx = ref(0 as number);
@@ -2398,8 +2398,8 @@ function togglePatternSwatchDropdown() {
         </div>
       </div>
       <input v-if="isPaperTool" type="number" min="0" max="100" step="1" v-model="selectedPatternOpacity" />
-      <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternLineSize" />
-      <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternSpacing" />
+      <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternStyles.lineSize" />
+      <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternStyles.spacing" />
 
       <label><input type="checkbox" v-model="ruler.isVisible" /> Show Ruler?</label>
       <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
@@ -2479,8 +2479,8 @@ function togglePatternSwatchDropdown() {
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
           <component :is="selectedPaperPattern.COMPONENT" id="paper-svg-pattern"
-            :fillColor="getColorAsCss(selectedPatternColor)" :lineSize="selectedPatternLineSize"
-            :spacing="selectedPatternSpacing" />
+            :fillColor="getColorAsCss(selectedPatternColor)" :lineSize="selectedPatternStyles.lineSize"
+            :spacing="selectedPatternStyles.spacing" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
             :opacity="selectedPatternOpacity / 100"></rect>
         </svg>
