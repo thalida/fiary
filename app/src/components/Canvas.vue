@@ -610,6 +610,19 @@ function getMousePos(canvas, event, followRuler = false) {
   return { x, y, isRulerLine }
 }
 
+function getTransformedMousePos(canvas, event, followRuler = false) {
+  const pos = getMousePos(canvas, event, followRuler);
+  const transformedPos = {
+    x: pos.x - (transformOrigin.x / 2),
+    y: pos.y - (transformOrigin.y / 2),
+  }
+
+  return {
+    ...pos,
+    ...transformedPos,
+  }
+}
+
 function getSvgPathFromStroke(stroke) {
   if (!stroke.length) return ''
 
@@ -1078,13 +1091,15 @@ function drawElements() {
   if (ctx === null) {
     return;
   }
-
   const matrix = ctx.getTransform()
+  matrix.e = 0
+  matrix.f = 0
+  ctx.setTransform(matrix)
+  ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
+
   matrix.e = transformOrigin.x
   matrix.f = transformOrigin.y
   ctx.setTransform(matrix)
-
-  clearCanvas(drawingCanvas.value);
 
   const drawElementIds = activeCanvasElements.value;
   for (let i = 0; i < drawElementIds.length; i += 1) {
@@ -1605,7 +1620,7 @@ function handleCanvasTouchStart(event) {
   }
   isDrawing.value = true;
 
-  const pos = getMousePos(drawingCanvas.value, event, true);
+  const pos = getTransformedMousePos(drawingCanvas.value, event, true);
   const isRulerLine = pos.isRulerLine;
   const pressure = getPressure(event);
   const opacity = getOpacity();
@@ -1674,7 +1689,7 @@ function handleCanvasTouchMove(event) {
   const lastElementId = canvasElements.value[canvasElements.value.length - 1];
   const lastElement = getCanvasElement(lastElementId);
   const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
-  const pos = getMousePos(drawingCanvas.value, event, followRuler);
+  const pos = getTransformedMousePos(drawingCanvas.value, event, followRuler);
   const pressure = getPressure(event);
 
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
@@ -1716,21 +1731,21 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
+  if (isPanning.value) {
+    handlePanTransform(event);
+    isPanning.value = false;
+    return;
+  }
+
   if (selectedTool.value === Tool.CHECKBOX) {
-    const pos = getMousePos(drawingCanvas.value, event, true);
+    const pos = getTransformedMousePos(drawingCanvas.value, event, true);
     handleAddCheckbox(pos);
     return;
   }
 
   if (selectedTool.value === Tool.TEXTBOX) {
-    const pos = getMousePos(drawingCanvas.value, event, true);
+    const pos = getTransformedMousePos(drawingCanvas.value, event, true);
     handleAddTextbox(pos);
-    return;
-  }
-
-  if (isPanning.value) {
-    handlePanTransform(event);
-    isPanning.value = false;
     return;
   }
 
