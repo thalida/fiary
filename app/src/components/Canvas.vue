@@ -29,6 +29,7 @@ const canvasConfig = ref({
 
 const transformMatrix = ref(null as any);
 const interactiveCanvasTransform = ref();
+const paperPatternTransform = ref({ x: 0, y: 0 });
 let activePanCoords = [];
 let cameraZoom = 1;
 
@@ -1567,14 +1568,14 @@ function cancelAddImage() {
   isAddImageMode.value = false;
 }
 
-function setInteractiveTransform(matrix) {
-  let cssTransform: string | undefined;
-
+function setRenderTransforms(matrix) {
   if (typeof matrix !== 'undefined' && matrix !== null) {
-    cssTransform = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e / matrix.a}, ${matrix.f / matrix.d})`
+    interactiveCanvasTransform.value = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e / matrix.a}, ${matrix.f / matrix.d})`
+    paperPatternTransform.value = {
+      x: matrix.e / matrix.a,
+      y: matrix.f / matrix.d,
+    }
   }
-
-  interactiveCanvasTransform.value = cssTransform;
 }
 
 function handlePanTransform(event, isStart = false) {
@@ -1594,7 +1595,7 @@ function handlePanTransform(event, isStart = false) {
   transformMatrix.value.e = transformOrigin.x
   transformMatrix.value.f = transformOrigin.y
 
-  setInteractiveTransform(transformMatrix.value)
+  setRenderTransforms(transformMatrix.value)
   drawElements()
 }
 
@@ -2566,9 +2567,14 @@ function togglePatternSwatchDropdown() {
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
-          <component :is="selectedPaperPattern.COMPONENT" id="paper-svg-pattern"
-            :fillColor="getColorAsCss(selectedPatternColor)" :lineSize="selectedPatternStyles.lineSize"
-            :spacing="selectedPatternStyles.spacing" />
+          <component
+            id="paper-svg-pattern"
+            :is="selectedPaperPattern.COMPONENT"
+            :fillColor="getColorAsCss(selectedPatternColor)"
+            :lineSize="selectedPatternStyles.lineSize"
+            :spacing="selectedPatternStyles.spacing"
+            :x="paperPatternTransform.x"
+            :y="paperPatternTransform.y" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
             :opacity="selectedPatternOpacity / 100"></rect>
         </svg>
