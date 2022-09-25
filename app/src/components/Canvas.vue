@@ -30,7 +30,7 @@ const canvasConfig = ref({
 let initTransformMatrix = null;
 const transformMatrix = ref(null as any);
 const interactiveCanvasTransform = ref();
-const paperPatternTransform = ref({ x: 0, y: 0 });
+const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 let activePanCoords = [];
 const MAX_ZOOM = 5
 const MIN_ZOOM = 0.1
@@ -292,6 +292,11 @@ watchPostEffect(() => {
   if (ruler.value.isVisible) {
     setRulerTransform(rulerElement.value, {})
   }
+})
+
+watchEffect(() => {
+  console.log(transformMatrix.value)
+  setRenderTransforms(transformMatrix.value)
 })
 
 function handleToolChange(event) {
@@ -628,7 +633,7 @@ function getDrawPos(canvas, event, followRuler = false) {
   let cameraX = transformMatrix.value.e;
   let cameraY = transformMatrix.value.f;
   const cameraZoom = transformMatrix.value.a;
-  const adjustedZoom = initTransformMatrix.a / cameraZoom;
+  const relativeZoom = initTransformMatrix.a / cameraZoom;
 
   if (isInteractiveTool) {
     cameraX /= cameraZoom;
@@ -636,8 +641,8 @@ function getDrawPos(canvas, event, followRuler = false) {
   }
 
   const transformedPos = {
-    x: (pos.x * adjustedZoom) - cameraX,
-    y: (pos.y * adjustedZoom) - cameraY,
+    x: (pos.x * relativeZoom) - cameraX,
+    y: (pos.y * relativeZoom) - cameraY,
   }
 
   return {
@@ -1572,13 +1577,18 @@ function cancelAddImage() {
 }
 
 function setRenderTransforms(matrix) {
+  let relativeZoom = 1;
+
   if (typeof matrix !== 'undefined' && matrix !== null) {
     interactiveCanvasTransform.value = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e / matrix.a}, ${matrix.f / matrix.d})`
-    paperPatternTransform.value = {
-      x: matrix.e / matrix.a,
-      y: matrix.f / matrix.d,
-    }
+    paperPatternTransform.value.x = matrix.e / matrix.a;
+    paperPatternTransform.value.y = matrix.f / matrix.d;
+
+    relativeZoom = initTransformMatrix.a / transformMatrix.value.a;
   }
+
+  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
+  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / relativeZoom;
 }
 
 function handlePanTransform(event, isStart = false) {
@@ -2598,8 +2608,8 @@ function togglePatternSwatchDropdown() {
             id="paper-svg-pattern"
             :is="selectedPaperPattern.COMPONENT"
             :fillColor="getColorAsCss(selectedPatternColor)"
-            :lineSize="selectedPatternStyles.lineSize"
-            :spacing="selectedPatternStyles.spacing"
+            :lineSize="paperPatternTransform.lineSize"
+            :spacing="paperPatternTransform.spacing"
             :x="paperPatternTransform.x"
             :y="paperPatternTransform.y" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
