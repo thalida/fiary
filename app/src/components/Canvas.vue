@@ -1134,8 +1134,10 @@ function drawElements() {
 }
 
 function getInteractiveElementTransform(element): string {
-  const translate = `translate(${element.style.transform.translate[0]}px, ${element.style.transform.translate[1]}px)`;
-  const scale = `scale(${element.style.transform.scale[0]}, ${element.style.transform.scale[1]})`;
+  const htmlRelativeZoom = transformMatrix.value.a / initTransformMatrix.a;
+  console.log(htmlRelativeZoom)
+  const translate = `translate(${element.style.transform.translate[0] * htmlRelativeZoom}px, ${element.style.transform.translate[1] * htmlRelativeZoom}px)`;
+  const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom}, ${element.style.transform.scale[1] * htmlRelativeZoom})`;
   const rotate = `rotate(${element.style.transform.rotate}deg)`;
 
   const transformStr = `${translate} ${scale} ${rotate}`;
@@ -1577,18 +1579,17 @@ function cancelAddImage() {
 }
 
 function setRenderTransforms(matrix) {
-  let relativeZoom = 1;
+  let canvasRelativeZoom = 1;
 
   if (typeof matrix !== 'undefined' && matrix !== null) {
-    interactiveCanvasTransform.value = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e / matrix.a}, ${matrix.f / matrix.d})`
+    canvasRelativeZoom = initTransformMatrix.a / transformMatrix.value.a;
+    interactiveCanvasTransform.value = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e * initTransformMatrix.a}, ${matrix.f * initTransformMatrix.a})`
     paperPatternTransform.value.x = matrix.e / matrix.a;
     paperPatternTransform.value.y = matrix.f / matrix.d;
-
-    relativeZoom = initTransformMatrix.a / transformMatrix.value.a;
   }
 
-  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
-  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / relativeZoom;
+  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / canvasRelativeZoom;
+  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / canvasRelativeZoom;
 }
 
 function handlePanTransform(event, isStart = false) {
