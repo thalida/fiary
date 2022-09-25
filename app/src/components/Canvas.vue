@@ -27,11 +27,13 @@ const canvasConfig = ref({
   dpi: window.devicePixelRatio,
 })
 
+let initTransformMatrix = null;
 const transformMatrix = ref(null as any);
 const interactiveCanvasTransform = ref();
 const paperPatternTransform = ref({ x: 0, y: 0 });
 let activePanCoords = [];
-let cameraZoom = 1;
+const MAX_ZOOM = 5
+const MIN_ZOOM = 0.1
 
 const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
 const drawingCanvas = ref<HTMLCanvasElement>()
@@ -275,6 +277,7 @@ onMounted(() => {
 
   ctx.scale(dpi, dpi);
 
+  initTransformMatrix = ctx.getTransform()
   transformMatrix.value = ctx.getTransform()
 })
 
@@ -622,17 +625,19 @@ function getMousePos(canvas, event, followRuler = false) {
 
 function getDrawPos(canvas, event, followRuler = false) {
   const pos = getMousePos(canvas, event, followRuler);
-  let x = transformMatrix.value.e;
-  let y = transformMatrix.value.f;
+  let cameraX = transformMatrix.value.e;
+  let cameraY = transformMatrix.value.f;
+  const cameraZoom = transformMatrix.value.a;
+  const adjustedZoom = initTransformMatrix.a / cameraZoom;
 
   if (isInteractiveTool) {
-    x /= transformMatrix.value.a;
-    y /= transformMatrix.value.d;
+    cameraX /= cameraZoom;
+    cameraY /= cameraZoom;
   }
 
   const transformedPos = {
-    x: pos.x - x,
-    y: pos.y - y,
+    x: (pos.x * adjustedZoom) - cameraX,
+    y: (pos.y * adjustedZoom) - cameraY,
   }
 
   return {
@@ -1110,9 +1115,7 @@ function drawElements() {
     return;
   }
   const matrix = ctx.getTransform()
-  matrix.e = 0
-  matrix.f = 0
-  ctx.setTransform(matrix)
+  ctx.setTransform(initTransformMatrix)
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
 
   ctx.setTransform(transformMatrix.value)
@@ -1594,6 +1597,28 @@ function handlePanTransform(event, isStart = false) {
 
   transformMatrix.value.e = transformOrigin.x
   transformMatrix.value.f = transformOrigin.y
+
+  setRenderTransforms(transformMatrix.value)
+  drawElements()
+}
+
+function handleZoomOut() {
+  if (transformMatrix.value.a > 0.5) {
+    transformMatrix.value.a -= 0.1
+    transformMatrix.value.a = Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100
+    transformMatrix.value.d = transformMatrix.value.a
+  }
+
+  setRenderTransforms(transformMatrix.value)
+  drawElements()
+}
+
+function handleZoomIn() {
+  if (transformMatrix.value.a < 6) {
+    transformMatrix.value.a += 0.1
+    transformMatrix.value.a = Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100
+    transformMatrix.value.d = transformMatrix.value.a
+  }
 
   setRenderTransforms(transformMatrix.value)
   drawElements()
@@ -2495,6 +2520,8 @@ function togglePatternSwatchDropdown() {
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
       <label><input type="checkbox" v-model="debugMode" /> debug?</label>
+      <button @click="handleZoomOut">Zoom -</button>
+      <button @click="handleZoomIn">Zoom +</button>
       <button :disabled="!hasUndo" @click="handleUndoClick">Undo</button>
       <button :disabled="!hasRedo" @click="handleRedoClick">Redo</button>
     </div>
