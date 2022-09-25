@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type Ref, ref, computed, watchEffect, watchPostEffect, onMounted, watch, nextTick } from 'vue'
+import { type Ref, ref, computed, watch, watchEffect, watchPostEffect, onMounted, nextTick } from 'vue'
 import { v4 as uuidv4 } from 'uuid';
 import cloneDeep from 'lodash/cloneDeep';
 import { getStroke } from 'perfect-freehand'
@@ -17,6 +17,7 @@ const isPasteMode = ref(false);
 const isAddImageMode = ref(false);
 const isInteractiveEditMode = ref(false);
 const isTextboxEditMode = ref(false);
+const isPanning = ref(false);
 const activeTextbox = ref(null);
 const activeImage = ref(null);
 
@@ -25,8 +26,15 @@ const canvasConfig = ref({
   height: window.innerHeight,
   dpi: window.devicePixelRatio,
 })
+
+const transformMatrix = ref(null as any);
+const interactiveCanvasTransform = ref();
+const paperPatternTransform = ref({ x: 0, y: 0 });
+let activePanCoords = [];
+let cameraZoom = 1;
+
 const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
-const canvas = ref<HTMLCanvasElement>()
+const drawingCanvas = ref<HTMLCanvasElement>()
 const interactiveCanvas = ref()
 const imagePreviewCanvas = ref<HTMLCanvasElement>()
 const imageBackdropCanvas = ref<HTMLCanvasElement>()
@@ -94,40 +102,6 @@ const showRulerControls = computed(() => {
   return !isDrawing.value
 })
 
-onMounted(() => {
-  if (typeof canvas.value === 'undefined') {
-    return;
-  }
-
-  const ctx = canvas.value.getContext('2d')
-
-  if (ctx === null) {
-    return;
-  }
-
-  const dpi = canvasConfig.value.dpi;
-  canvas.value.width = canvasConfig.value.width * dpi;
-  canvas.value.height = canvasConfig.value.height * dpi;
-
-  canvas.value.style.width = `${canvasConfig.value.width}px`;
-  canvas.value.style.height = `${canvasConfig.value.height}px`;
-
-  ctx.scale(dpi, dpi);
-})
-
-watch(
-  () => debugMode.value,
-  () => {
-    drawElements();
-  }
-)
-
-watchPostEffect(() => {
-  if (ruler.value.isVisible) {
-    setRulerTransform(rulerElement.value, {})
-  }
-})
-
 enum Tool {
   POINTER = 0,
   ERASER = 1,
@@ -168,10 +142,11 @@ const supportedTools = ref([
 const selectedTool = ref(Tool.PEN);
 const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
 const paperTools = [Tool.PAPER];
+const interactiveTools = [Tool.CHECKBOX, Tool.TEXTBOX];
 const nonDrawingTools = [Tool.PAPER, Tool.POINTER, Tool.CLEAR_ALL]
 const isDrawingTool = computed(() => !nonDrawingTools.includes(selectedTool.value));
 const isPaperTool = computed(() => paperTools.includes(selectedTool.value));
-const paperThemeTools = [Tool.PAPER];
+const isInteractiveTool = computed(() => interactiveTools.includes(selectedTool.value));
 
 enum LineEndSide {
   NONE = 0,
@@ -279,6 +254,42 @@ const selectedStrokeColorIdx = ref(0 as number);
 let selectedStrokeColor = computed(() => swatches.value[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]);
 const isStrokeSwatchDropdownOpen = ref(false);
 const showEditStrokeColorModal = ref(false);
+
+onMounted(() => {
+  if (typeof drawingCanvas.value === 'undefined') {
+    return;
+  }
+
+  const ctx = drawingCanvas.value.getContext('2d')
+
+  if (ctx === null) {
+    return;
+  }
+
+  const dpi = canvasConfig.value.dpi;
+  drawingCanvas.value.width = canvasConfig.value.width * dpi;
+  drawingCanvas.value.height = canvasConfig.value.height * dpi;
+
+  drawingCanvas.value.style.width = `${canvasConfig.value.width}px`;
+  drawingCanvas.value.style.height = `${canvasConfig.value.height}px`;
+
+  ctx.scale(dpi, dpi);
+
+  transformMatrix.value = ctx.getTransform()
+})
+
+watch(
+  () => debugMode.value,
+  () => {
+    drawElements();
+  }
+)
+
+watchPostEffect(() => {
+  if (ruler.value.isVisible) {
+    setRulerTransform(rulerElement.value, {})
+  }
+})
 
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
@@ -607,6 +618,27 @@ function getMousePos(canvas, event, followRuler = false) {
   const x = (inputX - rect.left);
   const y = (inputY - rect.top);
   return { x, y, isRulerLine }
+}
+
+function getDrawPos(canvas, event, followRuler = false) {
+  const pos = getMousePos(canvas, event, followRuler);
+  let x = transformMatrix.value.e;
+  let y = transformMatrix.value.f;
+
+  if (isInteractiveTool) {
+    x /= transformMatrix.value.a;
+    y /= transformMatrix.value.d;
+  }
+
+  const transformedPos = {
+    x: pos.x - x,
+    y: pos.y - y,
+  }
+
+  return {
+    ...pos,
+    ...transformedPos,
+  }
 }
 
 function getSvgPathFromStroke(stroke) {
@@ -1069,14 +1101,27 @@ function clearCanvas(canvas) {
 }
 
 function drawElements() {
-  const drawCanvas = canvas.value;
-  const drawElementIds = activeCanvasElements.value;
-  clearCanvas(drawCanvas);
+  if (typeof drawingCanvas.value === 'undefined') {
+    return;
+  }
 
+  const ctx = drawingCanvas.value.getContext('2d');
+  if (ctx === null) {
+    return;
+  }
+  const matrix = ctx.getTransform()
+  matrix.e = 0
+  matrix.f = 0
+  ctx.setTransform(matrix)
+  ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
+
+  ctx.setTransform(transformMatrix.value)
+
+  const drawElementIds = activeCanvasElements.value;
   for (let i = 0; i < drawElementIds.length; i += 1) {
     const elementId = drawElementIds[i];
     const element = getCanvasElement(elementId);
-    drawElement(drawCanvas, element);
+    drawElement(drawingCanvas.value, element);
   }
 }
 
@@ -1363,10 +1408,6 @@ function handlePasteDelete() {
 }
 
 async function handleAddImageStart(image, trackHistory = true) {
-  if (typeof canvas.value === 'undefined') {
-    return;
-  }
-
   let imageWidth = image.width;
   let imageHeight = image.height;
   let scale = 1;
@@ -1527,6 +1568,37 @@ function cancelAddImage() {
   isAddImageMode.value = false;
 }
 
+function setRenderTransforms(matrix) {
+  if (typeof matrix !== 'undefined' && matrix !== null) {
+    interactiveCanvasTransform.value = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e / matrix.a}, ${matrix.f / matrix.d})`
+    paperPatternTransform.value = {
+      x: matrix.e / matrix.a,
+      y: matrix.f / matrix.d,
+    }
+  }
+}
+
+function handlePanTransform(event, isStart = false) {
+  const pos = getMousePos(drawingCanvas.value, event);
+
+  if (isStart) {
+    activePanCoords = [{ x: pos.x - transformMatrix.value.e, y: pos.y - transformMatrix.value.f }];
+  }
+
+  activePanCoords[1] = { x: pos.x, y: pos.y };
+
+  let transformOrigin = {
+    x: activePanCoords[1].x - activePanCoords[0].x,
+    y: activePanCoords[1].y - activePanCoords[0].y,
+  };
+
+  transformMatrix.value.e = transformOrigin.x
+  transformMatrix.value.f = transformOrigin.y
+
+  setRenderTransforms(transformMatrix.value)
+  drawElements()
+}
+
 function handleCanvasTouchStart(event) {
   if (isFillSwatchDropdownOpen.value) {
     closeFillSwatchDropdown();
@@ -1562,14 +1634,20 @@ function handleCanvasTouchStart(event) {
     return;
   }
 
+  if (selectedTool.value === Tool.POINTER) {
+    isPanning.value = true;
+    handlePanTransform(event, true);
+    return;
+  }
+
   checkIsStylus(event);
 
-  if (!isDrawingAllowed(true) || canvas.value === null) {
+  if (!isDrawingAllowed(true) || drawingCanvas.value === null) {
     return;
   }
   isDrawing.value = true;
 
-  const pos = getMousePos(canvas.value, event, true);
+  const pos = getDrawPos(drawingCanvas.value, event, true);
   const isRulerLine = pos.isRulerLine;
   const pressure = getPressure(event);
   const opacity = getOpacity();
@@ -1624,16 +1702,21 @@ function handleCanvasTouchStart(event) {
 }
 
 function handleCanvasTouchMove(event) {
-  if (!isDrawingAllowed() || canvas.value === null) {
+  if (!(isPanning.value || isDrawingAllowed()) || drawingCanvas.value === null) {
     return;
   }
 
   event.preventDefault();
 
+  if (isPanning.value) {
+    handlePanTransform(event);
+    return;
+  }
+
   const lastElementId = canvasElements.value[canvasElements.value.length - 1];
   const lastElement = getCanvasElement(lastElementId);
   const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
-  const pos = getMousePos(canvas.value, event, followRuler);
+  const pos = getDrawPos(drawingCanvas.value, event, followRuler);
   const pressure = getPressure(event);
 
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
@@ -1675,19 +1758,25 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
+  if (isPanning.value) {
+    handlePanTransform(event);
+    isPanning.value = false;
+    return;
+  }
+
   if (selectedTool.value === Tool.CHECKBOX) {
-    const pos = getMousePos(canvas.value, event, true);
+    const pos = getDrawPos(drawingCanvas.value, event, true);
     handleAddCheckbox(pos);
     return;
   }
 
   if (selectedTool.value === Tool.TEXTBOX) {
-    const pos = getMousePos(canvas.value, event, true);
+    const pos = getDrawPos(drawingCanvas.value, event, true);
     handleAddTextbox(pos);
     return;
   }
 
-  if (!isDrawingAllowed() || canvas.value === null) {
+  if (!isDrawingAllowed() || drawingCanvas.value === null) {
     return;
   }
 
@@ -2452,7 +2541,7 @@ function togglePatternSwatchDropdown() {
 
       <div class="drawing-layer">
         <div ref="interactiveCanvas" class="interactive-canvas"
-          :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px' }">
+          :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px', transform: interactiveCanvasTransform }">
           <template v-for="(elementId, index) in htmlElements" :key="index">
             <input v-if="elements[elementId].tool === Tool.CHECKBOX" class="interactiveElement"
               v-model="elements[elementId].toolOptions.isChecked" :data-element-id="elements[elementId].id"
@@ -2471,16 +2560,21 @@ function togglePatternSwatchDropdown() {
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
-        <canvas class="drawing-canvas" ref="canvas" :width="canvasConfig.width" :height="canvasConfig.height">
+        <canvas class="drawing-canvas" ref="drawingCanvas" :width="canvasConfig.width" :height="canvasConfig.height">
         </canvas>
       </div>
 
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
-          <component :is="selectedPaperPattern.COMPONENT" id="paper-svg-pattern"
-            :fillColor="getColorAsCss(selectedPatternColor)" :lineSize="selectedPatternStyles.lineSize"
-            :spacing="selectedPatternStyles.spacing" />
+          <component
+            id="paper-svg-pattern"
+            :is="selectedPaperPattern.COMPONENT"
+            :fillColor="getColorAsCss(selectedPatternColor)"
+            :lineSize="selectedPatternStyles.lineSize"
+            :spacing="selectedPatternStyles.spacing"
+            :x="paperPatternTransform.x"
+            :y="paperPatternTransform.y" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
             :opacity="selectedPatternOpacity / 100"></rect>
         </svg>
