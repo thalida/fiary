@@ -157,10 +157,7 @@ onMounted(() => {
       </span>
     </div>
   </teleport>
-  <div v-bind="$attrs" class="editor-wrapper" :style="{
-    position: 'absolute',
-    transform: element.style.transformStr,
-  }">
+  <div v-bind="$attrs" class="editor-wrapper">
     <div ref="editor"></div>
   </div>
 </template>

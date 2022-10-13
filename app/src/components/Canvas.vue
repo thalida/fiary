@@ -1118,7 +1118,6 @@ function drawElements() {
   if (ctx === null) {
     return;
   }
-  const matrix = ctx.getTransform()
   ctx.setTransform(initTransformMatrix)
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
 
@@ -1134,7 +1133,11 @@ function drawElements() {
 
 function getInteractiveElementTransform(element): string {
   const htmlRelativeZoom = transformMatrix.value.a / initTransformMatrix.a;
-  const translate = `translate(${element.style.transform.translate[0] * htmlRelativeZoom}px, ${element.style.transform.translate[1] * htmlRelativeZoom}px)`;
+  const newOrigin = {
+    x: transformMatrix.value.e / initTransformMatrix.a,
+    y: transformMatrix.value.f / initTransformMatrix.a,
+  };
+  const translate = `translate(${newOrigin.x + (element.style.transform.translate[0] * htmlRelativeZoom)}px, ${newOrigin.y + (element.style.transform.translate[1] * htmlRelativeZoom)}px)`;
   const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom}, ${element.style.transform.scale[1] * htmlRelativeZoom})`;
   const rotate = `rotate(${element.style.transform.rotate}deg)`;
 
@@ -1581,7 +1584,7 @@ function setRenderTransforms(matrix) {
 
   if (typeof matrix !== 'undefined' && matrix !== null) {
     relativeZoom = initTransformMatrix.a / matrix.a;
-    interactiveCanvasTransform.value = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e * initTransformMatrix.a}, ${matrix.f * initTransformMatrix.a})`
+    interactiveCanvasTransform.value = `matrix(1, 0, 0, 1, 0, 0)`
     paperPatternTransform.value.x = matrix.e / initTransformMatrix.a;
     paperPatternTransform.value.y = matrix.f / initTransformMatrix.a;
   }
@@ -2588,12 +2591,15 @@ function togglePatternSwatchDropdown() {
               @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
             <Ftextarea v-else-if="elements[elementId].tool === Tool.TEXTBOX" :data-element-id="elements[elementId].id"
-              class="interactiveElement" :element="elements[elementId]"
-              :is-active="elements[elementId].id === activeTextbox" :colorSwatches="swatches"
-              @change="handleTextboxChange" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
-              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
-              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
-              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
+              class="interactiveElement" :style="{
+                position: 'absolute',
+                transform: getInteractiveElementTransform(elements[elementId]),
+              }" :element="elements[elementId]" :is-active="elements[elementId].id === activeTextbox"
+              :colorSwatches="swatches" @change="handleTextboxChange" @focus="handleTextboxFocus"
+              @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
+              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
+              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
+              @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas class="drawing-canvas" ref="drawingCanvas" :width="canvasConfig.width" :height="canvasConfig.height">
