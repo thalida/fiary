@@ -27,11 +27,13 @@ const canvasConfig = ref({
   dpi: window.devicePixelRatio,
 })
 
+let initTransformMatrix = null;
 const transformMatrix = ref(null as any);
 const interactiveCanvasTransform = ref();
-const paperPatternTransform = ref({ x: 0, y: 0 });
+const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 let activePanCoords = [];
-let cameraZoom = 1;
+const MAX_ZOOM = 5
+const MIN_ZOOM = 0.1
 
 const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
 const drawingCanvas = ref<HTMLCanvasElement>()
@@ -275,6 +277,7 @@ onMounted(() => {
 
   ctx.scale(dpi, dpi);
 
+  initTransformMatrix = ctx.getTransform()
   transformMatrix.value = ctx.getTransform()
 })
 
@@ -289,6 +292,10 @@ watchPostEffect(() => {
   if (ruler.value.isVisible) {
     setRulerTransform(rulerElement.value, {})
   }
+})
+
+watchEffect(() => {
+  setRenderTransforms(transformMatrix.value)
 })
 
 function handleToolChange(event) {
@@ -622,17 +629,19 @@ function getMousePos(canvas, event, followRuler = false) {
 
 function getDrawPos(canvas, event, followRuler = false) {
   const pos = getMousePos(canvas, event, followRuler);
-  let x = transformMatrix.value.e;
-  let y = transformMatrix.value.f;
+  let cameraX = transformMatrix.value.e;
+  let cameraY = transformMatrix.value.f;
+  const cameraZoom = transformMatrix.value.a;
+  const relativeZoom = initTransformMatrix.a / cameraZoom;
 
   if (isInteractiveTool) {
-    x /= transformMatrix.value.a;
-    y /= transformMatrix.value.d;
+    cameraX /= cameraZoom;
+    cameraY /= cameraZoom;
   }
 
   const transformedPos = {
-    x: pos.x - x,
-    y: pos.y - y,
+    x: (pos.x * relativeZoom) - cameraX,
+    y: (pos.y * relativeZoom) - cameraY,
   }
 
   return {
@@ -1109,10 +1118,7 @@ function drawElements() {
   if (ctx === null) {
     return;
   }
-  const matrix = ctx.getTransform()
-  matrix.e = 0
-  matrix.f = 0
-  ctx.setTransform(matrix)
+  ctx.setTransform(initTransformMatrix)
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
 
   ctx.setTransform(transformMatrix.value)
@@ -1126,8 +1132,13 @@ function drawElements() {
 }
 
 function getInteractiveElementTransform(element): string {
-  const translate = `translate(${element.style.transform.translate[0]}px, ${element.style.transform.translate[1]}px)`;
-  const scale = `scale(${element.style.transform.scale[0]}, ${element.style.transform.scale[1]})`;
+  const htmlRelativeZoom = transformMatrix.value.a / initTransformMatrix.a;
+  const newOrigin = {
+    x: transformMatrix.value.e / initTransformMatrix.a,
+    y: transformMatrix.value.f / initTransformMatrix.a,
+  };
+  const translate = `translate(${newOrigin.x + (element.style.transform.translate[0] * htmlRelativeZoom)}px, ${newOrigin.y + (element.style.transform.translate[1] * htmlRelativeZoom)}px)`;
+  const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom}, ${element.style.transform.scale[1] * htmlRelativeZoom})`;
   const rotate = `rotate(${element.style.transform.rotate}deg)`;
 
   const transformStr = `${translate} ${scale} ${rotate}`;
@@ -1569,13 +1580,17 @@ function cancelAddImage() {
 }
 
 function setRenderTransforms(matrix) {
+  let relativeZoom = 1;
+
   if (typeof matrix !== 'undefined' && matrix !== null) {
-    interactiveCanvasTransform.value = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e / matrix.a}, ${matrix.f / matrix.d})`
-    paperPatternTransform.value = {
-      x: matrix.e / matrix.a,
-      y: matrix.f / matrix.d,
-    }
+    relativeZoom = initTransformMatrix.a / matrix.a;
+    interactiveCanvasTransform.value = `matrix(1, 0, 0, 1, 0, 0)`
+    paperPatternTransform.value.x = matrix.e / initTransformMatrix.a;
+    paperPatternTransform.value.y = matrix.f / initTransformMatrix.a;
   }
+
+  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
+  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / relativeZoom;
 }
 
 function handlePanTransform(event, isStart = false) {
@@ -1594,6 +1609,28 @@ function handlePanTransform(event, isStart = false) {
 
   transformMatrix.value.e = transformOrigin.x
   transformMatrix.value.f = transformOrigin.y
+
+  setRenderTransforms(transformMatrix.value)
+  drawElements()
+}
+
+function handleZoomOut() {
+  if (transformMatrix.value.a > 0.5) {
+    transformMatrix.value.a -= 0.1
+    transformMatrix.value.a = Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100
+    transformMatrix.value.d = transformMatrix.value.a
+  }
+
+  setRenderTransforms(transformMatrix.value)
+  drawElements()
+}
+
+function handleZoomIn() {
+  if (transformMatrix.value.a < 6) {
+    transformMatrix.value.a += 0.1
+    transformMatrix.value.a = Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100
+    transformMatrix.value.d = transformMatrix.value.a
+  }
 
   setRenderTransforms(transformMatrix.value)
   drawElements()
@@ -2495,6 +2532,8 @@ function togglePatternSwatchDropdown() {
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
       <label><input type="checkbox" v-model="debugMode" /> debug?</label>
+      <button @click="handleZoomOut">Zoom -</button>
+      <button @click="handleZoomIn">Zoom +</button>
       <button :disabled="!hasUndo" @click="handleUndoClick">Undo</button>
       <button :disabled="!hasRedo" @click="handleRedoClick">Redo</button>
     </div>
@@ -2552,12 +2591,15 @@ function togglePatternSwatchDropdown() {
               @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
               @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
             <Ftextarea v-else-if="elements[elementId].tool === Tool.TEXTBOX" :data-element-id="elements[elementId].id"
-              class="interactiveElement" :element="elements[elementId]"
-              :is-active="elements[elementId].id === activeTextbox" :colorSwatches="swatches"
-              @change="handleTextboxChange" @focus="handleTextboxFocus" @blur="handleTextboxBlur"
-              @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
-              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
-              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
+              class="interactiveElement" :style="{
+                position: 'absolute',
+                transform: getInteractiveElementTransform(elements[elementId]),
+              }" :element="elements[elementId]" :is-active="elements[elementId].id === activeTextbox"
+              :colorSwatches="swatches" @change="handleTextboxChange" @focus="handleTextboxFocus"
+              @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
+              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
+              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
+              @touchmove="handleInteractiveElementEvent" />
           </template>
         </div>
         <canvas class="drawing-canvas" ref="drawingCanvas" :width="canvasConfig.width" :height="canvasConfig.height">
@@ -2567,14 +2609,9 @@ function togglePatternSwatchDropdown() {
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
-          <component
-            id="paper-svg-pattern"
-            :is="selectedPaperPattern.COMPONENT"
-            :fillColor="getColorAsCss(selectedPatternColor)"
-            :lineSize="selectedPatternStyles.lineSize"
-            :spacing="selectedPatternStyles.spacing"
-            :x="paperPatternTransform.x"
-            :y="paperPatternTransform.y" />
+          <component id="paper-svg-pattern" :is="selectedPaperPattern.COMPONENT"
+            :fillColor="getColorAsCss(selectedPatternColor)" :lineSize="paperPatternTransform.lineSize"
+            :spacing="paperPatternTransform.spacing" :x="paperPatternTransform.x" :y="paperPatternTransform.y" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
             :opacity="selectedPatternOpacity / 100"></rect>
         </svg>
