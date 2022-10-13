@@ -295,7 +295,6 @@ watchPostEffect(() => {
 })
 
 watchEffect(() => {
-  console.log(transformMatrix.value)
   setRenderTransforms(transformMatrix.value)
 })
 
@@ -1135,7 +1134,6 @@ function drawElements() {
 
 function getInteractiveElementTransform(element): string {
   const htmlRelativeZoom = transformMatrix.value.a / initTransformMatrix.a;
-  console.log(htmlRelativeZoom)
   const translate = `translate(${element.style.transform.translate[0] * htmlRelativeZoom}px, ${element.style.transform.translate[1] * htmlRelativeZoom}px)`;
   const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom}, ${element.style.transform.scale[1] * htmlRelativeZoom})`;
   const rotate = `rotate(${element.style.transform.rotate}deg)`;
@@ -1579,17 +1577,17 @@ function cancelAddImage() {
 }
 
 function setRenderTransforms(matrix) {
-  let canvasRelativeZoom = 1;
+  let relativeZoom = 1;
 
   if (typeof matrix !== 'undefined' && matrix !== null) {
-    canvasRelativeZoom = initTransformMatrix.a / transformMatrix.value.a;
+    relativeZoom = initTransformMatrix.a / matrix.a;
     interactiveCanvasTransform.value = `matrix(1, ${matrix.b}, ${matrix.c}, 1, ${matrix.e * initTransformMatrix.a}, ${matrix.f * initTransformMatrix.a})`
-    paperPatternTransform.value.x = matrix.e / matrix.a;
-    paperPatternTransform.value.y = matrix.f / matrix.d;
+    paperPatternTransform.value.x = matrix.e / initTransformMatrix.a;
+    paperPatternTransform.value.y = matrix.f / initTransformMatrix.a;
   }
 
-  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / canvasRelativeZoom;
-  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / canvasRelativeZoom;
+  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
+  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / relativeZoom;
 }
 
 function handlePanTransform(event, isStart = false) {
@@ -2605,14 +2603,9 @@ function togglePatternSwatchDropdown() {
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
-          <component
-            id="paper-svg-pattern"
-            :is="selectedPaperPattern.COMPONENT"
-            :fillColor="getColorAsCss(selectedPatternColor)"
-            :lineSize="paperPatternTransform.lineSize"
-            :spacing="paperPatternTransform.spacing"
-            :x="paperPatternTransform.x"
-            :y="paperPatternTransform.y" />
+          <component id="paper-svg-pattern" :is="selectedPaperPattern.COMPONENT"
+            :fillColor="getColorAsCss(selectedPatternColor)" :lineSize="paperPatternTransform.lineSize"
+            :spacing="paperPatternTransform.spacing" :x="paperPatternTransform.x" :y="paperPatternTransform.y" />
           <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
             :opacity="selectedPatternOpacity / 100"></rect>
         </svg>
