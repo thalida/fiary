@@ -13,16 +13,19 @@ const router = createRouter({
       component: BookshelfIndex,
     },
     {
-      path: "/n/:id",
+      path: "/n/:notebookId",
+      props: true,
       component: NotebookIndex,
       children: [
         {
           path: "",
-          name: "NotebookOverview",
+          props: true,
+          name: "Notebook",
           component: NotebookOverview,
         },
         {
-          path: "p/:page-id",
+          path: "p/:pageId",
+          props: true,
           name: "NotebookPage",
           component: NotebookPage,
         }
