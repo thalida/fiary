@@ -1,4 +1,5 @@
 from email.policy import default
+from re import M
 import uuid
 from django.db import models
 from fiary.choices import Tools
@@ -32,7 +33,7 @@ class Bookshelf(models.Model):
 
     owner = models.ForeignKey(
         User,
-        related_name='rooms',
+        related_name='bookshelves',
         on_delete=models.CASCADE
     )
     room = models.ForeignKey(
@@ -57,7 +58,7 @@ class Notebook(models.Model):
 
     owner = models.ForeignKey(
         User,
-        related_name='rooms',
+        related_name='notebooks',
         on_delete=models.CASCADE
     )
     bookshelf = models.ForeignKey(
@@ -84,43 +85,66 @@ class Page(models.Model):
 
     owner = models.ForeignKey(
         User,
-        related_name='rooms',
+        related_name='pages',
         on_delete=models.CASCADE
     )
     notebook = models.ForeignKey(
         Notebook,
         related_name='pages',
         on_delete=models.CASCADE
+    )
+
+    color = models.CharField(
+        max_length=255,
+        default=None,
+        blank=True,
+        null=True
+    )
+    pattern_style = models.CharField(
+        max_length=255,
+        default=None,
+        blank=True,
+        null=True
+    )
+    pattern_color = models.CharField(
+        max_length=255,
+        default=None,
+        blank=True,
+        null=True
+    )
+    pattern_size = models.FloatField(
+        default=None,
+        blank=True,
+        null=True
+    )
+    pattern_spacing = models.FloatField(
+        default=None,
+        blank=True,
+        null=True
     )
 
     def __unicode__(self):
         return f"{self.owner}'s page {self.id}"
 
 
-class PageElement(models.Model):
+class Element(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     owner = models.ForeignKey(
         User,
-        related_name='rooms',
+        related_name='elements',
         on_delete=models.CASCADE
     )
-    notebook = models.ForeignKey(
-        Notebook,
-        related_name='pages',
+    page = models.ForeignKey(
+        Page,
+        related_name='elements',
         on_delete=models.CASCADE
     )
 
     tool = models.IntegerField(
         choices=Tools.choices,
-        default=None,
-        null=True,
-        blank=True
-    )
-    composition = models.CharField(
-        max_length=255,
         default=None,
         null=True,
         blank=True
@@ -137,30 +161,21 @@ class PageElement(models.Model):
         null=True,
         blank=True
     )
-    opacity = models.FloatField(
-        default=None,
-        null=True,
-        blank=True
-    )
     size = models.FloatField(
         default=None,
         null=True,
         blank=True
     )
-    isRulerLine = models.BooleanField(
+    is_ruler_line = models.BooleanField(
         default=False
     )
-    points = models.JSONField(
-        default=None,
-        null=True,
+    points = models.ArrayField(
+        models.JSONField(),
+        default=list,
         blank=True
     )
+
     options = models.JSONField(
-        default=None,
-        null=True,
-        blank=True
-    )
-    freehandOptions = models.JSONField(
         default=None,
         null=True,
         blank=True
