@@ -28,14 +28,14 @@
 				"python.testing.pytestPath": "/usr/local/py-utils/bin/pytest",
 				"python.languageServer": "Pylance",
 				"python.testing.unittestEnabled": false,
-				"python.testing.pytestEnabled": true
-				// "python.analysis.extraPaths": [
-				// 	"/workspace/fiary"
-				// ],
-				// "python.linting.pylintArgs": [
-				// 	"--load-plugins pylint_django",
-				// 	"--django-settings-module=fiary.settings"
-				// ]
+				"python.testing.pytestEnabled": true,
+				"python.analysis.extraPaths": [
+					"/workspace/api"
+				],
+				"python.linting.pylintArgs": [
+					"--load-plugins pylint_django",
+					"--django-settings-module=api.settings"
+				]
 			},
 			// Add the IDs of extensions you want installed when the container is created.
 			"extensions": [
