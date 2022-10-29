@@ -71,7 +71,12 @@ class Notebook(models.Model):
         blank=True
     )
 
-    title = models.CharField(max_length=255)
+    title = models.CharField(
+        max_length=255,
+        default=None,
+        blank=True,
+        null=True
+    )
 
     def __unicode__(self):
         return self.title

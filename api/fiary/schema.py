@@ -1,3 +1,4 @@
+from turtle import title
 import graphene
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
@@ -76,13 +77,36 @@ class CreateBookshelf(graphene.relay.ClientIDMutation):
         )
 
         room.bookshelf_order.append(bookshelf.id)
+        room.save()
 
         return CreateBookshelf(bookshelf=bookshelf)
+
+
+class UpdateBookshelf(graphene.relay.ClientIDMutation):
+    class Input:
+        bookshelf_id = graphene.UUID(required=True)
+        notebook_order = graphene.List(graphene.UUID, required=False)
+
+    bookshelf = graphene.Field(BookshelfNode)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input):
+        bookshelf = Bookshelf.objects.get(id=input['bookshelf_id'])
+
+        for k, v in input.items():
+            if k == 'id':
+                continue
+            setattr(bookshelf, k, v)
+
+        bookshelf.save()
+
+        return UpdateBookshelf(bookshelf=bookshelf)
 
 
 class CreateNotebook(graphene.relay.ClientIDMutation):
     class Input:
         bookshelf_id = graphene.UUID(required=True)
+        title = graphene.String(required=False)
 
     notebook = graphene.Field(NotebookNode)
 
@@ -91,21 +115,72 @@ class CreateNotebook(graphene.relay.ClientIDMutation):
         bookshelf = Bookshelf.objects.get(id=input['bookshelf_id'])
         notebook = Notebook.objects.create(
             owner=info.context.user,
-            bookshelf=bookshelf
+            bookshelf=bookshelf,
+            title=input.get('title', None)
         )
 
         bookshelf.notebook_order.append(notebook.id)
+        bookshelf.save()
 
         return CreateNotebook(notebook=notebook)
+
+
+class UpdateNotebook(graphene.relay.ClientIDMutation):
+    class Input:
+        id = graphene.UUID(required=True)
+        title = graphene.String(required=False)
+        bookshelf_id = graphene.UUID(required=False)
+        page_order = graphene.List(graphene.UUID, required=False)
+
+    notebook = graphene.Field(NotebookNode)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input):
+        notebook = Notebook.objects.get(id=input['id'])
+
+        for k, v in input.items():
+            if k == 'id':
+                continue
+
+            if k == 'bookshelf_id':
+                current_shelf = notebook.bookshelf
+                current_shelf.notebook_order.remove(notebook.id)
+                current_shelf.save()
+
+                new_bookshelf = Bookshelf.objects.get(id=v)
+                new_bookshelf.notebook_order.append(notebook.id)
+                new_bookshelf.save()
+                notebook.bookshelf = new_bookshelf
+                continue
+
+            setattr(notebook, k, v)
+
+        notebook.save()
+
+        return UpdateNotebook(notebook=notebook)
+
+
+class DeleteNotebook(graphene.relay.ClientIDMutation):
+    class Input:
+        id = graphene.UUID(required=True)
+
+    notebook = graphene.Field(NotebookNode)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input):
+        notebook = Notebook.objects.get(id=input['notebook_id'])
+        notebook.delete()
+
+        return DeleteNotebook(notebook=notebook)
 
 
 class CreatePage(graphene.relay.ClientIDMutation):
     class Input:
         notebook_id = graphene.UUID(required=True)
-        pattern_style = graphene.String(required=True)
-        pattern_color = graphene.String(required=True)
-        pattern_size = graphene.Float(required=True)
-        pattenr_spacing = graphene.Float(required=True)
+        pattern_style = graphene.String(required=False)
+        pattern_color = graphene.String(required=False)
+        pattern_size = graphene.Float(required=False)
+        pattern_spacing = graphene.Float(required=False)
 
     page = graphene.Field(PageNode)
 
@@ -114,12 +189,62 @@ class CreatePage(graphene.relay.ClientIDMutation):
         notebook = Notebook.objects.get(id=input['notebook_id'])
         page = Page.objects.create(
             owner=info.context.user,
-            notebook=notebook
+            notebook=notebook,
+            pattern_style=input.get('pattern_style', None),
+            pattern_color=input.get('pattern_color', None),
+            pattern_size=input.get('pattern_size', None),
+            pattern_spacing=input.get('pattern_spacing', None)
         )
 
         notebook.page_order.append(page.id)
+        notebook.save()
 
         return CreatePage(page=page)
+
+
+class UpdatePage(graphene.relay.ClientIDMutation):
+    class Input:
+        id = graphene.UUID(required=True)
+        notebook_id = graphene.UUID(required=False)
+        pattern_style = graphene.String(required=False)
+        pattern_color = graphene.String(required=False)
+        pattern_size = graphene.Float(required=False)
+        pattern_spacing = graphene.Float(required=False)
+
+    page = graphene.Field(PageNode)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input):
+        page = Page.objects.get(id=input['id'])
+
+        for k, v in input.items():
+            if k == 'id':
+                continue
+
+            if k == 'notebook_id':
+                notebook = Notebook.objects.get(id=v)
+                notebook.notebook = notebook
+                continue
+
+            setattr(page, k, v)
+
+        page.save()
+
+        return UpdatePage(page=page)
+
+
+class DeletePage(graphene.relay.ClientIDMutation):
+    class Input:
+        id = graphene.UUID(required=True)
+
+    page = graphene.Field(PageNode)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input):
+        page = Page.objects.get(id=input['page_id'])
+        page.delete()
+
+        return DeletePage(page=page)
 
 
 class CreateElement(graphene.relay.ClientIDMutation):
@@ -140,10 +265,58 @@ class CreateElement(graphene.relay.ClientIDMutation):
         page = Page.objects.get(id=input['page_id'])
         element = Element.objects.create(
             owner=info.context.user,
-            **input
+            page=page,
+            tool=input['tool'],
+            fill_color=input['fill_color'],
+            stroke_color=input['stroke_color'],
+            size=input['size'],
+            is_ruler_line=input['is_ruler_line'],
+            points=input['points'],
+            options=input.get('options', None)
         )
 
         return CreateElement(element=element)
+
+
+class UpdateElement(graphene.relay.ClientIDMutation):
+    class Input:
+        id = graphene.UUID(required=True)
+        tool = graphene.Int(required=False)
+        fill_color = graphene.String(required=False)
+        stroke_color = graphene.String(required=False)
+        size = graphene.Float(required=False)
+        is_ruler_line = graphene.Boolean(required=False)
+        points = graphene.List(graphene.JSONString, required=False)
+        options = graphene.JSONString(required=False)
+
+    element = graphene.Field(ElementNode)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input):
+        element = Element.objects.get(id=input['id'])
+
+        for k, v in input.items():
+            if k == 'id':
+                continue
+            setattr(element, k, v)
+
+        element.save()
+
+        return UpdateElement(element=element)
+
+
+class DeleteElement(graphene.relay.ClientIDMutation):
+    class Input:
+        id = graphene.UUID(required=True)
+
+    element = graphene.Field(ElementNode)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input):
+        element = Element.objects.get(id=input['element_id'])
+        element.delete()
+
+        return DeleteElement(element=element)
 
 
 class FiaryQuery(graphene.ObjectType):
@@ -165,7 +338,18 @@ class FiaryQuery(graphene.ObjectType):
 
 class FiaryMutation(graphene.ObjectType):
     create_room = CreateRoom.Field()
+
     create_bookshelf = CreateBookshelf.Field()
+    update_bookshelf = UpdateBookshelf.Field()
+
     create_notebook = CreateNotebook.Field()
+    update_notebook = UpdateNotebook.Field()
+    delete_notebook = DeleteNotebook.Field()
+
     create_page = CreatePage.Field()
+    update_page = UpdatePage.Field()
+    delete_page = DeletePage.Field()
+
     create_element = CreateElement.Field()
+    update_element = UpdateElement.Field()
+    delete_element = DeleteElement.Field()
