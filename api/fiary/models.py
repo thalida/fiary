@@ -1,7 +1,6 @@
-from email.policy import default
-from re import M
 import uuid
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 from fiary.choices import Tools
 from users.models import User
 
@@ -16,7 +15,7 @@ class Room(models.Model):
         related_name='rooms',
         on_delete=models.CASCADE
     )
-    bookshelf_order = models.ArrayField(
+    bookshelf_order = ArrayField(
         models.UUIDField(),
         default=list,
         blank=True
@@ -41,7 +40,7 @@ class Bookshelf(models.Model):
         related_name='bookshelves',
         on_delete=models.CASCADE
     )
-    notebook_order = models.ArrayField(
+    notebook_order = ArrayField(
         models.UUIDField(),
         default=list,
         blank=True
@@ -66,7 +65,7 @@ class Notebook(models.Model):
         related_name='notebooks',
         on_delete=models.CASCADE
     )
-    page_order = models.ArrayField(
+    page_order = ArrayField(
         models.UUIDField(),
         default=list,
         blank=True
@@ -169,7 +168,7 @@ class Element(models.Model):
     is_ruler_line = models.BooleanField(
         default=False
     )
-    points = models.ArrayField(
+    points = ArrayField(
         models.JSONField(),
         default=list,
         blank=True

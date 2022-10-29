@@ -1,4 +1,3 @@
-from ast import pattern
 import graphene
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
@@ -7,7 +6,7 @@ from .models import Room, Bookshelf, Notebook, Page, Element
 
 
 class RoomNode(DjangoObjectType):
-    pk = graphene.Field(type=graphene.UUID, source='id')
+    pk = graphene.UUID(source='id', required=True)
 
     class Meta:
         model = Room
@@ -16,7 +15,7 @@ class RoomNode(DjangoObjectType):
 
 
 class BookshelfNode(DjangoObjectType):
-    pk = graphene.Field(type=graphene.UUID, source='id')
+    pk = graphene.UUID(source='id', required=True)
 
     class Meta:
         model = Bookshelf
@@ -25,7 +24,7 @@ class BookshelfNode(DjangoObjectType):
 
 
 class NotebookNode(DjangoObjectType):
-    pk = graphene.Field(type=graphene.UUID, source='id')
+    pk = graphene.UUID(source='id', required=True)
 
     class Meta:
         model = Notebook
@@ -34,7 +33,7 @@ class NotebookNode(DjangoObjectType):
 
 
 class PageNode(DjangoObjectType):
-    pk = graphene.Field(type=graphene.UUID, source='id')
+    pk = graphene.UUID(source='id', required=True)
 
     class Meta:
         model = Page
@@ -43,7 +42,7 @@ class PageNode(DjangoObjectType):
 
 
 class ElementNode(DjangoObjectType):
-    pk = graphene.Field(type=graphene.UUID, source='id')
+    pk = graphene.UUID(source='id', required=True)
 
     class Meta:
         model = Element
@@ -126,7 +125,7 @@ class CreatePage(graphene.relay.ClientIDMutation):
 class CreateElement(graphene.relay.ClientIDMutation):
     class Input:
         page_id = graphene.UUID(required=True)
-        tool = graphene.Number(required=True)
+        tool = graphene.Int(required=True)
         fill_color = graphene.String(required=True)
         stroke_color = graphene.String(required=True)
         size = graphene.Float(required=True)
@@ -145,3 +144,28 @@ class CreateElement(graphene.relay.ClientIDMutation):
         )
 
         return CreateElement(element=element)
+
+
+class FiaryQuery(graphene.ObjectType):
+    room = graphene.relay.Node.Field(RoomNode)
+    all_rooms = DjangoFilterConnectionField(RoomNode)
+
+    bookshelf = graphene.relay.Node.Field(BookshelfNode)
+    all_bookshelves = DjangoFilterConnectionField(BookshelfNode)
+
+    notebook = graphene.relay.Node.Field(NotebookNode)
+    all_notebooks = DjangoFilterConnectionField(NotebookNode)
+
+    page = graphene.relay.Node.Field(PageNode)
+    all_pages = DjangoFilterConnectionField(PageNode)
+
+    element = graphene.relay.Node.Field(ElementNode)
+    all_elements = DjangoFilterConnectionField(ElementNode)
+
+
+class FiaryMutation(graphene.ObjectType):
+    create_room = CreateRoom.Field()
+    create_bookshelf = CreateBookshelf.Field()
+    create_notebook = CreateNotebook.Field()
+    create_page = CreatePage.Field()
+    create_element = CreateElement.Field()

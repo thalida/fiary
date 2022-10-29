@@ -1,12 +1,13 @@
 import graphene
 from users.schema import UserQuery, UserMutation
+from fiary.schema import FiaryQuery, FiaryMutation
 
 
-class Query(UserQuery, graphene.ObjectType):
+class Query(UserQuery, FiaryQuery, graphene.ObjectType):
     pass
 
 
-class Mutation(UserMutation, graphene.ObjectType):
+class Mutation(UserMutation, FiaryMutation, graphene.ObjectType):
     pass
 
 
