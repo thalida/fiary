@@ -1,16 +1,25 @@
 <script setup lang="ts">
-import { type Ref, ref, computed, watch, watchEffect, watchPostEffect, onMounted, nextTick } from 'vue'
-import { v4 as uuidv4 } from 'uuid';
-import cloneDeep from 'lodash/cloneDeep';
-import { getStroke } from 'perfect-freehand'
-import ColorPicker from '@mcistudio/vue-colorpicker'
-import '@mcistudio/vue-colorpicker/dist/style.css'
+import {
+  type Ref,
+  ref,
+  computed,
+  watch,
+  watchEffect,
+  watchPostEffect,
+  onMounted,
+  nextTick,
+} from "vue";
+import { v4 as uuidv4 } from "uuid";
+import cloneDeep from "lodash/cloneDeep";
+import { getStroke } from "perfect-freehand";
+import ColorPicker from "@mcistudio/vue-colorpicker";
+import "@mcistudio/vue-colorpicker/dist/style.css";
 import Moveable from "moveable";
 import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
-import polygonClipping from 'polygon-clipping'
-import Ftextarea from './Ftextarea.vue'
-import patternComponents, { defaultPatternProps } from '@/components/patterns'
+import polygonClipping from "polygon-clipping";
+import Ftextarea from "./Ftextarea.vue";
+import patternComponents, { defaultPatternProps } from "@/components/patterns";
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
@@ -25,28 +34,31 @@ const canvasConfig = ref({
   width: window.innerWidth,
   height: window.innerHeight,
   dpi: window.devicePixelRatio,
-})
+});
 
 let initTransformMatrix = null;
 const transformMatrix = ref(null as any);
 const interactiveCanvasTransform = ref();
 const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 let activePanCoords = [];
-const MAX_ZOOM = 5
-const MIN_ZOOM = 0.1
+const MAX_ZOOM = 5;
+const MIN_ZOOM = 0.1;
 
-const windowDiag = Math.sqrt((canvasConfig.value.width * canvasConfig.value.width) + (canvasConfig.value.height * canvasConfig.value.height));
-const drawingCanvas = ref<HTMLCanvasElement>()
-const interactiveCanvas = ref()
-const imagePreviewCanvas = ref<HTMLCanvasElement>()
-const imageBackdropCanvas = ref<HTMLCanvasElement>()
-const pasteLayer = ref<HTMLElement>()
+const windowDiag = Math.sqrt(
+  canvasConfig.value.width * canvasConfig.value.width +
+  canvasConfig.value.height * canvasConfig.value.height
+);
+const drawingCanvas = ref<HTMLCanvasElement>();
+const interactiveCanvas = ref();
+const imagePreviewCanvas = ref<HTMLCanvasElement>();
+const imageBackdropCanvas = ref<HTMLCanvasElement>();
+const pasteLayer = ref<HTMLElement>();
 const pasteCanvas = ref<HTMLCanvasElement>();
 
-const moveableRuler = ref()
+const moveableRuler = ref();
 let moveablePaste: any = null;
-const moveableImage = ref()
-const rulerElement = ref()
+const moveableImage = ref();
+const rulerElement = ref();
 const ruler = ref({
   isVisible: false,
   width: windowDiag,
@@ -55,7 +67,7 @@ const ruler = ref({
     scale: [1, 1],
     rotate: 35,
   },
-})
+});
 const pasteTransform = ref({
   translate: [0, 0],
   scale: [1, 1],
@@ -65,8 +77,8 @@ const imageTransform = ref({
   translate: [0, 0],
   scale: [1, 1],
   rotate: 0,
-  clipType: 'inset',
-  clipStyles: [0, 0, 0, 0]
+  clipType: "inset",
+  clipStyles: [0, 0, 0, 0],
 });
 
 enum HistoryEvent {
@@ -78,31 +90,42 @@ enum HistoryEvent {
   UPDATE_IMAGE_STYLES = 11,
 }
 
-let history = ref([] as any[]);
-let historyIndex = ref(-1);
+const history = ref([] as any[]);
+const historyIndex = ref(-1);
 const hasUndo = computed(() => historyIndex.value >= 0);
 const hasRedo = computed(() => historyIndex.value < history.value.length - 1);
 
-let elements = ref({} as any);
-let canvasElements = ref([] as string[]);
+const elements = ref({} as any);
+const canvasElements = ref([] as string[]);
 const clearAllIndexes = ref([] as number[]);
-const activeCanvasIndex = computed(() => clearAllIndexes.value.length > 0 ? clearAllIndexes.value[clearAllIndexes.value.length - 1] : 0);
+const activeCanvasIndex = computed(() =>
+  clearAllIndexes.value.length > 0
+    ? clearAllIndexes.value[clearAllIndexes.value.length - 1]
+    : 0
+);
 const activeCanvasElements = computed(() => {
-  const postClear = canvasElements.value.slice(activeCanvasIndex.value)
-  return postClear.filter(id => !elements.value[id].isDeleted)
+  const postClear = canvasElements.value.slice(activeCanvasIndex.value);
+  return postClear.filter((id) => !elements.value[id].isDeleted);
 });
-const lastCanvasElementId = computed(() => activeCanvasElements.value[activeCanvasElements.value.length - 1]);
-const htmlElements = computed(() => activeCanvasElements.value.filter((id: any) => elements.value[id].isHTMLElement && !elements.value[id].isDeleted));
+const lastCanvasElementId = computed(
+  () => activeCanvasElements.value[activeCanvasElements.value.length - 1]
+);
+const htmlElements = computed(() =>
+  activeCanvasElements.value.filter(
+    (id: any) =>
+      elements.value[id].isHTMLElement && !elements.value[id].isDeleted
+  )
+);
 
 let isMovingRuler = false;
-let isDrawing = ref(false)
-let isStylus = ref(false);
-let detectedStlyus = ref(false);
+const isDrawing = ref(false);
+const isStylus = ref(false);
+const detectedStlyus = ref(false);
 const allowFingerDrawing = ref(true);
 
 const showRulerControls = computed(() => {
-  return !isDrawing.value
-})
+  return !isDrawing.value;
+});
 
 enum Tool {
   POINTER = 0,
@@ -124,31 +147,35 @@ enum Tool {
   PAPER = 70,
 }
 const supportedTools = ref([
-  { key: Tool.POINTER, label: 'Pointer' },
-  { key: Tool.PAPER, label: 'Paper' },
-  { key: Tool.PEN, label: 'Pen' },
-  { key: Tool.MARKER, label: 'Marker' },
-  { key: Tool.HIGHLIGHTER, label: 'Highlighter' },
-  { key: Tool.BLOB, label: 'Blob' },
-  { key: Tool.CIRCLE, label: 'Circle' },
-  { key: Tool.RECTANGLE, label: 'Rectangle' },
-  { key: Tool.TRIANGLE, label: 'Triangle' },
-  { key: Tool.LINE, label: 'Line' },
-  { key: Tool.IMAGE, label: 'Image' },
-  { key: Tool.CHECKBOX, label: 'Checkbox' },
-  { key: Tool.TEXTBOX, label: 'Textbox' },
-  { key: Tool.CUT, label: 'Cut' },
-  { key: Tool.ERASER, label: 'Eraser' },
-  { key: Tool.CLEAR_ALL, label: 'Clear All' },
-])
+  { key: Tool.POINTER, label: "Pointer" },
+  { key: Tool.PAPER, label: "Paper" },
+  { key: Tool.PEN, label: "Pen" },
+  { key: Tool.MARKER, label: "Marker" },
+  { key: Tool.HIGHLIGHTER, label: "Highlighter" },
+  { key: Tool.BLOB, label: "Blob" },
+  { key: Tool.CIRCLE, label: "Circle" },
+  { key: Tool.RECTANGLE, label: "Rectangle" },
+  { key: Tool.TRIANGLE, label: "Triangle" },
+  { key: Tool.LINE, label: "Line" },
+  { key: Tool.IMAGE, label: "Image" },
+  { key: Tool.CHECKBOX, label: "Checkbox" },
+  { key: Tool.TEXTBOX, label: "Textbox" },
+  { key: Tool.CUT, label: "Cut" },
+  { key: Tool.ERASER, label: "Eraser" },
+  { key: Tool.CLEAR_ALL, label: "Clear All" },
+]);
 const selectedTool = ref(Tool.PEN);
 const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
 const paperTools = [Tool.PAPER];
 const interactiveTools = [Tool.CHECKBOX, Tool.TEXTBOX];
-const nonDrawingTools = [Tool.PAPER, Tool.POINTER, Tool.CLEAR_ALL]
-const isDrawingTool = computed(() => !nonDrawingTools.includes(selectedTool.value));
+const nonDrawingTools = [Tool.PAPER, Tool.POINTER, Tool.CLEAR_ALL];
+const isDrawingTool = computed(
+  () => !nonDrawingTools.includes(selectedTool.value)
+);
 const isPaperTool = computed(() => paperTools.includes(selectedTool.value));
-const isInteractiveTool = computed(() => interactiveTools.includes(selectedTool.value));
+const isInteractiveTool = computed(() =>
+  interactiveTools.includes(selectedTool.value)
+);
 
 enum LineEndSide {
   NONE = 0,
@@ -156,10 +183,10 @@ enum LineEndSide {
   BOTH = 2,
 }
 const supportedLineEndSides = ref([
-  { key: LineEndSide.NONE, label: 'None' },
-  { key: LineEndSide.ONE, label: 'One Side' },
-  { key: LineEndSide.BOTH, label: 'Both Sides' },
-])
+  { key: LineEndSide.NONE, label: "None" },
+  { key: LineEndSide.ONE, label: "One Side" },
+  { key: LineEndSide.BOTH, label: "Both Sides" },
+]);
 const selectedLineEndSide = ref(LineEndSide.NONE);
 
 enum LineEndStyle {
@@ -169,30 +196,28 @@ enum LineEndStyle {
   SQUARE = 3,
 }
 const supportedLineEndStyles = ref([
-  { key: LineEndStyle.NONE, label: 'None' },
-  { key: LineEndStyle.ARROW, label: 'Arrow' },
-  { key: LineEndStyle.CIRCLE, label: 'Circle' },
-  { key: LineEndStyle.SQUARE, label: 'Square' },
-])
+  { key: LineEndStyle.NONE, label: "None" },
+  { key: LineEndStyle.ARROW, label: "Arrow" },
+  { key: LineEndStyle.CIRCLE, label: "Circle" },
+  { key: LineEndStyle.SQUARE, label: "Square" },
+]);
 const selectedLineEndStyle = ref(LineEndStyle.NONE);
 
 const penSizes = [5, 10, 20, 40, 60];
 const penSize = ref(40); // 20, 40, 60, 80
 
 const TRANSPARENT_COLOR = { r: 0, g: 0, b: 0, a: 0 };
-const SPECIAL_TOOL_SWATCH_KEY = 'special-tool-swatch';
-const SPECIAL_PAPER_SWATCH_KEY = 'special-paper-swatch';
+const SPECIAL_TOOL_SWATCH_KEY = "special-tool-swatch";
+const SPECIAL_PAPER_SWATCH_KEY = "special-paper-swatch";
 const swatches = ref({
-  [SPECIAL_TOOL_SWATCH_KEY]: [
-    TRANSPARENT_COLOR,
-  ],
+  [SPECIAL_TOOL_SWATCH_KEY]: [TRANSPARENT_COLOR],
   [SPECIAL_PAPER_SWATCH_KEY]: [
     { r: 255, g: 255, b: 255, a: 1 },
     { r: 0, g: 0, b: 0, a: 1 },
     { r: 255, g: 250, b: 232, a: 1 },
     { r: 127, g: 127, b: 127, a: 1 },
   ],
-  'default': [
+  default: [
     { r: 0, g: 0, b: 0, a: 1 },
     { r: 255, g: 0, b: 0, a: 1 },
     { r: 0, g: 255, b: 0, a: 1 },
@@ -219,21 +244,26 @@ const swatches = ref({
         percent: 100,
         color: { r: 0, g: 0, b: 255, a: 1 },
       },
-    ]
+    ],
   ],
 } as any);
 const maxSwatchColors = ref(9);
-const swatchOrder = ref(['default'])
+const swatchOrder = ref(["default"]);
 
 const selectedPaperSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY as string);
 const selectedPaperColorIdx = ref(0 as number);
-let selectedPaperColor = computed(() => swatches.value[selectedPaperSwatchId.value][selectedPaperColorIdx.value]);
+const selectedPaperColor = computed(
+  () => swatches.value[selectedPaperSwatchId.value][selectedPaperColorIdx.value]
+);
 const isPaperSwatchDropdownOpen = ref(false);
 const showEditPaperColorModal = ref(false);
 
 const selectedPatternSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY as string);
 const selectedPatternColorIdx = ref(3 as number);
-let selectedPatternColor = computed(() => swatches.value[selectedPatternSwatchId.value][selectedPatternColorIdx.value]);
+const selectedPatternColor = computed(
+  () =>
+    swatches.value[selectedPatternSwatchId.value][selectedPatternColorIdx.value]
+);
 const selectedPatternOpacity = ref(50 as number);
 const isPatternSwatchDropdownOpen = ref(false);
 const showEditPatternColorModal = ref(false);
@@ -241,28 +271,36 @@ const showEditPatternColorModal = ref(false);
 const paperPatterns = ref(patternComponents);
 const patternStyles = ref(defaultPatternProps);
 const selectedPaperPatternIdx = ref(0);
-const selectedPaperPattern = computed(() => paperPatterns.value[selectedPaperPatternIdx.value]);
-const selectedPatternStyles = computed(() => patternStyles.value[selectedPaperPatternIdx.value])
+const selectedPaperPattern = computed(
+  () => paperPatterns.value[selectedPaperPatternIdx.value]
+);
+const selectedPatternStyles = computed(
+  () => patternStyles.value[selectedPaperPatternIdx.value]
+);
 
-
-const selectedFillSwatchId = ref('default' as string);
+const selectedFillSwatchId = ref("default" as string);
 const selectedFillColorIdx = ref(0 as number);
-let selectedFillColor = computed(() => swatches.value[selectedFillSwatchId.value][selectedFillColorIdx.value]);
+const selectedFillColor = computed(
+  () => swatches.value[selectedFillSwatchId.value][selectedFillColorIdx.value]
+);
 const isFillSwatchDropdownOpen = ref(false);
 const showEditFillColorModal = ref(false);
 
 const selectedStrokeSwatchId = ref(SPECIAL_TOOL_SWATCH_KEY as string);
 const selectedStrokeColorIdx = ref(0 as number);
-let selectedStrokeColor = computed(() => swatches.value[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]);
+const selectedStrokeColor = computed(
+  () =>
+    swatches.value[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]
+);
 const isStrokeSwatchDropdownOpen = ref(false);
 const showEditStrokeColorModal = ref(false);
 
 onMounted(() => {
-  if (typeof drawingCanvas.value === 'undefined') {
+  if (typeof drawingCanvas.value === "undefined") {
     return;
   }
 
-  const ctx = drawingCanvas.value.getContext('2d')
+  const ctx = drawingCanvas.value.getContext("2d");
 
   if (ctx === null) {
     return;
@@ -277,47 +315,47 @@ onMounted(() => {
 
   ctx.scale(dpi, dpi);
 
-  initTransformMatrix = ctx.getTransform()
-  transformMatrix.value = ctx.getTransform()
-})
+  initTransformMatrix = ctx.getTransform();
+  transformMatrix.value = ctx.getTransform();
+});
 
 watch(
   () => debugMode.value,
   () => {
     drawElements();
   }
-)
+);
 
 watchPostEffect(() => {
   if (ruler.value.isVisible) {
-    setRulerTransform(rulerElement.value, {})
+    setRulerTransform(rulerElement.value, {});
   }
-})
+});
 
 watchEffect(() => {
-  setRenderTransforms(transformMatrix.value)
-})
+  setRenderTransforms(transformMatrix.value);
+});
 
 function handleToolChange(event) {
   if (selectedTool.value === Tool.CLEAR_ALL) {
     handleClearAll();
   }
 
-  isTextboxEditMode.value = false
-  activeTextbox.value = null
+  isTextboxEditMode.value = false;
+  activeTextbox.value = null;
 
   event.target.blur();
 }
 
 function checkIsStylus(event) {
-  let force = event.touches ? event.touches[0]["force"] : 0;
+  const force = event.touches ? event.touches[0]["force"] : 0;
   isStylus.value = force > 0;
   detectedStlyus.value = detectedStlyus.value || isStylus.value;
 }
 
 function isDrawingAllowed(isDrawingOverride = false) {
-  const activelyDrawing = isDrawing.value || isDrawingOverride
-  const isOverlayMode = (
+  const activelyDrawing = isDrawing.value || isDrawingOverride;
+  const isOverlayMode =
     isFillSwatchDropdownOpen.value ||
     isStrokeSwatchDropdownOpen.value ||
     isPaperSwatchDropdownOpen.value ||
@@ -325,13 +363,19 @@ function isDrawingAllowed(isDrawingOverride = false) {
     isAddImageMode.value ||
     isInteractiveEditMode.value ||
     isMovingRuler ||
-    isTextboxEditMode.value
-  )
-  const isNonDrawingTool = [Tool.PAPER, Tool.POINTER].includes(selectedTool.value)
-  const stylusAllowed = detectedStlyus.value && isStylus.value
-  const isFingerAllowed = !isStylus.value && allowFingerDrawing.value
+    isTextboxEditMode.value;
+  const isNonDrawingTool = [Tool.PAPER, Tool.POINTER].includes(
+    selectedTool.value
+  );
+  const stylusAllowed = detectedStlyus.value && isStylus.value;
+  const isFingerAllowed = !isStylus.value && allowFingerDrawing.value;
 
-  return !isOverlayMode && !isNonDrawingTool && activelyDrawing && (stylusAllowed || isFingerAllowed)
+  return (
+    !isOverlayMode &&
+    !isNonDrawingTool &&
+    activelyDrawing &&
+    (stylusAllowed || isFingerAllowed)
+  );
 }
 
 function getPressure(event): number {
@@ -344,18 +388,18 @@ function getPressure(event): number {
 
 function getComposition() {
   if (selectedTool.value === Tool.ERASER) {
-    return 'destination-out';
+    return "destination-out";
   }
 
   if (selectedTool.value === Tool.MARKER) {
-    return 'hard-light';
+    return "hard-light";
   }
 
   if (selectedTool.value === Tool.HIGHLIGHTER) {
-    return 'hue';
+    return "hue";
   }
 
-  return 'source-over';
+  return "source-over";
 }
 
 function getOpacity(): number {
@@ -371,12 +415,14 @@ function getOpacity(): number {
 }
 
 function isTransparent(color) {
-  return (typeof color === 'string' && color === 'transparent') || color.a === 0;
+  return (
+    (typeof color === "string" && color === "transparent") || color.a === 0
+  );
 }
 
 function formatColor(color, opacity = 1) {
   if (isTransparent(color)) {
-    return 'transparent';
+    return "transparent";
   }
 
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
@@ -387,13 +433,13 @@ function getSmoothPoints(element) {
     ...element.freehandOptions,
     size: element.freehandOptions.size * 1.5,
     thinning: element.freehandOptions.thinning / 1.5,
-  })
-  const path = getStroke(element.points, element.freehandOptions)
+  });
+  const path = getStroke(element.points, element.freehandOptions);
 
   return {
     stroke,
     path,
-  }
+  };
 }
 
 function calculateDimensions(element) {
@@ -410,31 +456,36 @@ function calculateDimensions(element) {
   const minY = Math.min(...yPoints);
   const maxX = Math.max(...xPoints);
   const maxY = Math.max(...yPoints);
-  const width = (maxX - minX);
-  const height = (maxY - minY);
+  const width = maxX - minX;
+  const height = maxY - minY;
 
   let outerMinX = minX;
   let outerMinY = minY;
   let outerMaxX = maxX;
   let outerMaxY = maxY;
 
-
   if (lineTools.includes(element.tool) && !isTransparent(element.strokeColor)) {
-    let outerXPoints = element.smoothPoints.stroke.map((point) => point[0]);
-    let outerYPoints = element.smoothPoints.stroke.map((point) => point[1]);
+    const outerXPoints = element.smoothPoints.stroke.map((point) => point[0]);
+    const outerYPoints = element.smoothPoints.stroke.map((point) => point[1]);
     outerMinX = Math.min(...outerXPoints);
     outerMinY = Math.min(...outerYPoints);
     outerMaxX = Math.max(...outerXPoints);
     outerMaxY = Math.max(...outerYPoints);
   } else if (element.tool === Tool.LINE) {
-    let strokeSize = !isTransparent(element.strokeColor) ? element.size * 0.75 : element.size / 2
+    const strokeSize = !isTransparent(element.strokeColor)
+      ? element.size * 0.75
+      : element.size / 2;
     outerMinX -= strokeSize;
     outerMinY -= strokeSize;
     outerMaxX += strokeSize;
     outerMaxY += strokeSize;
   } else {
     let strokeSize = 0;
-    if (!isTransparent(element.strokeColor) || element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
+    if (
+      !isTransparent(element.strokeColor) ||
+      element.tool === Tool.BLOB ||
+      element.tool === Tool.ERASER
+    ) {
       strokeSize = element.size / 2;
     }
 
@@ -444,8 +495,8 @@ function calculateDimensions(element) {
     outerMaxY += strokeSize;
   }
 
-  const outerWidth = (outerMaxX - outerMinX);
-  const outerHeight = (outerMaxY - outerMinY);
+  const outerWidth = outerMaxX - outerMinX;
+  const outerHeight = outerMaxY - outerMinY;
   const dimensions = {
     minX,
     minY,
@@ -463,11 +514,12 @@ function calculateDimensions(element) {
   };
 
   if (lineTools.includes(element.tool)) {
-    dimensions.lineLength = Math.sqrt(Math.pow(dimensions.width, 2) + Math.pow(dimensions.height, 2));
+    dimensions.lineLength = Math.sqrt(
+      Math.pow(dimensions.width, 2) + Math.pow(dimensions.height, 2)
+    );
   }
 
-
-  return dimensions
+  return dimensions;
 }
 
 function calculateLinePoints(element, toPos): any {
@@ -482,8 +534,8 @@ function calculateLinePoints(element, toPos): any {
   ) {
     return [
       { x: fromx, y: fromy },
-      { x: toPos.x, y: toPos.y }
-    ]
+      { x: toPos.x, y: toPos.y },
+    ];
   } else if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
     const headlen = element.size * 2; // length of head in pixels
     const endAngle = Math.atan2(toy - fromy, tox - fromx);
@@ -495,7 +547,7 @@ function calculateLinePoints(element, toPos): any {
       x: tox - headlen * Math.cos(endAngle + Math.PI / 5),
       y: toy - headlen * Math.sin(endAngle + Math.PI / 5),
     };
-    const endPoints = [endA1, endA2]
+    const endPoints = [endA1, endA2];
 
     let startAngle;
     let startPoints: any[] = [];
@@ -509,7 +561,7 @@ function calculateLinePoints(element, toPos): any {
         x: fromx - headlen * Math.cos(startAngle + Math.PI / 5),
         y: fromy - headlen * Math.sin(startAngle + Math.PI / 5),
       };
-      startPoints = [startA1, startA2]
+      startPoints = [startA1, startA2];
     }
 
     return [
@@ -517,33 +569,33 @@ function calculateLinePoints(element, toPos): any {
       ...startPoints,
       ...endPoints,
       { x: toPos.x, y: toPos.y },
-    ]
+    ];
   } else if (
     element.toolOptions.lineEndStyle === LineEndStyle.SQUARE ||
     element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE
   ) {
     const headSize = element.size * 2;
     const endStartPoint = {
-      x: tox - (headSize / 2),
-      y: toy - (headSize / 2),
+      x: tox - headSize / 2,
+      y: toy - headSize / 2,
     };
     const endEndPoint = {
-      x: tox + (headSize / 2),
-      y: toy + (headSize / 2),
+      x: tox + headSize / 2,
+      y: toy + headSize / 2,
     };
-    const endPoints = [endStartPoint, endEndPoint]
+    const endPoints = [endStartPoint, endEndPoint];
 
     let startPoints: any[] = [];
     if (element.toolOptions.lineEndSide === LineEndSide.BOTH) {
       const startStartPoint = {
-        x: fromx - (headSize / 2),
-        y: fromy - (headSize / 2),
+        x: fromx - headSize / 2,
+        y: fromy - headSize / 2,
       };
       const startEndPoint = {
-        x: fromx + (headSize / 2),
-        y: fromy + (headSize / 2),
+        x: fromx + headSize / 2,
+        y: fromy + headSize / 2,
       };
-      startPoints = [startStartPoint, startEndPoint]
+      startPoints = [startStartPoint, startEndPoint];
     }
 
     return [
@@ -551,7 +603,7 @@ function calculateLinePoints(element, toPos): any {
       ...startPoints,
       ...endPoints,
       { x: toPos.x, y: toPos.y },
-    ]
+    ];
   }
 }
 
@@ -587,7 +639,10 @@ function getMousePos(canvas, event, followRuler = false) {
 
         for (let i = 0; i < searchDirections.length; i += 1) {
           const searchDirection = searchDirections[i];
-          const isInside = moveableRuler.value.isInside(searchDirection[0], searchDirection[1]);
+          const isInside = moveableRuler.value.isInside(
+            searchDirection[0],
+            searchDirection[1]
+          );
 
           if (isFirstLoop) {
             searchFor = !isInside;
@@ -601,30 +656,30 @@ function getMousePos(canvas, event, followRuler = false) {
           }
         }
 
-        if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
+        if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
           break;
         }
 
         dy += 1;
       }
 
-      if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
+      if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
         break;
       }
 
       dx += 1;
     }
 
-    if (typeof foundX !== 'undefined' && typeof foundY !== 'undefined') {
+    if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
       isRulerLine = true;
       inputX = foundX;
       inputY = foundY;
     }
   }
 
-  const x = (inputX - rect.left);
-  const y = (inputY - rect.top);
-  return { x, y, isRulerLine }
+  const x = inputX - rect.left;
+  const y = inputY - rect.top;
+  return { x, y, isRulerLine };
 }
 
 function getDrawPos(canvas, event, followRuler = false) {
@@ -634,40 +689,40 @@ function getDrawPos(canvas, event, followRuler = false) {
   const cameraZoom = transformMatrix.value.a;
   const relativeZoom = initTransformMatrix.a / cameraZoom;
 
-  if (isInteractiveTool) {
+  if (isInteractiveTool.value) {
     cameraX /= cameraZoom;
     cameraY /= cameraZoom;
   }
 
   const transformedPos = {
-    x: (pos.x * relativeZoom) - cameraX,
-    y: (pos.y * relativeZoom) - cameraY,
-  }
+    x: pos.x * relativeZoom - cameraX,
+    y: pos.y * relativeZoom - cameraY,
+  };
 
   return {
     ...pos,
     ...transformedPos,
-  }
+  };
 }
 
 function getSvgPathFromStroke(stroke) {
-  if (!stroke.length) return ''
+  if (!stroke.length) return "";
 
   const d = stroke.reduce(
     (acc, [x0, y0], i, arr) => {
-      const [x1, y1] = arr[(i + 1) % arr.length]
-      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2)
-      return acc
+      const [x1, y1] = arr[(i + 1) % arr.length];
+      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+      return acc;
     },
-    ['M', ...stroke[0], 'Q']
-  )
+    ["M", ...stroke[0], "Q"]
+  );
 
-  d.push('Z')
-  return d.join(' ')
+  d.push("Z");
+  return d.join(" ");
 }
 
 function getFlatSvgPathFromStroke(stroke) {
-  return getSvgPathFromStroke(stroke)
+  return getSvgPathFromStroke(stroke);
   // const faces = polygonClipping.union([stroke])
 
   // const d = []
@@ -682,7 +737,7 @@ function getFlatSvgPathFromStroke(stroke) {
 }
 
 function addHistoryEvent(event) {
-  history.value.splice(historyIndex.value + 1)
+  history.value.splice(historyIndex.value + 1);
   history.value.push(event);
   historyIndex.value = history.value.length - 1;
 }
@@ -701,7 +756,7 @@ function createCanvasElement(element) {
   setCanvasElement(element);
   canvasElements.value.push(element.id);
 
-  const updatedElement = showCanvasElement(element.id)
+  const updatedElement = showCanvasElement(element.id);
   const historyEvent: any = {
     type: HistoryEvent.ADD_CANVAS_ELEMENT,
     elementId: element.id,
@@ -716,7 +771,7 @@ function createCanvasElement(element) {
 }
 
 function deleteCanvasElement(elementId, trackHistory = true) {
-  const updatedElement = hideCanvasElement(elementId)
+  const updatedElement = hideCanvasElement(elementId);
 
   if (trackHistory) {
     addHistoryEvent({
@@ -746,15 +801,17 @@ function hideCanvasElement(elementId) {
 
   if (element.tool === Tool.CLEAR_ALL) {
     const elementIndex = canvasElements.value.indexOf(elementId);
-    clearAllIndexes.value = clearAllIndexes.value.filter(i => i !== elementIndex);
+    clearAllIndexes.value = clearAllIndexes.value.filter(
+      (i) => i !== elementIndex
+    );
   }
 
   return element;
 }
 
 function cacheElement(element) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
   const dpi = window.devicePixelRatio;
 
   const minX = element.dimensions.outerMinX;
@@ -786,11 +843,16 @@ function cacheElement(element) {
 }
 
 function drawElement(canvas, element, isCaching = false) {
-  if (element.isHTMLElement || element.isDeleted || element.dimensions.outerWidth === 0 || element.dimensions.outerHeight === 0) {
-    return
+  if (
+    element.isHTMLElement ||
+    element.isDeleted ||
+    element.dimensions.outerWidth === 0 ||
+    element.dimensions.outerHeight === 0
+  ) {
+    return;
   }
 
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
 
   if (element.isDrawingCached) {
     const cachedCanvas = element.cache.drawing.canvas;
@@ -812,7 +874,7 @@ function drawElement(canvas, element, isCaching = false) {
       ctx.beginPath();
       ctx.translate(element.cache.drawing.x, element.cache.drawing.y);
       ctx.rect(0, 0, cachedCanvas.width / dpi, cachedCanvas.height / dpi);
-      ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+      ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
       ctx.lineWidth = 5;
       ctx.stroke();
       ctx.restore();
@@ -825,14 +887,19 @@ function drawElement(canvas, element, isCaching = false) {
 
   ctx.save();
 
-  if (isCaching && (element.tool === Tool.ERASER || element.tool === Tool.CUT || element.tool === Tool.CLEAR_ALL)) {
-    ctx.globalCompositeOperation = 'source-over';
+  if (
+    isCaching &&
+    (element.tool === Tool.ERASER ||
+      element.tool === Tool.CUT ||
+      element.tool === Tool.CLEAR_ALL)
+  ) {
+    ctx.globalCompositeOperation = "source-over";
   } else {
     ctx.globalCompositeOperation = element.composition;
   }
 
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.lineWidth = element.size;
 
   if (Array.isArray(element.strokeColor)) {
@@ -854,7 +921,12 @@ function drawElement(canvas, element, isCaching = false) {
       gradientEndY = minY;
     }
 
-    const gradient = ctx.createLinearGradient(gradientStartX, gradientStartY, gradientEndX, gradientEndY);
+    const gradient = ctx.createLinearGradient(
+      gradientStartX,
+      gradientStartY,
+      gradientEndX,
+      gradientEndY
+    );
     for (let j = 0; j < element.strokeColor.length; j += 1) {
       const colorStop = element.strokeColor[j];
       const stop = colorStop.percent / 100;
@@ -883,7 +955,12 @@ function drawElement(canvas, element, isCaching = false) {
       gradientEndY = minY;
     }
 
-    const gradient = ctx.createLinearGradient(gradientStartX, gradientStartY, gradientEndX, gradientEndY);
+    const gradient = ctx.createLinearGradient(
+      gradientStartX,
+      gradientStartY,
+      gradientEndX,
+      gradientEndY
+    );
     for (let j = 0; j < element.fillColor.length; j += 1) {
       const colorStop = element.fillColor[j];
       const stop = colorStop.percent / 100;
@@ -896,28 +973,28 @@ function drawElement(canvas, element, isCaching = false) {
   }
 
   if (lineTools.includes(element.tool)) {
-    ctx.save()
+    ctx.save();
     ctx.beginPath();
     const strokePoints = element.smoothPoints.stroke;
     ctx.moveTo(strokePoints[0][0], strokePoints[0][1]);
-    const strokeData = getFlatSvgPathFromStroke(strokePoints)
-    const myStroke = new Path2D(strokeData)
+    const strokeData = getFlatSvgPathFromStroke(strokePoints);
+    const myStroke = new Path2D(strokeData);
     ctx.fillStyle = ctx.strokeStyle;
     ctx.fill(myStroke);
-    ctx.restore()
+    ctx.restore();
 
-    ctx.save()
+    ctx.save();
     if (isTransparent(element.fillColor)) {
-      ctx.globalCompositeOperation = 'destination-out';
+      ctx.globalCompositeOperation = "destination-out";
       ctx.fillStyle = "#fff";
     }
     ctx.beginPath();
     const pathPoints = element.smoothPoints.path;
     ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
-    const pathData = getFlatSvgPathFromStroke(pathPoints)
-    const myPath = new Path2D(pathData)
+    const pathData = getFlatSvgPathFromStroke(pathPoints);
+    const myPath = new Path2D(pathData);
     ctx.fill(myPath);
-    ctx.restore()
+    ctx.restore();
   } else if (element.tool === Tool.CIRCLE) {
     ctx.beginPath();
     const midX = (minX + maxX) / 2;
@@ -951,7 +1028,7 @@ function drawElement(canvas, element, isCaching = false) {
     const tox = points[points.length - 1].x;
     const toy = points[points.length - 1].y;
 
-    ctx.save()
+    ctx.save();
     ctx.lineWidth *= 1.5;
     ctx.fillStyle = ctx.strokeStyle;
     ctx.beginPath();
@@ -962,7 +1039,8 @@ function drawElement(canvas, element, isCaching = false) {
     if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
       ctx.beginPath();
       for (let i = points.length - 2; i > 0; i -= 1) {
-        const targetPoint = (numPoints > 4 && i <= 2) ? points[0] : points[numPoints - 1];
+        const targetPoint =
+          numPoints > 4 && i <= 2 ? points[0] : points[numPoints - 1];
         ctx.moveTo(targetPoint.x, targetPoint.y);
         ctx.lineTo(points[i].x, points[i].y);
       }
@@ -987,13 +1065,17 @@ function drawElement(canvas, element, isCaching = false) {
         const endPoint = points[i + 1];
         const centerX = (startPoint.x + endPoint.x) / 2;
         const centerY = (startPoint.y + endPoint.y) / 2;
-        const radius = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)) / 2;
+        const radius =
+          Math.sqrt(
+            Math.pow(endPoint.x - startPoint.x, 2) +
+            Math.pow(endPoint.y - startPoint.y, 2)
+          ) / 2;
         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
       }
       ctx.fill();
       ctx.stroke();
     }
-    ctx.restore()
+    ctx.restore();
 
     ctx.save();
     ctx.strokeStyle = ctx.fillStyle;
@@ -1005,7 +1087,8 @@ function drawElement(canvas, element, isCaching = false) {
     if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
       ctx.beginPath();
       for (let i = points.length - 2; i > 0; i -= 1) {
-        const targetPoint = (numPoints > 4 && i <= 2) ? points[0] : points[numPoints - 1];
+        const targetPoint =
+          numPoints > 4 && i <= 2 ? points[0] : points[numPoints - 1];
         ctx.moveTo(targetPoint.x, targetPoint.y);
         ctx.lineTo(points[i].x, points[i].y);
       }
@@ -1027,13 +1110,16 @@ function drawElement(canvas, element, isCaching = false) {
         const endPoint = points[i + 1];
         const centerX = (startPoint.x + endPoint.x) / 2;
         const centerY = (startPoint.y + endPoint.y) / 2;
-        const radius = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)) / 2;
+        const radius =
+          Math.sqrt(
+            Math.pow(endPoint.x - startPoint.x, 2) +
+            Math.pow(endPoint.y - startPoint.y, 2)
+          ) / 2;
         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
       }
       ctx.fill();
     }
     ctx.restore();
-
   } else if (element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
@@ -1046,12 +1132,17 @@ function drawElement(canvas, element, isCaching = false) {
     }
 
     if (points.length >= 2) {
-      ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+      ctx.quadraticCurveTo(
+        points[i].x,
+        points[i].y,
+        points[i + 1].x,
+        points[i + 1].y
+      );
     }
 
     if (element.tool === Tool.BLOB) {
       ctx.closePath();
-      ctx.save()
+      ctx.save();
       if (isTransparent(element.strokeColor)) {
         ctx.strokeStyle = ctx.fillStyle;
       }
@@ -1059,7 +1150,7 @@ function drawElement(canvas, element, isCaching = false) {
       ctx.fill();
       ctx.restore();
     } else if (element.tool === Tool.ERASER) {
-      ctx.save()
+      ctx.save();
       ctx.strokeStyle = "#ffffff";
       ctx.stroke();
       ctx.restore();
@@ -1076,7 +1167,12 @@ function drawElement(canvas, element, isCaching = false) {
     }
 
     if (points.length >= 2) {
-      ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+      ctx.quadraticCurveTo(
+        points[i].x,
+        points[i].y,
+        points[i + 1].x,
+        points[i + 1].y
+      );
     }
 
     if (element.isCompletedCut) {
@@ -1105,23 +1201,23 @@ function drawElement(canvas, element, isCaching = false) {
 }
 
 function clearCanvas(canvas) {
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function drawElements() {
-  if (typeof drawingCanvas.value === 'undefined') {
+  if (typeof drawingCanvas.value === "undefined") {
     return;
   }
 
-  const ctx = drawingCanvas.value.getContext('2d');
+  const ctx = drawingCanvas.value.getContext("2d");
   if (ctx === null) {
     return;
   }
-  ctx.setTransform(initTransformMatrix)
+  ctx.setTransform(initTransformMatrix);
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
 
-  ctx.setTransform(transformMatrix.value)
+  ctx.setTransform(transformMatrix.value);
 
   const drawElementIds = activeCanvasElements.value;
   for (let i = 0; i < drawElementIds.length; i += 1) {
@@ -1137,8 +1233,11 @@ function getInteractiveElementTransform(element): string {
     x: transformMatrix.value.e / initTransformMatrix.a,
     y: transformMatrix.value.f / initTransformMatrix.a,
   };
-  const translate = `translate(${newOrigin.x + (element.style.transform.translate[0] * htmlRelativeZoom)}px, ${newOrigin.y + (element.style.transform.translate[1] * htmlRelativeZoom)}px)`;
-  const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom}, ${element.style.transform.scale[1] * htmlRelativeZoom})`;
+  const translate = `translate(${newOrigin.x + element.style.transform.translate[0] * htmlRelativeZoom
+    }px, ${newOrigin.y + element.style.transform.translate[1] * htmlRelativeZoom
+    }px)`;
+  const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom
+    }, ${element.style.transform.scale[1] * htmlRelativeZoom})`;
   const rotate = `rotate(${element.style.transform.rotate}deg)`;
 
   const transformStr = `${translate} ${scale} ${rotate}`;
@@ -1149,7 +1248,7 @@ function setInteractiveElementTransform(element, transform = {}): string {
   const nextTransform = {
     ...element.style.transform,
     ...transform,
-  }
+  };
 
   element.style.transform = nextTransform;
   element.style.transformStr = getInteractiveElementTransform(element);
@@ -1195,7 +1294,7 @@ function handleAddTextbox(pos) {
         scale: [1, 1],
         rotate: 0,
       },
-      transformStr: ''
+      transformStr: "",
     },
     points: [pos],
   };
@@ -1209,10 +1308,7 @@ function handleClearAll() {
   const lastElement = getCanvasElement(lastElementId);
   if (
     canvasElements.value.length === 0 ||
-    (
-      canvasElements.value.length > 0 &&
-      lastElement.tool === Tool.CLEAR_ALL
-    )
+    (canvasElements.value.length > 0 && lastElement.tool === Tool.CLEAR_ALL)
   ) {
     return;
   }
@@ -1220,7 +1316,7 @@ function handleClearAll() {
   const clearElement = {
     id: uuidv4(),
     tool: Tool.CLEAR_ALL,
-    composition: 'destination-out',
+    composition: "destination-out",
     lineWidth: 0,
     strokeColor: TRANSPARENT_COLOR,
     fillColor: { r: 255, g: 255, b: 255, a: 1 },
@@ -1253,28 +1349,35 @@ async function handlePasteStart() {
   isPasteMode.value = true;
   await nextTick();
 
-  if (typeof pasteLayer.value === 'undefined' || typeof pasteCanvas.value === 'undefined') {
+  if (
+    typeof pasteLayer.value === "undefined" ||
+    typeof pasteCanvas.value === "undefined"
+  ) {
     return;
   }
 
-  const ctx = pasteCanvas.value.getContext('2d');
+  const ctx = pasteCanvas.value.getContext("2d");
 
   if (ctx === null) {
     return;
   }
 
-  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
+  const cutSelectionId =
+    activeCanvasElements.value[activeCanvasElements.value.length - 1];
   const cutSelection = getCanvasElement(cutSelectionId);
 
   if (!cutSelection.isDrawingCached) {
     cutSelection.isCompletedCut = true;
-    cutSelection.composition = 'destination-out';
+    cutSelection.composition = "destination-out";
     cacheElement(cutSelection);
   }
 
   drawElements();
 
-  pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
+  pasteTransform.value.translate = [
+    cutSelection.cache.drawing.x,
+    cutSelection.cache.drawing.y,
+  ];
   setPasteTransform(pasteCanvas.value, pasteTransform.value);
 
   const dpi = cutSelection.cache.drawing.dpi;
@@ -1298,7 +1401,7 @@ async function handlePasteStart() {
   const cutSelectionClip = cloneDeep(cutSelection);
   cutSelectionClip.isDrawingCached = false;
   cutSelectionClip.cache = {};
-  cutSelectionClip.composition = 'destination-in';
+  cutSelectionClip.composition = "destination-in";
   drawElement(pasteCanvas.value, cutSelectionClip);
 
   moveablePaste = new Moveable(pasteLayer.value, {
@@ -1313,21 +1416,23 @@ async function handlePasteStart() {
   moveablePaste
     .on("drag", onPasteDrag)
     .on("rotate", onPasteRotate)
-    .on("scale", onPasteScale)
+    .on("scale", onPasteScale);
 }
 
 function cancelPaste() {
-  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
+  const cutSelectionId =
+    activeCanvasElements.value[activeCanvasElements.value.length - 1];
   deleteCanvasElement(cutSelectionId, false);
   isPasteMode.value = false;
 }
 
 function handlePasteEnd() {
-  if (typeof pasteCanvas.value === 'undefined') {
+  if (typeof pasteCanvas.value === "undefined") {
     return;
   }
 
-  const cutSelectionId = activeCanvasElements.value[activeCanvasElements.value.length - 1];
+  const cutSelectionId =
+    activeCanvasElements.value[activeCanvasElements.value.length - 1];
   const cutSelection = getCanvasElement(cutSelectionId);
   const moveableRect = moveablePaste.getRect();
   const pasteElement = {
@@ -1347,11 +1452,11 @@ function handlePasteEnd() {
   };
 
   if (
-    pasteTransform.value.rotate === 0
-    && cutSelection.cache.drawing.x === pasteElement.dimensions.outerMinX
-    && cutSelection.cache.drawing.y === pasteElement.dimensions.outerMinY
-    && cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth
-    && cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
+    pasteTransform.value.rotate === 0 &&
+    cutSelection.cache.drawing.x === pasteElement.dimensions.outerMinX &&
+    cutSelection.cache.drawing.y === pasteElement.dimensions.outerMinY &&
+    cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth &&
+    cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
     cancelPaste();
     drawElements();
@@ -1360,8 +1465,8 @@ function handlePasteEnd() {
     return;
   }
 
-  const pasteCacheCanvas = document.createElement('canvas');
-  const ctx = pasteCacheCanvas.getContext('2d');
+  const pasteCacheCanvas = document.createElement("canvas");
+  const ctx = pasteCacheCanvas.getContext("2d");
 
   if (ctx === null) {
     return;
@@ -1372,10 +1477,12 @@ function handlePasteEnd() {
   const minY = pasteElement.dimensions.outerMinY;
   const width = pasteElement.dimensions.outerWidth;
   const height = pasteElement.dimensions.outerHeight;
-  const rotRad = pasteTransform.value.rotate * Math.PI / 180;
+  const rotRad = (pasteTransform.value.rotate * Math.PI) / 180;
 
-  const imageWidth = pasteTransform.value.scale[0] * pasteCanvas.value.offsetWidth;
-  const imageHeight = pasteTransform.value.scale[1] * pasteCanvas.value.offsetHeight;
+  const imageWidth =
+    pasteTransform.value.scale[0] * pasteCanvas.value.offsetWidth;
+  const imageHeight =
+    pasteTransform.value.scale[1] * pasteCanvas.value.offsetHeight;
 
   pasteCacheCanvas.width = width * dpi;
   pasteCacheCanvas.height = height * dpi;
@@ -1422,8 +1529,14 @@ async function handleAddImageStart(image, trackHistory = true) {
   let imageWidth = image.width;
   let imageHeight = image.height;
   let scale = 1;
-  if (image.width > canvasConfig.value.width || image.height > canvasConfig.value.height) {
-    scale = Math.min(canvasConfig.value.width / image.width, canvasConfig.value.height / image.height);
+  if (
+    image.width > canvasConfig.value.width ||
+    image.height > canvasConfig.value.height
+  ) {
+    scale = Math.min(
+      canvasConfig.value.width / image.width,
+      canvasConfig.value.height / image.height
+    );
     imageWidth *= scale;
     imageHeight *= scale;
   }
@@ -1435,18 +1548,21 @@ async function handleAddImageStart(image, trackHistory = true) {
     ],
     scale: [scale, scale],
     rotate: 0,
-    clipType: 'inset',
+    clipType: "inset",
     clipStyles: [0, 0, 0, 0],
   };
   isAddImageMode.value = true;
   await nextTick();
 
-  if (typeof imagePreviewCanvas.value === 'undefined' || typeof imageBackdropCanvas.value === 'undefined') {
+  if (
+    typeof imagePreviewCanvas.value === "undefined" ||
+    typeof imageBackdropCanvas.value === "undefined"
+  ) {
     return;
   }
 
-  const previewCtx = imagePreviewCanvas.value.getContext('2d');
-  const backdropCtx = imageBackdropCanvas.value.getContext('2d');
+  const previewCtx = imagePreviewCanvas.value.getContext("2d");
+  const backdropCtx = imageBackdropCanvas.value.getContext("2d");
 
   if (previewCtx === null || backdropCtx === null) {
     return;
@@ -1478,13 +1594,12 @@ async function handleAddImageStart(image, trackHistory = true) {
     addHistoryEvent({
       type: HistoryEvent.ADD_IMAGE_START,
       image,
-    })
+    });
   }
 }
 
-
 function handleAddImageEnd() {
-  if (typeof imagePreviewCanvas.value === 'undefined') {
+  if (typeof imagePreviewCanvas.value === "undefined") {
     return;
   }
 
@@ -1508,8 +1623,8 @@ function handleAddImageEnd() {
     },
   };
 
-  const imageCacheCanvas = document.createElement('canvas');
-  const ctx = imageCacheCanvas.getContext('2d');
+  const imageCacheCanvas = document.createElement("canvas");
+  const ctx = imageCacheCanvas.getContext("2d");
 
   if (ctx === null) {
     return;
@@ -1528,12 +1643,16 @@ function handleAddImageEnd() {
   imageCacheCanvas.style.width = `${width}px`;
   imageCacheCanvas.style.height = `${height}px`;
 
-  const rotRad = imageTransform.value.rotate * Math.PI / 180;
-  const imageWidth = imageTransform.value.scale[0] * imagePreviewCanvas.value.offsetWidth;
-  const imageHeight = imageTransform.value.scale[1] * imagePreviewCanvas.value.offsetHeight;
-  let clipValues = imageTransform.value.clipStyles
-    .map((value: number | string) => typeof value === 'string' ? Number(value.split('px')[0]) : value)
-    .map((value: number) => value < 0 ? 0 : value);
+  const rotRad = (imageTransform.value.rotate * Math.PI) / 180;
+  const imageWidth =
+    imageTransform.value.scale[0] * imagePreviewCanvas.value.offsetWidth;
+  const imageHeight =
+    imageTransform.value.scale[1] * imagePreviewCanvas.value.offsetHeight;
+  const clipValues = imageTransform.value.clipStyles
+    .map((value: number | string) =>
+      typeof value === "string" ? Number(value.split("px")[0]) : value
+    )
+    .map((value: number) => (value < 0 ? 0 : value));
   clipValues[0] *= imageTransform.value.scale[1];
   clipValues[1] *= imageTransform.value.scale[0];
   clipValues[2] *= imageTransform.value.scale[1];
@@ -1546,10 +1665,15 @@ function handleAddImageEnd() {
   ctx.translate(centerX, centerY);
   ctx.rotate(rotRad);
   ctx.beginPath();
-  ctx.rect((-imageWidth / 2) + clipValues[3], (-imageHeight / 2) + clipValues[0], clipWidth, clipHeight);
+  ctx.rect(
+    -imageWidth / 2 + clipValues[3],
+    -imageHeight / 2 + clipValues[0],
+    clipWidth,
+    clipHeight
+  );
   ctx.clip();
-  ctx.fillStyle = '#ff0000';
-  ctx.fill()
+  ctx.fillStyle = "#ff0000";
+  ctx.fill();
   ctx.drawImage(
     imagePreviewCanvas.value,
     -imageWidth / 2,
@@ -1582,58 +1706,67 @@ function cancelAddImage() {
 function setRenderTransforms(matrix) {
   let relativeZoom = 1;
 
-  if (typeof matrix !== 'undefined' && matrix !== null) {
+  if (typeof matrix !== "undefined" && matrix !== null) {
     relativeZoom = initTransformMatrix.a / matrix.a;
-    interactiveCanvasTransform.value = `matrix(1, 0, 0, 1, 0, 0)`
+    interactiveCanvasTransform.value = `matrix(1, 0, 0, 1, 0, 0)`;
     paperPatternTransform.value.x = matrix.e / initTransformMatrix.a;
     paperPatternTransform.value.y = matrix.f / initTransformMatrix.a;
   }
 
-  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
-  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / relativeZoom;
+  paperPatternTransform.value.lineSize =
+    selectedPatternStyles.value.lineSize / relativeZoom;
+  paperPatternTransform.value.spacing =
+    selectedPatternStyles.value.spacing / relativeZoom;
 }
 
 function handlePanTransform(event, isStart = false) {
   const pos = getMousePos(drawingCanvas.value, event);
 
   if (isStart) {
-    activePanCoords = [{ x: pos.x - transformMatrix.value.e, y: pos.y - transformMatrix.value.f }];
+    activePanCoords = [
+      {
+        x: pos.x - transformMatrix.value.e,
+        y: pos.y - transformMatrix.value.f,
+      },
+    ];
   }
 
   activePanCoords[1] = { x: pos.x, y: pos.y };
 
-  let transformOrigin = {
+  const transformOrigin = {
     x: activePanCoords[1].x - activePanCoords[0].x,
     y: activePanCoords[1].y - activePanCoords[0].y,
   };
 
-  transformMatrix.value.e = transformOrigin.x
-  transformMatrix.value.f = transformOrigin.y
+  transformMatrix.value.e = transformOrigin.x;
+  transformMatrix.value.f = transformOrigin.y;
 
-  setRenderTransforms(transformMatrix.value)
-  drawElements()
+  setRenderTransforms(transformMatrix.value);
+  drawElements();
 }
 
 function handleZoomOut() {
   if (transformMatrix.value.a > 0.5) {
-    transformMatrix.value.a -= 0.1
-    transformMatrix.value.a = Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100
-    transformMatrix.value.d = transformMatrix.value.a
+    transformMatrix.value.a -= 0.1;
+    transformMatrix.value.a =
+      Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100;
+    transformMatrix.value.d = transformMatrix.value.a;
   }
 
-  setRenderTransforms(transformMatrix.value)
-  drawElements()
+  setRenderTransforms(transformMatrix.value);
+  drawElements();
 }
 
 function handleZoomIn() {
   if (transformMatrix.value.a < 6) {
-    transformMatrix.value.a += 0.1
-    transformMatrix.value.a = Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100
-    transformMatrix.value.d = transformMatrix.value.a
+    transformMatrix.value.a += 0.1;
+    transformMatrix.value.a =
+      Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100;
+    transformMatrix.value.d = transformMatrix.value.a;
   }
 
-  setRenderTransforms(transformMatrix.value)
-  drawElements()
+  setRenderTransforms(transformMatrix.value);
+  drawElements();
 }
 
 function handleCanvasTouchStart(event) {
@@ -1659,15 +1792,15 @@ function handleCanvasTouchStart(event) {
 
   if (
     activeCanvasElements.value.length === 0 &&
-    (
-      selectedTool.value === Tool.ERASER ||
-      selectedTool.value === Tool.CUT
-    )
+    (selectedTool.value === Tool.ERASER || selectedTool.value === Tool.CUT)
   ) {
     return;
   }
 
-  if (selectedTool.value === Tool.CHECKBOX || selectedTool.value === Tool.TEXTBOX) {
+  if (
+    selectedTool.value === Tool.CHECKBOX ||
+    selectedTool.value === Tool.TEXTBOX
+  ) {
     return;
   }
 
@@ -1690,8 +1823,14 @@ function handleCanvasTouchStart(event) {
   const opacity = getOpacity();
   const composition = getComposition();
   const size = selectedTool.value === Tool.CUT ? 0 : penSize.value;
-  const strokeColor = selectedTool.value === Tool.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
-  const fillColor = selectedTool.value === Tool.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
+  const strokeColor =
+    selectedTool.value === Tool.CUT
+      ? TRANSPARENT_COLOR
+      : selectedStrokeColor.value;
+  const fillColor =
+    selectedTool.value === Tool.CUT
+      ? TRANSPARENT_COLOR
+      : selectedFillColor.value;
 
   const newElement = {
     id: uuidv4(),
@@ -1718,9 +1857,14 @@ function handleCanvasTouchStart(event) {
     smoothPoints: {},
     dimensions: {},
     cache: {},
-  }
+  };
 
-  if (newElement.tool === Tool.CIRCLE || newElement.tool === Tool.RECTANGLE || newElement.tool === Tool.BLOB || newElement.tool === Tool.ERASER) {
+  if (
+    newElement.tool === Tool.CIRCLE ||
+    newElement.tool === Tool.RECTANGLE ||
+    newElement.tool === Tool.BLOB ||
+    newElement.tool === Tool.ERASER
+  ) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
   } else if (newElement.tool === Tool.TRIANGLE) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
@@ -1739,7 +1883,10 @@ function handleCanvasTouchStart(event) {
 }
 
 function handleCanvasTouchMove(event) {
-  if (!(isPanning.value || isDrawingAllowed()) || drawingCanvas.value === null) {
+  if (
+    !(isPanning.value || isDrawingAllowed()) ||
+    drawingCanvas.value === null
+  ) {
     return;
   }
 
@@ -1752,7 +1899,8 @@ function handleCanvasTouchMove(event) {
 
   const lastElementId = canvasElements.value[canvasElements.value.length - 1];
   const lastElement = getCanvasElement(lastElementId);
-  const followRuler = lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
+  const followRuler =
+    lastElement.isRulerLine || !lineTools.includes(lastElement.tool);
   const pos = getDrawPos(drawingCanvas.value, event, followRuler);
   const pressure = getPressure(event);
 
@@ -1762,14 +1910,14 @@ function handleCanvasTouchMove(event) {
     const dx = lastElement.points[0].x - pos.x;
     const dy = lastElement.points[0].y - pos.y;
 
-    let p2 = {
-      x: pos.x + (dy / 2),
-      y: pos.y - (dx / 2),
+    const p2 = {
+      x: pos.x + dy / 2,
+      y: pos.y - dx / 2,
     };
 
-    let p3 = {
-      x: pos.x - (dy / 2),
-      y: pos.y + (dx / 2),
+    const p3 = {
+      x: pos.x - dy / 2,
+      y: pos.y + dx / 2,
     };
 
     lastElement.points[1] = p2;
@@ -1822,7 +1970,10 @@ function handleCanvasTouchEnd(event) {
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = calculateDimensions(lastElement);
 
-  if (lastElement.dimensions.outerWidth === 0 || lastElement.dimensions.outerHeight === 0) {
+  if (
+    lastElement.dimensions.outerWidth === 0 ||
+    lastElement.dimensions.outerHeight === 0
+  ) {
     canvasElements.value.pop();
     isDrawing.value = false;
     return;
@@ -1837,12 +1988,11 @@ function handleCanvasTouchEnd(event) {
   isDrawing.value = false;
 }
 
-
 function setRulerTransform(target, transform) {
   const nextTransform = {
     ...ruler.value.transform,
     ...transform,
-  }
+  };
 
   const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
   const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
@@ -1885,14 +2035,17 @@ function onRulerRotate({ target, drag, rotation }) {
     }
   }
 
-  setRulerTransform(target, { rotate: transformRotation % 360, translate: drag.translate });
+  setRulerTransform(target, {
+    rotate: transformRotation % 360,
+    translate: drag.translate,
+  });
 }
 
 function setPasteTransform(target, transform) {
   const nextTransform = {
     ...pasteTransform.value,
     ...transform,
-  }
+  };
 
   const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
   const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
@@ -1917,41 +2070,45 @@ function onPasteScale({ target, scale, drag }) {
 function handleImageUpload(e) {
   const file = e.target.files[0];
 
-  var reader = new FileReader();
+  const reader = new FileReader();
   reader.onload = function (onloadEvent) {
-    if (onloadEvent.target === null || typeof onloadEvent.target.result !== 'string') {
+    if (
+      onloadEvent.target === null ||
+      typeof onloadEvent.target.result !== "string"
+    ) {
       return;
     }
 
-    var img = new Image();
+    const img = new Image();
     img.onload = function () {
       handleAddImageStart(img);
-    }
+    };
 
     img.src = onloadEvent.target.result;
     e.target.value = null;
-  }
+  };
 
   reader.readAsDataURL(file);
 }
 
 function setImageStyles(target, transform) {
-  if (typeof imagePreviewCanvas.value === 'undefined') {
+  if (typeof imagePreviewCanvas.value === "undefined") {
     return;
   }
   const nextTransform = {
     ...imageTransform.value,
     ...transform,
-  }
+  };
 
   const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
   const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
   const rotate = `rotate(${nextTransform.rotate}deg)`;
 
   imagePreviewCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
-  imagePreviewCanvas.value.style.clipPath = `${nextTransform.clipType}(${nextTransform.clipStyles.join(' ')})`;
+  imagePreviewCanvas.value.style.clipPath = `${nextTransform.clipType
+    }(${nextTransform.clipStyles.join(" ")})`;
 
-  if (typeof imageBackdropCanvas.value !== 'undefined') {
+  if (typeof imageBackdropCanvas.value !== "undefined") {
     imageBackdropCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
   }
 
@@ -1987,7 +2144,7 @@ function handleUndoClick() {
     const element = getCanvasElement(action.elementId);
     redoPaste = element.tool === Tool.PASTE;
     redoAddImage = element.tool === Tool.IMAGE;
-    hideCanvasElement(action.elementId)
+    hideCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     showCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
@@ -2017,7 +2174,7 @@ function handleRedoClick() {
     redoPaste = element.tool === Tool.CUT;
     showCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    hideCanvasElement(action.elementId)
+    hideCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
     const element = getCanvasElement(action.elementId);
     element.style = cloneDeep(action.to);
@@ -2039,11 +2196,11 @@ function handleRedoClick() {
 }
 
 let selectoInteractive, moveableInteractive;
-let moveableElements: any[] = []
+let moveableElements: any[] = [];
 function handleStartInteractiveEdit() {
   isInteractiveEditMode.value = true;
-  activeTextbox.value = null
-  moveableElements = []
+  activeTextbox.value = null;
+  moveableElements = [];
   selectoInteractive = new Selecto({
     container: interactiveCanvas.value,
     selectableTargets: [".interactiveElement"],
@@ -2062,44 +2219,44 @@ function handleStartInteractiveEdit() {
 
   moveableInteractive
     .on("renderStart", ({ target }) => {
-      handleInteractiveStart(target)
+      handleInteractiveStart(target);
     })
-    .on("renderGroupStart", e => {
+    .on("renderGroupStart", (e) => {
       e.targets.forEach(handleInteractiveStart);
     })
-    .on("clickGroup", e => {
+    .on("clickGroup", (e) => {
       selectoInteractive.clickTarget(e.inputEvent, e.inputTarget);
     })
     .on("drag", handleInteractiveDrag)
-    .on("dragGroup", e => {
+    .on("dragGroup", (e) => {
       e.events.forEach(handleInteractiveDrag);
     })
     .on("rotate", handleInteractiveRotate)
-    .on("rotateGroup", e => {
+    .on("rotateGroup", (e) => {
       e.events.forEach(handleInteractiveRotate);
     })
     .on("renderEnd", ({ target }) => {
-      handleInteractiveEnd(target)
+      handleInteractiveEnd(target);
     })
-    .on("renderGroupEnd", e => {
+    .on("renderGroupEnd", (e) => {
       e.targets.forEach(handleInteractiveEnd);
-    })
+    });
 
   selectoInteractive
-    .on("dragStart", e => {
+    .on("dragStart", (e) => {
       const target = e.inputEvent.target;
       if (
         moveableInteractive.isMoveableElement(target) ||
-        moveableElements.some(t => t === target || t.contains(target))
+        moveableElements.some((t) => t === target || t.contains(target))
       ) {
         e.stop();
       }
     })
-    .on("select", e => {
+    .on("select", (e) => {
       moveableElements = e.selected;
       moveableInteractive.target = moveableElements;
     })
-    .on("selectEnd", e => {
+    .on("selectEnd", (e) => {
       if (e.isDragStart) {
         e.inputEvent.preventDefault();
 
@@ -2117,7 +2274,7 @@ function handleEndInteractiveEdit() {
 }
 
 function setInteractiveElementStyles(target, transform) {
-  const elementId = target.getAttribute('data-element-id');
+  const elementId = target.getAttribute("data-element-id");
   const element = getCanvasElement(elementId);
 
   setInteractiveElementTransform(element, transform);
@@ -2133,13 +2290,13 @@ function handleInteractiveRotate({ target, rotate, drag }) {
 }
 
 function handleInteractiveStart(target) {
-  const elementId = target.getAttribute('data-element-id');
+  const elementId = target.getAttribute("data-element-id");
   const element = getCanvasElement(elementId);
   element.tmpFromStyle = cloneDeep(element.style);
 }
 
 function handleInteractiveEnd(target) {
-  const elementId = target.getAttribute('data-element-id');
+  const elementId = target.getAttribute("data-element-id");
   const element = getCanvasElement(elementId);
   addHistoryEvent({
     type: HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
@@ -2148,12 +2305,12 @@ function handleInteractiveEnd(target) {
     from: cloneDeep(element.tmpFromStyle),
   });
 
-  delete element.tmpFromStyle
+  delete element.tmpFromStyle;
 }
 
 function handleTextboxChange({ elementId, textContents }) {
   const element = getCanvasElement(elementId);
-  element.toolOptions.textContents = textContents
+  element.toolOptions.textContents = textContents;
 }
 
 function handleTextboxFocus({ elementId }) {
@@ -2162,8 +2319,8 @@ function handleTextboxFocus({ elementId }) {
   }
 
   isTextboxEditMode.value = true;
-  selectedTool.value = Tool.TEXTBOX
-  activeTextbox.value = elementId
+  selectedTool.value = Tool.TEXTBOX;
+  activeTextbox.value = elementId;
 }
 
 function handleTextboxBlur() {
@@ -2178,7 +2335,7 @@ function handleInteractiveElementEvent(e) {
 
 function handleElementDelete() {
   for (let i = 0; i < moveableElements.length; i += 1) {
-    const elementId = moveableElements[i].getAttribute('data-element-id');
+    const elementId = moveableElements[i].getAttribute("data-element-id");
     deleteCanvasElement(elementId);
   }
   moveableElements = [];
@@ -2191,14 +2348,14 @@ function getColorAsCss(color) {
   }
 
   if (Array.isArray(color)) {
-    const gradientStops = []
+    const gradientStops = [];
     for (let i = 0; i < color.length; i += 1) {
       const colorStop = getColorAsCss(color[i].color);
       const percent = color[i].percent;
-      gradientStops.push(`${colorStop} ${percent}%`)
+      gradientStops.push(`${colorStop} ${percent}%`);
     }
 
-    return `linear-gradient(135deg, ${gradientStops.join(', ')})`
+    return `linear-gradient(135deg, ${gradientStops.join(", ")})`;
   }
 
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
@@ -2226,7 +2383,9 @@ function handleAddSwatchClick() {
 }
 
 async function handleFillSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected = selectedFillSwatchId.value === swatchId && selectedFillColorIdx.value === colorIdx
+  const isAlreadySelected =
+    selectedFillSwatchId.value === swatchId &&
+    selectedFillColorIdx.value === colorIdx;
   if (isAlreadySelected && swatchId !== SPECIAL_TOOL_SWATCH_KEY) {
     showEditFillColorModal.value = true;
   } else {
@@ -2247,7 +2406,7 @@ function closeFillSwatchDropdown() {
   if (showEditFillColorModal.value) {
     showEditFillColorModal.value = false;
   } else {
-    isFillSwatchDropdownOpen.value = false
+    isFillSwatchDropdownOpen.value = false;
   }
 }
 
@@ -2255,12 +2414,14 @@ function toggleFillSwatchDropdown() {
   if (showEditFillColorModal.value) {
     showEditFillColorModal.value = false;
   } else {
-    isFillSwatchDropdownOpen.value = !isFillSwatchDropdownOpen.value
+    isFillSwatchDropdownOpen.value = !isFillSwatchDropdownOpen.value;
   }
 }
 
 async function handleStrokeSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected = selectedStrokeSwatchId.value === swatchId && selectedStrokeColorIdx.value === colorIdx
+  const isAlreadySelected =
+    selectedStrokeSwatchId.value === swatchId &&
+    selectedStrokeColorIdx.value === colorIdx;
   if (isAlreadySelected && swatchId !== SPECIAL_TOOL_SWATCH_KEY) {
     showEditStrokeColorModal.value = true;
   } else {
@@ -2281,7 +2442,7 @@ function closeStrokeSwatchDropdown() {
   if (showEditStrokeColorModal.value) {
     showEditStrokeColorModal.value = false;
   } else {
-    isStrokeSwatchDropdownOpen.value = false
+    isStrokeSwatchDropdownOpen.value = false;
   }
 }
 
@@ -2289,12 +2450,14 @@ function toggleStrokeSwatchDropdown() {
   if (showEditStrokeColorModal.value) {
     showEditStrokeColorModal.value = false;
   } else {
-    isStrokeSwatchDropdownOpen.value = !isStrokeSwatchDropdownOpen.value
+    isStrokeSwatchDropdownOpen.value = !isStrokeSwatchDropdownOpen.value;
   }
 }
 
 async function handlePaperSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected = selectedPaperSwatchId.value === swatchId && selectedPaperColorIdx.value === colorIdx
+  const isAlreadySelected =
+    selectedPaperSwatchId.value === swatchId &&
+    selectedPaperColorIdx.value === colorIdx;
   if (isAlreadySelected && swatchId !== SPECIAL_PAPER_SWATCH_KEY) {
     showEditPaperColorModal.value = true;
   } else {
@@ -2315,7 +2478,7 @@ function closePaperSwatchDropdown() {
   if (showEditPaperColorModal.value) {
     showEditPaperColorModal.value = false;
   } else {
-    isPaperSwatchDropdownOpen.value = false
+    isPaperSwatchDropdownOpen.value = false;
   }
 }
 
@@ -2323,15 +2486,14 @@ function togglePaperSwatchDropdown() {
   if (showEditPaperColorModal.value) {
     showEditPaperColorModal.value = false;
   } else {
-    isPaperSwatchDropdownOpen.value = !isPaperSwatchDropdownOpen.value
+    isPaperSwatchDropdownOpen.value = !isPaperSwatchDropdownOpen.value;
   }
 }
 
-
-
-
 async function handlePatternSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected = selectedPatternSwatchId.value === swatchId && selectedPatternColorIdx.value === colorIdx
+  const isAlreadySelected =
+    selectedPatternSwatchId.value === swatchId &&
+    selectedPatternColorIdx.value === colorIdx;
   if (isAlreadySelected && swatchId !== SPECIAL_PAPER_SWATCH_KEY) {
     showEditPatternColorModal.value = true;
   } else {
@@ -2352,7 +2514,7 @@ function closePatternSwatchDropdown() {
   if (showEditPatternColorModal.value) {
     showEditPatternColorModal.value = false;
   } else {
-    isPatternSwatchDropdownOpen.value = false
+    isPatternSwatchDropdownOpen.value = false;
   }
 }
 
@@ -2360,14 +2522,13 @@ function togglePatternSwatchDropdown() {
   if (showEditPatternColorModal.value) {
     showEditPatternColorModal.value = false;
   } else {
-    isPatternSwatchDropdownOpen.value = !isPatternSwatchDropdownOpen.value
+    isPatternSwatchDropdownOpen.value = !isPatternSwatchDropdownOpen.value;
   }
 }
 </script>
 
 <template>
   <div class="canvas-wrapper">
-
     <!-- START TOOLS -->
     <div class="tools">
       <select v-model.number="selectedTool" @change="handleToolChange">
@@ -2388,15 +2549,20 @@ function togglePatternSwatchDropdown() {
         </select>
       </div>
       <label v-else-if="selectedTool === Tool.IMAGE">
-        <input type="file" accept="image/*" @change="handleImageUpload">
+        <input type="file" accept="image/*" @change="handleImageUpload" />
       </label>
-      <label v-else-if="(selectedTool === Tool.CHECKBOX || selectedTool === Tool.TEXTBOX) && !isInteractiveEditMode">
+      <label v-else-if="
+        (selectedTool === Tool.CHECKBOX || selectedTool === Tool.TEXTBOX) &&
+        !isInteractiveEditMode
+      ">
         <button @click="handleStartInteractiveEdit">Edit</button>
       </label>
 
       <button v-if="isAddImageMode" @click="handleAddImageEnd">Done</button>
       <button v-if="isPasteMode" @click="handlePasteEnd">Done</button>
-      <button v-if="isPasteMode" @click="handlePasteDelete">Delete Selection</button>
+      <button v-if="isPasteMode" @click="handlePasteDelete">
+        Delete Selection
+      </button>
       <div v-if="isInteractiveEditMode">
         <button @click="handleElementDelete">Delete</button>
         <button @click="handleEndInteractiveEdit">Done</button>
@@ -2407,7 +2573,7 @@ function togglePatternSwatchDropdown() {
           {{ size }}
         </option>
       </select>
-      <div v-if="isDrawingTool" style="display: inline;">
+      <div v-if="isDrawingTool" style="display: inline">
         <button @click="toggleFillSwatchDropdown">
           <div class="swatch__color" :style="{ background: getColorAsCss(selectedFillColor) }"></div>
         </button>
@@ -2421,43 +2587,51 @@ function togglePatternSwatchDropdown() {
           <div class="swatch" :class="{ selected: selectedFillSwatchId === swatchId }" v-for="swatchId in swatchOrder"
             :key="swatchId">
             <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedFillSwatchId === swatchId && selectedFillColorIdx === i }"
-              @click="handleFillSwatchClick(i, swatchId)"></div>
+              :style="{ background: getColorAsCss(color) }" :class="{
+                selected:
+                  selectedFillSwatchId === swatchId &&
+                  selectedFillColorIdx === i,
+              }" @click="handleFillSwatchClick(i, swatchId)"></div>
           </div>
           <div class="swatch">
             <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_TOOL_SWATCH_KEY]" :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedFillSwatchId === SPECIAL_TOOL_SWATCH_KEY && selectedFillColorIdx === i }"
-              @click="handleFillSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"></div>
+              :style="{ background: getColorAsCss(color) }" :class="{
+                selected:
+                  selectedFillSwatchId === SPECIAL_TOOL_SWATCH_KEY &&
+                  selectedFillColorIdx === i,
+              }" @click="handleFillSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
-      <div v-if="isDrawingTool" style="display: inline;">
+      <div v-if="isDrawingTool" style="display: inline">
         <button @click="toggleStrokeSwatchDropdown">
           <div class="swatch__color" :style="{ background: getColorAsCss(selectedStrokeColor) }"></div>
         </button>
         <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditStrokeColorModal" :showPanelOnly="true"
           :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
           :mode="Array.isArray(selectedStrokeColor) ? 'linear' : 'solid'"
-          :color="Array.isArray(selectedStrokeColor) ? {} : selectedStrokeColor"
-          :gradients="Array.isArray(selectedStrokeColor) ? selectedStrokeColor : []"
-          @colorChanged="handleStrokeColorChange">
+          :color="Array.isArray(selectedStrokeColor) ? {} : selectedStrokeColor" :gradients="
+            Array.isArray(selectedStrokeColor) ? selectedStrokeColor : []
+          " @colorChanged="handleStrokeColorChange">
         </ColorPicker>
         <div class="color-dropdown" v-if="!showEditStrokeColorModal && isStrokeSwatchDropdownOpen">
           <div class="swatch" :class="{ selected: selectedStrokeSwatchId === swatchId }" v-for="swatchId in swatchOrder"
             :key="swatchId">
             <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedStrokeSwatchId === swatchId && selectedStrokeColorIdx === i }"
-              @click="handleStrokeSwatchClick(i, swatchId)"></div>
+              :style="{ background: getColorAsCss(color) }" :class="{
+                selected:
+                  selectedStrokeSwatchId === swatchId &&
+                  selectedStrokeColorIdx === i,
+              }" @click="handleStrokeSwatchClick(i, swatchId)"></div>
           </div>
           <div class="swatch">
             <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_TOOL_SWATCH_KEY]" :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedStrokeSwatchId === SPECIAL_TOOL_SWATCH_KEY && selectedStrokeColorIdx === i }"
-              @click="handleStrokeSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"></div>
+              :style="{ background: getColorAsCss(color) }" :class="{
+                selected:
+                  selectedStrokeSwatchId === SPECIAL_TOOL_SWATCH_KEY &&
+                  selectedStrokeColorIdx === i,
+              }" @click="handleStrokeSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
@@ -2467,58 +2641,67 @@ function togglePatternSwatchDropdown() {
           {{ pattern.LABEL }}
         </option>
       </select>
-      <div v-if="isPaperTool" style="display: inline;">
+      <div v-if="isPaperTool" style="display: inline">
         <button @click="togglePaperSwatchDropdown">
           <div class="swatch__color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         </button>
         <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditPaperColorModal" :showPanelOnly="true"
           :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
           :mode="Array.isArray(selectedPaperColor) ? 'linear' : 'solid'"
-          :color="Array.isArray(selectedPaperColor) ? {} : selectedPaperColor"
-          :gradients="Array.isArray(selectedPaperColor) ? selectedPaperColor : []"
-          @colorChanged="handlePaperColorChange">
+          :color="Array.isArray(selectedPaperColor) ? {} : selectedPaperColor" :gradients="
+            Array.isArray(selectedPaperColor) ? selectedPaperColor : []
+          " @colorChanged="handlePaperColorChange">
         </ColorPicker>
         <div class="color-dropdown" v-if="!showEditPaperColorModal && isPaperSwatchDropdownOpen">
           <div class="swatch" :class="{ selected: selectedPaperSwatchId === swatchId }" v-for="swatchId in swatchOrder"
             :key="swatchId">
             <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedPaperSwatchId === swatchId && selectedPaperColorIdx === i }"
-              @click="handlePaperSwatchClick(i, swatchId)"></div>
+              :style="{ background: getColorAsCss(color) }" :class="{
+                selected:
+                  selectedPaperSwatchId === swatchId &&
+                  selectedPaperColorIdx === i,
+              }" @click="handlePaperSwatchClick(i, swatchId)"></div>
           </div>
           <div class="swatch">
             <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]" :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedPaperSwatchId === SPECIAL_PAPER_SWATCH_KEY && selectedPaperColorIdx === i }"
-              @click="handlePaperSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"></div>
+              :style="{ background: getColorAsCss(color) }" :class="{
+                selected:
+                  selectedPaperSwatchId === SPECIAL_PAPER_SWATCH_KEY &&
+                  selectedPaperColorIdx === i,
+              }" @click="handlePaperSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
-      <div v-if="isPaperTool" style="display: inline;">
+      <div v-if="isPaperTool" style="display: inline">
         <button @click="togglePatternSwatchDropdown">
           <div class="swatch__color" :style="{ background: getColorAsCss(selectedPatternColor) }"></div>
         </button>
         <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditPatternColorModal" :showPanelOnly="true"
           :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
-          :mode="Array.isArray(selectedPatternColor) ? 'linear' : 'solid'"
-          :color="Array.isArray(selectedPatternColor) ? {} : selectedPatternColor"
-          :gradients="Array.isArray(selectedPatternColor) ? selectedPatternColor : []"
-          @colorChanged="handlePatternColorChange">
+          :mode="Array.isArray(selectedPatternColor) ? 'linear' : 'solid'" :color="
+            Array.isArray(selectedPatternColor) ? {} : selectedPatternColor
+          " :gradients="
+  Array.isArray(selectedPatternColor) ? selectedPatternColor : []
+" @colorChanged="handlePatternColorChange">
         </ColorPicker>
         <div class="color-dropdown" v-if="!showEditPatternColorModal && isPatternSwatchDropdownOpen">
           <div class="swatch" :class="{ selected: selectedPatternSwatchId === swatchId }"
             v-for="swatchId in swatchOrder" :key="swatchId">
             <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedPatternSwatchId === swatchId && selectedPatternColorIdx === i }"
-              @click="handlePatternSwatchClick(i, swatchId)"></div>
+              :style="{ background: getColorAsCss(color) }" :class="{
+                selected:
+                  selectedPatternSwatchId === swatchId &&
+                  selectedPatternColorIdx === i,
+              }" @click="handlePatternSwatchClick(i, swatchId)"></div>
           </div>
           <div class="swatch">
             <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]" :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{ selected: selectedPatternSwatchId === SPECIAL_PAPER_SWATCH_KEY && selectedPatternColorIdx === i }"
-              @click="handlePatternSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"></div>
+              :style="{ background: getColorAsCss(color) }" :class="{
+                selected:
+                  selectedPatternSwatchId === SPECIAL_PAPER_SWATCH_KEY &&
+                  selectedPatternColorIdx === i,
+              }" @click="handlePatternSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
@@ -2528,8 +2711,10 @@ function togglePatternSwatchDropdown() {
       <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternStyles.spacing" />
 
       <label><input type="checkbox" v-model="ruler.isVisible" /> Show Ruler?</label>
-      <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
-      <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
+      <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" />
+        Detected Stylus?</label>
+      <label><input type="checkbox" v-model="isStylus" :disabled="true" />
+        isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
       <label><input type="checkbox" v-model="debugMode" /> debug?</label>
       <button @click="handleZoomOut">Zoom -</button>
@@ -2547,11 +2732,24 @@ function togglePatternSwatchDropdown() {
             {{ Math.round(ruler.transform.rotate) }}&deg;
             <span v-if="canvasElements.length > 0 && isDrawing">
               <span v-if="elements[lastCanvasElementId].dimensions.lineLength">
-                {{ Math.round(elements[lastCanvasElementId].dimensions.lineLength) }}px
+                {{
+                    Math.round(
+                      elements[lastCanvasElementId].dimensions.lineLength
+                    )
+                }}px
               </span>
               <span v-else>
-                {{ Math.round(elements[lastCanvasElementId].dimensions.outerWidth) }} x
-                {{ Math.round(elements[lastCanvasElementId].dimensions.outerHeight) }}
+                {{
+                    Math.round(
+                      elements[lastCanvasElementId].dimensions.outerWidth
+                    )
+                }}
+                x
+                {{
+                    Math.round(
+                      elements[lastCanvasElementId].dimensions.outerHeight
+                    )
+                }}
               </span>
             </span>
           </div>
@@ -2579,8 +2777,11 @@ function togglePatternSwatchDropdown() {
       </div>
 
       <div class="drawing-layer">
-        <div ref="interactiveCanvas" class="interactive-canvas"
-          :style="{ width: canvasConfig.width + 'px', height: canvasConfig.height + 'px', transform: interactiveCanvasTransform }">
+        <div ref="interactiveCanvas" class="interactive-canvas" :style="{
+          width: canvasConfig.width + 'px',
+          height: canvasConfig.height + 'px',
+          transform: interactiveCanvasTransform,
+        }">
           <template v-for="(elementId, index) in htmlElements" :key="index">
             <input v-if="elements[elementId].tool === Tool.CHECKBOX" class="interactiveElement"
               v-model="elements[elementId].toolOptions.isChecked" :data-element-id="elements[elementId].id"
@@ -2727,9 +2928,10 @@ function togglePatternSwatchDropdown() {
   height: 100px;
   flex-shrink: 0;
   background: rgba(0, 0, 0, 0.5);
-  background: linear-gradient(to right, rgba(255, 0, 0, 0.5) 0%, rgba(0, 0, 255, 0.5) 100%);
+  background: linear-gradient(to right,
+      rgba(255, 0, 0, 0.5) 0%,
+      rgba(0, 0, 255, 0.5) 100%);
 }
-
 
 .paper-layer .paper-color {
   position: absolute;
@@ -2738,7 +2940,6 @@ function togglePatternSwatchDropdown() {
   width: 100%;
   height: 100%;
 }
-
 
 .color-dropdown {
   width: 300px;
@@ -2785,7 +2986,7 @@ function togglePatternSwatchDropdown() {
   top: 0;
   left: 0;
   opacity: 0.2;
-  background: url('@/assets/transparent-bg.png') repeat center center;
+  background: url("@/assets/transparent-bg.png") repeat center center;
 }
 </style>
 
