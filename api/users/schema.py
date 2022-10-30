@@ -3,6 +3,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
 import graphql_jwt
 from api.permissions import IsAuthenticated
+from fiary.models import Bookshelf, Notebook, Page, Room
 from .models import User
 
 
@@ -36,6 +37,24 @@ class Register(graphene.relay.ClientIDMutation):
         )
         user.set_password(input['password'])
         user.save()
+
+        room = Room.objects.create(owner=user)
+        bookshelf = Bookshelf.objects.create(owner=user, room=room)
+        notebook = Notebook.objects.create(
+            owner=user,
+            bookshelf=bookshelf,
+            title='Default'
+        )
+        page = Page.objects.create(owner=user, notebook=notebook)
+
+        room.bookshelf_order = [bookshelf.id]
+        room.save()
+
+        bookshelf.notebook_order = [notebook.id]
+        bookshelf.save()
+
+        notebook.page_order = [page.id]
+        notebook.save()
 
         return Register(user=user)
 
