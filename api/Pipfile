@@ -7,10 +7,12 @@ name = "pypi"
 django = "*"
 dj-database-url = "*"
 graphene-django = ">=3"
-django-graphql-auth = "*"
-django-graphql-jwt = "*"
 pylint-django = "*"
 psycopg2 = "*"
+djangorestframework = "*"
+django-cors-headers = "*"
+djangorestframework-simplejwt = "*"
+pyjwt = "*"
 
 [dev-packages]
 
