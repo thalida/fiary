@@ -4,8 +4,10 @@ import graphene
 from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
 
+from api.permissions import IsAuthenticated
 
-class UserNode(DjangoObjectType):
+
+class UserNode(IsAuthenticated, DjangoObjectType):
     pk = graphene.UUID(source='id', required=True)
 
     class Meta():
@@ -21,10 +23,10 @@ class UserQuery(graphene.ObjectType):
     me = graphene.Field(UserNode)
 
     def resolve_me(self, info):
-        user = info.context.user
-        if user.is_authenticated:
-            return user
-        return None
+        if info.context.user.is_anonymous:
+            raise Exception('403: Unauthorized')
+
+        return info.context.user
 
 
 class UserMutation(graphene.ObjectType):

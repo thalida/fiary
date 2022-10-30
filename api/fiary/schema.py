@@ -1,12 +1,12 @@
-from turtle import title
 import graphene
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
+from api.permissions import IsOwner, login_required
 from .models import Room, Bookshelf, Notebook, Page, Element
 
 
-class RoomNode(DjangoObjectType):
+class RoomNode(IsOwner, DjangoObjectType):
     pk = graphene.UUID(source='id', required=True)
 
     class Meta:
@@ -15,7 +15,7 @@ class RoomNode(DjangoObjectType):
         interfaces = (graphene.relay.Node, )
 
 
-class BookshelfNode(DjangoObjectType):
+class BookshelfNode(IsOwner, DjangoObjectType):
     pk = graphene.UUID(source='id', required=True)
 
     class Meta:
@@ -24,7 +24,7 @@ class BookshelfNode(DjangoObjectType):
         interfaces = (graphene.relay.Node, )
 
 
-class NotebookNode(DjangoObjectType):
+class NotebookNode(IsOwner, DjangoObjectType):
     pk = graphene.UUID(source='id', required=True)
 
     class Meta:
@@ -33,7 +33,7 @@ class NotebookNode(DjangoObjectType):
         interfaces = (graphene.relay.Node, )
 
 
-class PageNode(DjangoObjectType):
+class PageNode(IsOwner, DjangoObjectType):
     pk = graphene.UUID(source='id', required=True)
 
     class Meta:
@@ -42,7 +42,7 @@ class PageNode(DjangoObjectType):
         interfaces = (graphene.relay.Node, )
 
 
-class ElementNode(DjangoObjectType):
+class ElementNode(IsOwner, DjangoObjectType):
     pk = graphene.UUID(source='id', required=True)
 
     class Meta:
@@ -55,6 +55,7 @@ class CreateRoom(graphene.relay.ClientIDMutation):
     room = graphene.Field(RoomNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         room = Room.objects.create(
             owner=info.context.user
@@ -69,6 +70,7 @@ class CreateBookshelf(graphene.relay.ClientIDMutation):
     bookshelf = graphene.Field(BookshelfNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         room = Room.objects.get(id=input['room_id'])
         bookshelf = Bookshelf.objects.create(
@@ -90,6 +92,7 @@ class UpdateBookshelf(graphene.relay.ClientIDMutation):
     bookshelf = graphene.Field(BookshelfNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         bookshelf = Bookshelf.objects.get(id=input['bookshelf_id'])
 
@@ -111,6 +114,7 @@ class CreateNotebook(graphene.relay.ClientIDMutation):
     notebook = graphene.Field(NotebookNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         bookshelf = Bookshelf.objects.get(id=input['bookshelf_id'])
         notebook = Notebook.objects.create(
@@ -135,6 +139,7 @@ class UpdateNotebook(graphene.relay.ClientIDMutation):
     notebook = graphene.Field(NotebookNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         notebook = Notebook.objects.get(id=input['id'])
 
@@ -167,6 +172,7 @@ class DeleteNotebook(graphene.relay.ClientIDMutation):
     notebook = graphene.Field(NotebookNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         notebook = Notebook.objects.get(id=input['notebook_id'])
         notebook.delete()
@@ -185,6 +191,7 @@ class CreatePage(graphene.relay.ClientIDMutation):
     page = graphene.Field(PageNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         notebook = Notebook.objects.get(id=input['notebook_id'])
         page = Page.objects.create(
@@ -214,6 +221,7 @@ class UpdatePage(graphene.relay.ClientIDMutation):
     page = graphene.Field(PageNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         page = Page.objects.get(id=input['id'])
 
@@ -240,6 +248,7 @@ class DeletePage(graphene.relay.ClientIDMutation):
     page = graphene.Field(PageNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         page = Page.objects.get(id=input['page_id'])
         page.delete()
@@ -261,6 +270,7 @@ class CreateElement(graphene.relay.ClientIDMutation):
     element = graphene.Field(ElementNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         page = Page.objects.get(id=input['page_id'])
         element = Element.objects.create(
@@ -292,6 +302,7 @@ class UpdateElement(graphene.relay.ClientIDMutation):
     element = graphene.Field(ElementNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         element = Element.objects.get(id=input['id'])
 
@@ -312,6 +323,7 @@ class DeleteElement(graphene.relay.ClientIDMutation):
     element = graphene.Field(ElementNode)
 
     @classmethod
+    @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         element = Element.objects.get(id=input['element_id'])
         element.delete()
