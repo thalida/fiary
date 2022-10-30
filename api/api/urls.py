@@ -23,8 +23,8 @@ from graphene_django.views import GraphQLView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('graphql/', GraphQLView.as_view(graphiql=True)),
-    path('account/', include("users.urls")),
-    path('', include('social_django.urls', namespace='social')),
+    path('auth/', include("users.urls")),
+    path('social/', include('social_django.urls')),
 ]
 
 if settings.DEBUG:

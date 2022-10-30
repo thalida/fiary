@@ -9,11 +9,9 @@ dj-database-url = "*"
 graphene-django = ">=3"
 pylint-django = "*"
 psycopg2 = "*"
-djangorestframework = "*"
 django-cors-headers = "*"
-djangorestframework-simplejwt = "*"
-pyjwt = "*"
 social-auth-app-django = "*"
+django-graphql-jwt = "*"
 
 [dev-packages]
 
