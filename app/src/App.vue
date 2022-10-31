@@ -23,6 +23,7 @@ const login = async (e: Event) => {
   e.preventDefault();
   await authStore.loginWithCreds(user.value.username, user.value.password);
   await usersStore.fetchMe();
+  user.value.password = "";
 };
 </script>
 
