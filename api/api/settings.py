@@ -35,6 +35,20 @@ DEBUG = 'RENDER' not in os.environ
 
 ALLOWED_HOSTS = []
 
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGIN_REGEXES = []
+
+if DEBUG:
+    ALLOWED_HOSTS += [
+        'localhost',
+        '127.0.0.1',
+    ]
+
+    CORS_ALLOWED_ORIGIN_REGEXES += [
+        r"^http(s)?://localhost:8080$",
+        r"^http(s)?://localhost:8000$",
+    ]
+
 
 # Application definition
 
@@ -114,6 +128,7 @@ GRAPHENE = {
 AUTH_USER_MODEL = 'users.User'
 
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
+SOCIAL_AUTH_USERNAME_IS_FULL_EMAIL = True
 
 AUTHENTICATION_BACKENDS = (
     'social_core.backends.google.GoogleOAuth2',

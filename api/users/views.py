@@ -1,16 +1,16 @@
 from django.contrib.auth import login
 from social_django.utils import psa
+from django.http import JsonResponse
+import graphql_jwt
 
 
 @psa('social:complete')
 def register_by_access_token(request, backend):
-    # This view expects an access_token GET parameter, if it's needed,
-    # request.backend and request.strategy will be loaded with the current
-    # backend and strategy.
     token = request.GET.get('access_token')
-    user = request.backend.do_auth(token)
-    if user:
-        login(request, user)
-        return 'OK'
-    else:
-        return 'ERROR'
+    try:
+        user = request.backend.do_auth(token)
+        payload = graphql_jwt.utils.jwt_payload(user)
+        token = graphql_jwt.utils.jwt_encode(payload)
+        return JsonResponse({'status': 'ok', 'token': token})
+    except Exception as e:
+        return JsonResponse({'error': e})

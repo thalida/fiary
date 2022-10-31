@@ -15,6 +15,8 @@
   },
   "dependencies": {
     "@mcistudio/vue-colorpicker": "github:thalida/colorpicker",
+    "axios": "^1.1.3",
+    "graphql": "^16.6.0",
     "highlight.js": "^11.6.0",
     "lodash": "^4.17.21",
     "moveable": "^0.35.4",
@@ -24,8 +26,10 @@
     "quill": "^1.3.7",
     "selecto": "^1.20.2",
     "uuid": "^8.3.2",
+    "villus": "^2.0.1",
     "vue": "^3.2.37",
     "vue-router": "^4.1.6",
+    "vue3-google-login": "^2.0.12",
     "vue3-moveable": "^0.10.4"
   },
   "devDependencies": {
