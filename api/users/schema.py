@@ -61,7 +61,6 @@ class Register(graphene.relay.ClientIDMutation):
 
 class UserQuery(graphene.ObjectType):
     user = graphene.relay.Node.Field(UserNode)
-    users = DjangoFilterConnectionField(UserNode)
     me = graphene.Field(UserNode)
 
     def resolve_me(self, info):

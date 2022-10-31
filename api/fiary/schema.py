@@ -333,19 +333,19 @@ class DeleteElement(graphene.relay.ClientIDMutation):
 
 class FiaryQuery(graphene.ObjectType):
     room = graphene.relay.Node.Field(RoomNode)
-    all_rooms = DjangoFilterConnectionField(RoomNode)
+    my_rooms = DjangoFilterConnectionField(RoomNode)
 
     bookshelf = graphene.relay.Node.Field(BookshelfNode)
-    all_bookshelves = DjangoFilterConnectionField(BookshelfNode)
+    my_bookshelves = DjangoFilterConnectionField(BookshelfNode)
 
     notebook = graphene.relay.Node.Field(NotebookNode)
-    all_notebooks = DjangoFilterConnectionField(NotebookNode)
+    my_notebooks = DjangoFilterConnectionField(NotebookNode)
 
     page = graphene.relay.Node.Field(PageNode)
-    all_pages = DjangoFilterConnectionField(PageNode)
+    my_pages = DjangoFilterConnectionField(PageNode)
 
     element = graphene.relay.Node.Field(ElementNode)
-    all_elements = DjangoFilterConnectionField(ElementNode)
+    my_elements = DjangoFilterConnectionField(ElementNode)
 
 
 class FiaryMutation(graphene.ObjectType):
