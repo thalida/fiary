@@ -1,0 +1,5 @@
+mutation RegisterSocial($accessToken: String!, $socialBackend: String!) {
+  registerSocial(input: {accessToken: $accessToken, socialBackend: $socialBackend}) {
+    token
+  }
+}

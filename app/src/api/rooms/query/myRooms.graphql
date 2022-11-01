@@ -1,0 +1,19 @@
+query MyRooms {
+  myRooms {
+    edges {
+      node {
+        id
+        pk
+        bookshelfOrder
+        bookshelves {
+          edges {
+            node {
+              id
+              pk
+            }
+          }
+        }
+      }
+    }
+  }
+}

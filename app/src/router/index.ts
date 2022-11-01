@@ -1,10 +1,8 @@
 import { createRouter, createWebHistory } from "vue-router";
 import RouterViewOnly from "@/layouts/RouterViewOnly.vue";
-import Home from "@/views/HomePage.vue";
 import Signin from "@/views/SigninPage.vue";
 import Signout from "@/views/SignoutPage.vue";
 import Signup from "@/views/SignupPage.vue";
-
 import Bookshelf from "@/views/BookshelfPage.vue";
 import NotebookOverview from "@/views/NotebookOverview.vue";
 import NotebookPage from "@/views/NotebookPage.vue";
@@ -16,40 +14,26 @@ const router = createRouter({
     {
       path: "/",
       name: "Home",
-      component: Home,
+      component: Bookshelf,
+      alias: "/bookshelf",
     },
     {
       path: "/signin",
       name: "Signin",
       component: Signin,
+      alias: "/login",
     },
     {
       path: "/signup",
       name: "Signup",
       component: Signup,
+      alias: "/register",
     },
     {
       path: "/signout",
       name: "Signout",
       component: Signout,
-    },
-    {
-      path: "/login",
-      name: "Login",
-      redirect: "/signin",
-    },
-    {
-      path: "/logout",
-      name: "Logout",
-      redirect: "/signout",
-    },
-    {
-      path: "/bookshelf",
-      name: "Bookshelf",
-      component: Bookshelf,
-      meta: {
-        requiresAuth: true,
-      },
+      alias: "/logout",
     },
     {
       path: "/n/:notebookId",

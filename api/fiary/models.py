@@ -2,7 +2,6 @@ import uuid
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from fiary.choices import Tools
-from users.models import User
 
 
 class Room(models.Model):
@@ -11,7 +10,7 @@ class Room(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     owner = models.ForeignKey(
-        User,
+        'users.User',
         related_name='rooms',
         on_delete=models.CASCADE
     )
@@ -31,7 +30,7 @@ class Bookshelf(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     owner = models.ForeignKey(
-        User,
+        'users.User',
         related_name='bookshelves',
         on_delete=models.CASCADE
     )
@@ -56,7 +55,7 @@ class Notebook(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     owner = models.ForeignKey(
-        User,
+        'users.User',
         related_name='notebooks',
         on_delete=models.CASCADE
     )
@@ -88,7 +87,7 @@ class Page(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     owner = models.ForeignKey(
-        User,
+        'users.User',
         related_name='pages',
         on_delete=models.CASCADE
     )
@@ -137,7 +136,7 @@ class Element(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     owner = models.ForeignKey(
-        User,
+        'users.User',
         related_name='elements',
         on_delete=models.CASCADE
     )

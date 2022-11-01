@@ -1,22 +1,25 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import type { CallbackTypes } from "vue3-google-login";
+import { ref, type Ref } from "vue";
+import { GoogleLogin, type CallbackTypes } from "vue3-google-login";
 import { useAuthStore } from "@/stores/auth";
 import router from "@/router";
+import type { ILoginUser, IRegisterUser } from "@/types/users";
 
 const authStore = useAuthStore();
-const loginForm = ref({
+const loginForm: Ref<ILoginUser> = ref({
   username: "",
   password: "",
 });
-const registerForm = ref({
+const registerForm: Ref<IRegisterUser> = ref({
   username: "",
   password: "",
   email: "",
 });
 
 const callback: CallbackTypes.TokenResponseCallback = (response) => {
-  authStore.loginWithGoogleOauth(response.access_token).then(handleResponse);
+  authStore
+    .loginWithSocial({ accessToken: response.access_token, socialBackend: "google-oauth2" })
+    .then(handleResponse);
 };
 
 function handleLoginSubmit() {
@@ -25,7 +28,7 @@ function handleLoginSubmit() {
 }
 
 function handleRegisterSubmit() {
-  authStore.register(registerForm.value).then(handleResponse);
+  authStore.registerWithCreds(registerForm.value).then(handleResponse);
   registerForm.value.password = "";
 }
 
@@ -61,4 +64,6 @@ function handleResponse() {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+
+</style>

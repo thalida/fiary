@@ -2,6 +2,7 @@ import graphene
 from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
 import graphql_jwt
+from social_django.utils import load_strategy, load_backend
 from api.permissions import IsAuthenticated
 from fiary.models import Bookshelf, Notebook, Page, Room
 from .models import User
@@ -35,28 +36,33 @@ class Register(graphene.relay.ClientIDMutation):
         user.set_password(input['password'])
         user.save()
 
-        room = Room.objects.create(owner=user)
-        bookshelf = Bookshelf.objects.create(owner=user, room=room)
-        notebook = Notebook.objects.create(
-            owner=user,
-            bookshelf=bookshelf,
-            title='Default'
-        )
-        page = Page.objects.create(owner=user, notebook=notebook)
-
-        room.bookshelf_order = [bookshelf.id]
-        room.save()
-
-        bookshelf.notebook_order = [notebook.id]
-        bookshelf.save()
-
-        notebook.page_order = [page.id]
-        notebook.save()
-
         payload = graphql_jwt.utils.jwt_payload(user)
         token = graphql_jwt.utils.jwt_encode(payload)
 
         return Register(user=user, token=token)
+
+
+class RegisterFromSocial(graphene.relay.ClientIDMutation):
+    class Input:
+        access_token = graphene.String(required=True)
+        social_backend = graphene.String(required=True)
+
+    user = graphene.Field(UserNode)
+    token = graphene.String()
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input):
+        social_strategy = load_strategy()
+        social_backend = load_backend(
+            social_strategy,
+            input['social_backend'],
+            redirect_uri=None
+        )
+        user = social_backend.do_auth(input['access_token'])
+        payload = graphql_jwt.utils.jwt_payload(user)
+        token = graphql_jwt.utils.jwt_encode(payload)
+
+        return RegisterFromSocial(user=user, token=token)
 
 
 class UserQuery(graphene.ObjectType):
@@ -77,3 +83,4 @@ class UserMutation(graphene.ObjectType):
     revoke_token = graphql_jwt.relay.Revoke.Field()
 
     register = Register.Field()
+    register_social = RegisterFromSocial.Field()

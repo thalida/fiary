@@ -4,10 +4,11 @@ import axios from "axios";
 import { useMutation } from "villus";
 import {
   RegisterDocument,
+  RegisterSocialDocument,
   TokenAuthDocument,
   VerifyTokenDocument,
 } from "../api/graphql-operations";
-import type { TAuthToken } from "@/types/users";
+import type { ILoginUser, IRegisterUser, TAuthToken } from "@/types/users";
 import { useStorage } from "@vueuse/core";
 
 export const useAuthStore = defineStore("auth", () => {
@@ -35,31 +36,30 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function loginWithCreds(user: { username: string; password: string }) {
+  async function loginWithCreds(user: ILoginUser) {
     const { data, execute } = useMutation(TokenAuthDocument);
     await execute(user);
     authToken.value = data?.value.tokenAuth?.token;
     setIsAuthenticated();
   }
 
-  async function loginWithGoogleOauth(googleAccessToken: string) {
-    const response = await axios.get(
-      `http://localhost:8000/auth/register-by-token/google-oauth2/`,
-      {
-        params: {
-          access_token: googleAccessToken,
-        },
-      }
-    );
-
-    authToken.value = response.data.token;
-    setIsAuthenticated();
-  }
-
-  async function register(user: { username: string; email: string; password: string }) {
+  async function registerWithCreds(user: IRegisterUser) {
     const { data, execute } = useMutation(RegisterDocument);
     await execute(user);
     authToken.value = data?.value.register?.token;
+    setIsAuthenticated();
+  }
+
+  async function loginWithSocial({
+    accessToken,
+    socialBackend,
+  }: {
+    accessToken: string;
+    socialBackend: string;
+  }) {
+    const { data, execute } = useMutation(RegisterSocialDocument);
+    await execute({ accessToken, socialBackend });
+    authToken.value = data?.value.registerSocial?.token;
     setIsAuthenticated();
   }
 
@@ -73,9 +73,9 @@ export const useAuthStore = defineStore("auth", () => {
     isFetching,
     authToken,
     autoLogin,
+    registerWithCreds,
     loginWithCreds,
-    loginWithGoogleOauth,
+    loginWithSocial,
     logout,
-    register,
   };
 });

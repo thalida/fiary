@@ -16,4 +16,5 @@ authStore.autoLogin();
     <AppHeader />
     <RouterView />
   </div>
+  <div v-else>Loading...</div>
 </template>

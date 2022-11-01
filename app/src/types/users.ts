@@ -8,3 +8,12 @@ export interface IUser {
   pk: string;
   username: string;
 }
+export interface IRegisterUser {
+  username: string;
+  password: string;
+  email: string;
+}
+export interface ILoginUser {
+  username: string;
+  password: string;
+}

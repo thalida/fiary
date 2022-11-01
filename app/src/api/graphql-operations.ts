@@ -239,6 +239,7 @@ export type Mutation = {
   deletePage?: Maybe<DeletePagePayload>;
   refreshToken?: Maybe<RefreshPayload>;
   register?: Maybe<RegisterPayload>;
+  registerSocial?: Maybe<RegisterFromSocialPayload>;
   revokeToken?: Maybe<RevokePayload>;
   /** Obtain JSON Web Token mutation */
   tokenAuth?: Maybe<ObtainJsonWebTokenPayload>;
@@ -287,6 +288,10 @@ export type MutationRefreshTokenArgs = {
 
 export type MutationRegisterArgs = {
   input: RegisterInput;
+};
+
+export type MutationRegisterSocialArgs = {
+  input: RegisterFromSocialInput;
 };
 
 export type MutationRevokeTokenArgs = {
@@ -538,6 +543,19 @@ export type RefreshPayload = {
   token: Scalars["String"];
 };
 
+export type RegisterFromSocialInput = {
+  accessToken: Scalars["String"];
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  socialBackend: Scalars["String"];
+};
+
+export type RegisterFromSocialPayload = {
+  __typename?: "RegisterFromSocialPayload";
+  clientMutationId?: Maybe<Scalars["String"]>;
+  token?: Maybe<Scalars["String"]>;
+  user?: Maybe<UserNode>;
+};
+
 export type RegisterInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   email: Scalars["String"];
@@ -746,6 +764,31 @@ export type VerifyPayload = {
   payload: Scalars["GenericScalar"];
 };
 
+export type MyRoomsQueryVariables = Exact<{ [key: string]: never }>;
+
+export type MyRoomsQuery = {
+  __typename?: "Query";
+  myRooms?: {
+    __typename?: "RoomNodeConnection";
+    edges: Array<{
+      __typename?: "RoomNodeEdge";
+      node?: {
+        __typename?: "RoomNode";
+        id: string;
+        pk: any;
+        bookshelfOrder: Array<any>;
+        bookshelves: {
+          __typename?: "BookshelfNodeConnection";
+          edges: Array<{
+            __typename?: "BookshelfNodeEdge";
+            node?: { __typename?: "BookshelfNode"; id: string; pk: any } | null;
+          } | null>;
+        };
+      } | null;
+    } | null>;
+  } | null;
+};
+
 export type RegisterMutationVariables = Exact<{
   username: Scalars["String"];
   email: Scalars["String"];
@@ -755,6 +798,16 @@ export type RegisterMutationVariables = Exact<{
 export type RegisterMutation = {
   __typename?: "Mutation";
   register?: { __typename?: "RegisterPayload"; token?: string | null } | null;
+};
+
+export type RegisterSocialMutationVariables = Exact<{
+  accessToken: Scalars["String"];
+  socialBackend: Scalars["String"];
+}>;
+
+export type RegisterSocialMutation = {
+  __typename?: "Mutation";
+  registerSocial?: { __typename?: "RegisterFromSocialPayload"; token?: string | null } | null;
 };
 
 export type TokenAuthMutationVariables = Exact<{
@@ -783,6 +836,86 @@ export type MeQuery = {
   me?: { __typename?: "UserNode"; username: string; pk: any; id: string } | null;
 };
 
+export const MyRoomsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "MyRooms" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "myRooms" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "id" } },
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "bookshelfOrder" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "bookshelves" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "id" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "pk" },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<MyRoomsQuery, MyRoomsQueryVariables>;
 export const RegisterDocument = {
   kind: "Document",
   definitions: [
@@ -858,6 +991,68 @@ export const RegisterDocument = {
     },
   ],
 } as unknown as DocumentNode<RegisterMutation, RegisterMutationVariables>;
+export const RegisterSocialDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "RegisterSocial" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "accessToken" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "socialBackend" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "registerSocial" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "accessToken" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "accessToken" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "socialBackend" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "socialBackend" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "Field", name: { kind: "Name", value: "token" } }],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<RegisterSocialMutation, RegisterSocialMutationVariables>;
 export const TokenAuthDocument = {
   kind: "Document",
   definitions: [
