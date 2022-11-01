@@ -1,21 +1,60 @@
 import { createRouter, createWebHistory } from "vue-router";
-import BookshelfIndex from "../views/Bookshelf/Index.vue";
-import NotebookIndex from "../views/Notebook/Index.vue";
-import NotebookOverview from "../views/Notebook/Overview.vue";
-import NotebookPage from "../views/Notebook/Page.vue";
+import RouterViewOnly from "@/layouts/RouterViewOnly.vue";
+import Home from "@/views/HomePage.vue";
+import Signin from "@/views/SigninPage.vue";
+import Signout from "@/views/SignoutPage.vue";
+import Signup from "@/views/SignupPage.vue";
+
+import Bookshelf from "@/views/BookshelfPage.vue";
+import NotebookOverview from "@/views/NotebookOverview.vue";
+import NotebookPage from "@/views/NotebookPage.vue";
+import { useAuthStore } from "@/stores/auth";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: "/",
+      name: "Home",
+      component: Home,
+    },
+    {
+      path: "/signin",
+      name: "Signin",
+      component: Signin,
+    },
+    {
+      path: "/signup",
+      name: "Signup",
+      component: Signup,
+    },
+    {
+      path: "/signout",
+      name: "Signout",
+      component: Signout,
+    },
+    {
+      path: "/login",
+      name: "Login",
+      redirect: "/signin",
+    },
+    {
+      path: "/logout",
+      name: "Logout",
+      redirect: "/signout",
+    },
+    {
+      path: "/bookshelf",
       name: "Bookshelf",
-      component: BookshelfIndex,
+      component: Bookshelf,
+      meta: {
+        requiresAuth: true,
+      },
     },
     {
       path: "/n/:notebookId",
       props: true,
-      component: NotebookIndex,
+      component: RouterViewOnly,
       children: [
         {
           path: "",
@@ -28,10 +67,30 @@ const router = createRouter({
           props: true,
           name: "NotebookPage",
           component: NotebookPage,
-        }
-      ]
+        },
+      ],
     },
   ],
+});
+
+router.beforeEach(async (to) => {
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+
+  if (!requiresAuth) {
+    return true;
+  }
+
+  const authStore = useAuthStore();
+  const isAuthenticated = authStore.isAuthenticated;
+
+  if (isAuthenticated) {
+    return true;
+  }
+
+  return {
+    name: "Login",
+    query: { redirect: to.fullPath },
+  };
 });
 
 export default router;

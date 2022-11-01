@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, watch } from "vue";
+import { ref } from "vue";
 import axios from "axios";
 import { useMutation } from "villus";
 import {
@@ -13,6 +13,7 @@ import { useStorage } from "@vueuse/core";
 export const useAuthStore = defineStore("auth", () => {
   const authToken = useStorage("fiary:authToken", null as TAuthToken | null | undefined);
   const isAuthenticated = ref(false);
+  const isFetching = { verifyToken: ref(false) };
 
   function setIsAuthenticated() {
     isAuthenticated.value = typeof authToken.value !== "undefined" && authToken.value !== null;
@@ -20,10 +21,12 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function autoLogin() {
     if (authToken.value) {
-      const { execute, data } = useMutation(VerifyTokenDocument);
-      await execute({ token: authToken.value });
+      const mutation = useMutation(VerifyTokenDocument);
+      isFetching.verifyToken = mutation.isFetching;
 
-      if (data.value?.verifyToken?.payload) {
+      await mutation.execute({ token: authToken.value });
+
+      if (mutation.data.value?.verifyToken?.payload) {
         isAuthenticated.value = true;
       } else {
         authToken.value = null;
@@ -32,9 +35,9 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function loginWithCreds(username: string, password: string) {
+  async function loginWithCreds(user: { username: string; password: string }) {
     const { data, execute } = useMutation(TokenAuthDocument);
-    await execute({ username, password });
+    await execute(user);
     authToken.value = data?.value.tokenAuth?.token;
     setIsAuthenticated();
   }
@@ -53,29 +56,21 @@ export const useAuthStore = defineStore("auth", () => {
     setIsAuthenticated();
   }
 
-  async function logout() {
-    isAuthenticated.value = false;
-    authToken.value = null;
+  async function register(user: { username: string; email: string; password: string }) {
+    const { data, execute } = useMutation(RegisterDocument);
+    await execute(user);
+    authToken.value = data?.value.register?.token;
+    setIsAuthenticated();
   }
 
-  async function register({
-    username,
-    email,
-    password,
-  }: {
-    username: string;
-    email: string;
-    password: string;
-  }) {
-    const { data, execute } = useMutation(RegisterDocument);
-    await execute({ username, email, password });
-    console.log(data.value);
-    authToken.value = data?.value.register?.token;
+  function logout() {
+    authToken.value = null;
     setIsAuthenticated();
   }
 
   return {
     isAuthenticated,
+    isFetching,
     authToken,
     autoLogin,
     loginWithCreds,
