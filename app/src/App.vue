@@ -11,6 +11,11 @@ const loginForm = ref({
   username: "",
   password: "",
 });
+const registerForm = ref({
+  username: "",
+  password: "",
+  email: "",
+});
 const currentUser = computed(() => usersStore.me);
 
 authStore.autoLogin();
@@ -19,10 +24,14 @@ const callback: CallbackTypes.TokenResponseCallback = (response) => {
   authStore.loginWithGoogleOauth(response.access_token);
 };
 
-function login(e: Event) {
-  e.preventDefault();
+function handleLoginSubmit() {
   authStore.loginWithCreds(loginForm.value.username, loginForm.value.password);
   loginForm.value.password = "";
+}
+
+function handleRegisterSubmit() {
+  authStore.register(registerForm.value);
+  registerForm.value.password = "";
 }
 </script>
 
@@ -31,12 +40,22 @@ function login(e: Event) {
     <GoogleLogin :callback="callback" popup-type="TOKEN">
       <button>Login Using Google</button>
     </GoogleLogin>
-    <form>
+    <form @submit.prevent="handleLoginSubmit">
       <label>Username</label>
       <input type="string" v-model="loginForm.username" />
       <label>Password</label>
       <input type="password" v-model="loginForm.password" />
-      <button @click="login">Login</button>
+      <button type="submit">Login</button>
+    </form>
+    <hr />
+    <form @submit.prevent="handleRegisterSubmit">
+      <label>Username</label>
+      <input type="string" v-model="registerForm.username" />
+      <label>Email</label>
+      <input type="string" v-model="registerForm.email" />
+      <label>Password</label>
+      <input type="password" v-model="registerForm.password" />
+      <button type="submit">Register</button>
     </form>
   </div>
   <div v-else>

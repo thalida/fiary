@@ -22,15 +22,12 @@ class Register(graphene.relay.ClientIDMutation):
         username = graphene.String(required=True)
         email = graphene.String(required=True)
         password = graphene.String(required=True)
-        password2 = graphene.String(required=True)
 
     user = graphene.Field(UserNode)
+    token = graphene.String()
 
     @classmethod
     def mutate_and_get_payload(cls, root, info, **input):
-        if input['password'] != input['password2']:
-            raise Exception('Passwords must match')
-
         user = User.objects.create(
             username=input['username'],
             email=input['email']
@@ -56,7 +53,10 @@ class Register(graphene.relay.ClientIDMutation):
         notebook.page_order = [page.id]
         notebook.save()
 
-        return Register(user=user)
+        payload = graphql_jwt.utils.jwt_payload(user)
+        token = graphql_jwt.utils.jwt_encode(payload)
+
+        return Register(user=user, token=token)
 
 
 class UserQuery(graphene.ObjectType):

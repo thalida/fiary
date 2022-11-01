@@ -542,13 +542,13 @@ export type RegisterInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   email: Scalars["String"];
   password: Scalars["String"];
-  password2: Scalars["String"];
   username: Scalars["String"];
 };
 
 export type RegisterPayload = {
   __typename?: "RegisterPayload";
   clientMutationId?: Maybe<Scalars["String"]>;
+  token?: Maybe<Scalars["String"]>;
   user?: Maybe<UserNode>;
 };
 
@@ -746,6 +746,17 @@ export type VerifyPayload = {
   payload: Scalars["GenericScalar"];
 };
 
+export type RegisterMutationVariables = Exact<{
+  username: Scalars["String"];
+  email: Scalars["String"];
+  password: Scalars["String"];
+}>;
+
+export type RegisterMutation = {
+  __typename?: "Mutation";
+  register?: { __typename?: "RegisterPayload"; token?: string | null } | null;
+};
+
 export type TokenAuthMutationVariables = Exact<{
   username: Scalars["String"];
   password: Scalars["String"];
@@ -772,6 +783,81 @@ export type MeQuery = {
   me?: { __typename?: "UserNode"; username: string; pk: any; id: string } | null;
 };
 
+export const RegisterDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "Register" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "username" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "email" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "password" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "register" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "username" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "username" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "email" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "email" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "password" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "password" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "Field", name: { kind: "Name", value: "token" } }],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<RegisterMutation, RegisterMutationVariables>;
 export const TokenAuthDocument = {
   kind: "Document",
   definitions: [

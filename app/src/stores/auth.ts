@@ -1,14 +1,22 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import axios from "axios";
 import { useMutation } from "villus";
-import { TokenAuthDocument, VerifyTokenDocument } from "../api/graphql-operations";
+import {
+  RegisterDocument,
+  TokenAuthDocument,
+  VerifyTokenDocument,
+} from "../api/graphql-operations";
 import type { TAuthToken } from "@/types/users";
 import { useStorage } from "@vueuse/core";
 
 export const useAuthStore = defineStore("auth", () => {
   const authToken = useStorage("fiary:authToken", null as TAuthToken | null | undefined);
   const isAuthenticated = ref(false);
+
+  function setIsAuthenticated() {
+    isAuthenticated.value = typeof authToken.value !== "undefined" && authToken.value !== null;
+  }
 
   async function autoLogin() {
     if (authToken.value) {
@@ -28,9 +36,7 @@ export const useAuthStore = defineStore("auth", () => {
     const { data, execute } = useMutation(TokenAuthDocument);
     await execute({ username, password });
     authToken.value = data?.value.tokenAuth?.token;
-    isAuthenticated.value = typeof authToken.value !== "undefined" && authToken.value !== null;
-
-    return isAuthenticated.value;
+    setIsAuthenticated();
   }
 
   async function loginWithGoogleOauth(googleAccessToken: string) {
@@ -44,14 +50,28 @@ export const useAuthStore = defineStore("auth", () => {
     );
 
     authToken.value = response.data.token;
-    isAuthenticated.value = typeof authToken.value !== "undefined" && authToken.value !== null;
-
-    return isAuthenticated.value;
+    setIsAuthenticated();
   }
 
   async function logout() {
     isAuthenticated.value = false;
     authToken.value = null;
+  }
+
+  async function register({
+    username,
+    email,
+    password,
+  }: {
+    username: string;
+    email: string;
+    password: string;
+  }) {
+    const { data, execute } = useMutation(RegisterDocument);
+    await execute({ username, email, password });
+    console.log(data.value);
+    authToken.value = data?.value.register?.token;
+    setIsAuthenticated();
   }
 
   return {
@@ -61,5 +81,6 @@ export const useAuthStore = defineStore("auth", () => {
     loginWithCreds,
     loginWithGoogleOauth,
     logout,
+    register,
   };
 });
