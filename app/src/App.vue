@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { RouterView } from "vue-router";
 import type { CallbackTypes } from "vue3-google-login";
 import { useAuthStore } from "@/stores/auth";
@@ -7,24 +7,23 @@ import { useUsersStore } from "@/stores/users";
 
 const authStore = useAuthStore();
 const usersStore = useUsersStore();
-const user = ref({
+const loginForm = ref({
   username: "",
   password: "",
 });
+const currentUser = computed(() => usersStore.me);
 
 authStore.autoLogin();
 
-const callback: CallbackTypes.TokenResponseCallback = async (response) => {
-  await authStore.loginWithGoogleOauth(response.access_token);
-  await usersStore.fetchMe();
+const callback: CallbackTypes.TokenResponseCallback = (response) => {
+  authStore.loginWithGoogleOauth(response.access_token);
 };
 
-const login = async (e: Event) => {
+function login(e: Event) {
   e.preventDefault();
-  await authStore.loginWithCreds(user.value.username, user.value.password);
-  await usersStore.fetchMe();
-  user.value.password = "";
-};
+  authStore.loginWithCreds(loginForm.value.username, loginForm.value.password);
+  loginForm.value.password = "";
+}
 </script>
 
 <template>
@@ -34,13 +33,14 @@ const login = async (e: Event) => {
     </GoogleLogin>
     <form>
       <label>Username</label>
-      <input type="string" v-model="user.username" />
+      <input type="string" v-model="loginForm.username" />
       <label>Password</label>
-      <input type="password" v-model="user.password" />
+      <input type="password" v-model="loginForm.password" />
       <button @click="login">Login</button>
     </form>
   </div>
   <div v-else>
+    <h1>Welcome {{ currentUser?.username }}</h1>
     <button @click="authStore.logout">Logout</button>
   </div>
   <RouterView />

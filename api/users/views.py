@@ -4,7 +4,7 @@ from django.http import JsonResponse
 import graphql_jwt
 
 
-@psa('social:complete')
+@psa()
 def register_by_access_token(request, backend):
     token = request.GET.get('access_token')
     try:

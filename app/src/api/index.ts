@@ -1,23 +1,24 @@
-import { useQuery as villusUseQuery } from "villus";
+import {
+  useQuery as villusUseQuery,
+  type QueryCompositeOptions,
+  type QueryVariables,
+} from "villus";
+import merge from "lodash/merge";
 import { useAuthStore } from "@/stores/auth";
-import type { TypedDocumentNode as IDocumentNode } from "@graphql-typed-document-node/core";
 
-export function useQuery<TData, TVars>(query: IDocumentNode<TData, TVars>) {
+export function useQuery<TData, TVars = QueryVariables>(opts: QueryCompositeOptions<TData, TVars>) {
   const authStore = useAuthStore();
   const isAuthenticated = authStore.isAuthenticated;
 
-  let headers = {};
+  const context = {
+    headers: null as Record<string, string> | null,
+  };
 
   if (isAuthenticated && authStore.authToken !== null) {
-    headers = {
+    context.headers = {
       Authorization: `JWT ${authStore.authToken}`,
     };
   }
 
-  return villusUseQuery({
-    query,
-    context: {
-      headers,
-    },
-  });
+  return villusUseQuery(merge(opts, { context }));
 }

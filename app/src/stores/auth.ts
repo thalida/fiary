@@ -29,6 +29,8 @@ export const useAuthStore = defineStore("auth", () => {
     await execute({ username, password });
     authToken.value = data?.value.tokenAuth?.token;
     isAuthenticated.value = typeof authToken.value !== "undefined" && authToken.value !== null;
+
+    return isAuthenticated.value;
   }
 
   async function loginWithGoogleOauth(googleAccessToken: string) {
@@ -43,6 +45,8 @@ export const useAuthStore = defineStore("auth", () => {
 
     authToken.value = response.data.token;
     isAuthenticated.value = typeof authToken.value !== "undefined" && authToken.value !== null;
+
+    return isAuthenticated.value;
   }
 
   async function logout() {

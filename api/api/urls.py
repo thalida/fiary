@@ -26,7 +26,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('graphql/', csrf_exempt(GraphQLView.as_view(graphiql=True))),
     path('auth/', include("users.urls")),
-    path('social/', include('social_django.urls')),
 ]
 
 if settings.DEBUG:
