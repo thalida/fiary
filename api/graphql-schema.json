@@ -5186,6 +5186,18 @@
               "deprecationReason": null,
               "description": null,
               "isDeprecated": false,
+              "name": "token",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
               "name": "clientMutationId",
               "type": {
                 "kind": "SCALAR",
@@ -5237,20 +5249,6 @@
               "defaultValue": null,
               "description": null,
               "name": "password",
-              "type": {
-                "kind": "NON_NULL",
-                "name": null,
-                "ofType": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                }
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "password2",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,

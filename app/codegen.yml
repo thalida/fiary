@@ -1,4 +1,4 @@
-schema: "./schema.json"
+schema: "../api/graphql-schema.json"
 documents: "./src/**/*.graphql"
 generates:
   ./src/api/graphql-operations.ts:

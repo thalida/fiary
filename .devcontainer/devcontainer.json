@@ -55,5 +55,6 @@
 		5432
 	],
 	"postCreateCommand": "bash -i /workspace/.devcontainer/scripts/postCreateCommand.sh",
+	"postStartCommand": "bash -i /workspace/.devcontainer/scripts/postStartCommand.sh",
 	"remoteUser": "vscode"
 }

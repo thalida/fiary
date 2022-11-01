@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+cd /workspace/api
+python manage.py graphql_schema --schema api.schema.schema --out graphql-schema.json
+
+cd /workspace/app
+npx graphql-codegen
