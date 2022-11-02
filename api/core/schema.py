@@ -11,7 +11,7 @@ class RoomNode(IsOwner, DjangoObjectType):
 
     class Meta:
         model = Room
-        filter_fields = ['owner']
+        filter_fields = ['id', 'owner']
         interfaces = (graphene.relay.Node, )
 
 
@@ -20,7 +20,7 @@ class BookshelfNode(IsOwner, DjangoObjectType):
 
     class Meta:
         model = Bookshelf
-        filter_fields = ['owner', 'room']
+        filter_fields = ['id', 'owner', 'room']
         interfaces = (graphene.relay.Node, )
 
 
@@ -29,7 +29,7 @@ class NotebookNode(IsOwner, DjangoObjectType):
 
     class Meta:
         model = Notebook
-        filter_fields = ['owner', 'bookshelf']
+        filter_fields = ['id', 'owner', 'bookshelf']
         interfaces = (graphene.relay.Node, )
 
 
@@ -38,7 +38,7 @@ class PageNode(IsOwner, DjangoObjectType):
 
     class Meta:
         model = Page
-        filter_fields = ['owner', 'notebook']
+        filter_fields = ['id', 'owner', 'notebook']
         interfaces = (graphene.relay.Node, )
 
 
@@ -47,7 +47,7 @@ class ElementNode(IsOwner, DjangoObjectType):
 
     class Meta:
         model = Element
-        filter_fields = ['owner', 'page']
+        filter_fields = ['id', 'owner', 'page']
         interfaces = (graphene.relay.Node, )
 
 

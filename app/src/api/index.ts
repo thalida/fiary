@@ -58,7 +58,7 @@ export function processGraphqlData(data: any) {
 
 function flattenGraphqlData(data: any) {
   const flattenedProps: { [key: string]: any } = {};
-  let flattenedEdges: { [key: string]: { [key: string]: any } } = {};
+  let flattenedEdges: { [key: string]: any[] } = {};
   for (const [key, value] of Object.entries(data)) {
     const typedValue = value as any;
 
@@ -67,10 +67,10 @@ function flattenGraphqlData(data: any) {
       typeof typedValue === "object" &&
       typeof typedValue.edges !== "undefined"
     ) {
-      flattenedEdges[key] = {};
+      flattenedEdges[key] = [];
       for (const edge of typedValue.edges) {
         const res = flattenGraphqlData(edge.node);
-        flattenedEdges[key][edge.node.pk] = res.flattenedProps;
+        flattenedEdges[key].push(res.flattenedProps);
         flattenedEdges = merge(flattenedEdges, res.flattenedEdges);
       }
     } else {

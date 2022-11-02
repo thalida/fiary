@@ -1,0 +1,30 @@
+query MyNotebooks($id: ID) {
+  myNotebooks(id: $id) {
+    edges {
+      node {
+        bookshelf {
+          pk
+        }
+        id
+        pk
+        updatedAt
+        createdAt
+        title
+        pageOrder
+        pages {
+          edges {
+            node {
+              id
+              pk
+              updatedAt
+              createdAt
+              notebook {
+                pk
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

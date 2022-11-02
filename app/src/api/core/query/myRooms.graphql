@@ -4,18 +4,30 @@ query MyRooms {
       node {
         id
         pk
+        updatedAt
+        createdAt
         bookshelfOrder
         bookshelves {
           edges {
             node {
+            	room {
+                pk
+              }
               id
               pk
+              updatedAt
+              createdAt
               notebookOrder
               notebooks {
                 edges {
                   node {
+                    bookshelf {
+                      pk
+                    }
                     id
                     pk
+                    updatedAt
+                    createdAt
                     title
                     pageOrder
                   }
