@@ -6,7 +6,6 @@ export interface IRooms {
 
 export interface IRoom {
   pk: TPrimaryKey;
-  id: string;
   updatedAt: string;
   createdAt: string;
   bookshelfOrder: TPrimaryKey[];
@@ -18,7 +17,6 @@ export interface IBookshelves {
 
 export interface IBookshelf {
   pk: TPrimaryKey;
-  id: string;
   updatedAt: string;
   createdAt: string;
   room: TPrimaryKey;
@@ -31,7 +29,6 @@ export interface INotebooks {
 
 export interface INotebook {
   pk: TPrimaryKey;
-  id: string;
   updatedAt: string;
   createdAt: string;
   bookshelf: TPrimaryKey;
@@ -45,7 +42,6 @@ export interface IPages {
 
 export interface IPage {
   pk: TPrimaryKey;
-  id: string;
   updatedAt: string;
   createdAt: string;
   notebook: TPrimaryKey;

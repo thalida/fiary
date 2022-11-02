@@ -26,7 +26,8 @@ watchEffect(() => {
 });
 
 function handleNotebookCreate() {
-  coreStore.createNotebook().then((notebook) => {
+  if (typeof myBookshelf.value === "undefined" || myBookshelf.value === null) return;
+  coreStore.createNotebook(myBookshelf.value.pk).then((notebook) => {
     if (notebook) {
       router.push({ name: "Notebook", params: { notebookId: notebook.pk } });
     }

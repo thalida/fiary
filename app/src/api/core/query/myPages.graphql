@@ -1,0 +1,14 @@
+query MyPages($pk: ID) {
+  myPages(id: $pk) {
+    edges {
+      node {
+        notebook {
+          pk
+        }
+        pk
+        updatedAt
+        createdAt
+      }
+    }
+  }
+}

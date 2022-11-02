@@ -99,7 +99,7 @@ export type CreateElementInput = {
   fillColor: Scalars["String"];
   isRulerLine: Scalars["Boolean"];
   options?: InputMaybe<Scalars["JSONString"]>;
-  pageId: Scalars["UUID"];
+  pagePk: Scalars["UUID"];
   points: Array<InputMaybe<Scalars["JSONString"]>>;
   size: Scalars["Float"];
   strokeColor: Scalars["String"];
@@ -113,7 +113,7 @@ export type CreateElementPayload = {
 };
 
 export type CreateNotebookInput = {
-  bookshelfId: Scalars["UUID"];
+  bookshelfPk: Scalars["UUID"];
   clientMutationId?: InputMaybe<Scalars["String"]>;
   title?: InputMaybe<Scalars["String"]>;
 };
@@ -126,7 +126,7 @@ export type CreateNotebookPayload = {
 
 export type CreatePageInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  notebookId: Scalars["UUID"];
+  notebookPk: Scalars["UUID"];
   patternColor?: InputMaybe<Scalars["String"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
@@ -141,7 +141,7 @@ export type CreatePagePayload = {
 
 export type DeleteElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  id: Scalars["UUID"];
+  pk: Scalars["UUID"];
 };
 
 export type DeleteElementPayload = {
@@ -152,7 +152,7 @@ export type DeleteElementPayload = {
 
 export type DeleteNotebookInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  id: Scalars["UUID"];
+  pk: Scalars["UUID"];
 };
 
 export type DeleteNotebookPayload = {
@@ -163,7 +163,7 @@ export type DeleteNotebookPayload = {
 
 export type DeletePageInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  id: Scalars["UUID"];
+  pk: Scalars["UUID"];
 };
 
 export type DeletePagePayload = {
@@ -596,9 +596,9 @@ export type RoomNodeEdge = {
 export type UpdateElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   fillColor?: InputMaybe<Scalars["String"]>;
-  id: Scalars["UUID"];
   isRulerLine?: InputMaybe<Scalars["Boolean"]>;
   options?: InputMaybe<Scalars["JSONString"]>;
+  pk: Scalars["UUID"];
   points?: InputMaybe<Array<InputMaybe<Scalars["JSONString"]>>>;
   size?: InputMaybe<Scalars["Float"]>;
   strokeColor?: InputMaybe<Scalars["String"]>;
@@ -612,10 +612,10 @@ export type UpdateElementPayload = {
 };
 
 export type UpdateNotebookInput = {
-  bookshelfId?: InputMaybe<Scalars["UUID"]>;
+  bookshelfPk?: InputMaybe<Scalars["UUID"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  id: Scalars["UUID"];
   pageOrder?: InputMaybe<Array<InputMaybe<Scalars["UUID"]>>>;
+  pk: Scalars["UUID"];
   title?: InputMaybe<Scalars["String"]>;
 };
 
@@ -627,12 +627,12 @@ export type UpdateNotebookPayload = {
 
 export type UpdatePageInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  id: Scalars["UUID"];
-  notebookId?: InputMaybe<Scalars["UUID"]>;
+  notebookPk?: InputMaybe<Scalars["UUID"]>;
   patternColor?: InputMaybe<Scalars["String"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
   patternStyle?: InputMaybe<Scalars["String"]>;
+  pk: Scalars["UUID"];
 };
 
 export type UpdatePagePayload = {
@@ -731,7 +731,7 @@ export type VerifyPayload = {
 };
 
 export type CreateNotebookMutationVariables = Exact<{
-  bookshelfId: Scalars["UUID"];
+  bookshelfPk: Scalars["UUID"];
   title?: InputMaybe<Scalars["String"]>;
 }>;
 
@@ -742,7 +742,6 @@ export type CreateNotebookMutation = {
     notebook?: {
       __typename?: "NotebookNode";
       pk: any;
-      id: string;
       updatedAt: any;
       createdAt: any;
       title?: string | null;
@@ -752,8 +751,26 @@ export type CreateNotebookMutation = {
   } | null;
 };
 
+export type CreatePageMutationVariables = Exact<{
+  notebookPk: Scalars["UUID"];
+}>;
+
+export type CreatePageMutation = {
+  __typename?: "Mutation";
+  createPage?: {
+    __typename?: "CreatePagePayload";
+    page?: {
+      __typename?: "PageNode";
+      pk: any;
+      updatedAt: any;
+      createdAt: any;
+      notebook: { __typename?: "NotebookNode"; pk: any; pageOrder: Array<any> };
+    } | null;
+  } | null;
+};
+
 export type MyNotebooksQueryVariables = Exact<{
-  id?: InputMaybe<Scalars["ID"]>;
+  pk?: InputMaybe<Scalars["ID"]>;
 }>;
 
 export type MyNotebooksQuery = {
@@ -764,7 +781,6 @@ export type MyNotebooksQuery = {
       __typename?: "NotebookNodeEdge";
       node?: {
         __typename?: "NotebookNode";
-        id: string;
         pk: any;
         updatedAt: any;
         createdAt: any;
@@ -777,7 +793,6 @@ export type MyNotebooksQuery = {
             __typename?: "PageNodeEdge";
             node?: {
               __typename?: "PageNode";
-              id: string;
               pk: any;
               updatedAt: any;
               createdAt: any;
@@ -785,6 +800,27 @@ export type MyNotebooksQuery = {
             } | null;
           } | null>;
         };
+      } | null;
+    } | null>;
+  } | null;
+};
+
+export type MyPagesQueryVariables = Exact<{
+  pk?: InputMaybe<Scalars["ID"]>;
+}>;
+
+export type MyPagesQuery = {
+  __typename?: "Query";
+  myPages?: {
+    __typename?: "PageNodeConnection";
+    edges: Array<{
+      __typename?: "PageNodeEdge";
+      node?: {
+        __typename?: "PageNode";
+        pk: any;
+        updatedAt: any;
+        createdAt: any;
+        notebook: { __typename?: "NotebookNode"; pk: any };
       } | null;
     } | null>;
   } | null;
@@ -800,7 +836,6 @@ export type MyRoomsQuery = {
       __typename?: "RoomNodeEdge";
       node?: {
         __typename?: "RoomNode";
-        id: string;
         pk: any;
         updatedAt: any;
         createdAt: any;
@@ -811,7 +846,6 @@ export type MyRoomsQuery = {
             __typename?: "BookshelfNodeEdge";
             node?: {
               __typename?: "BookshelfNode";
-              id: string;
               pk: any;
               updatedAt: any;
               createdAt: any;
@@ -823,7 +857,6 @@ export type MyRoomsQuery = {
                   __typename?: "NotebookNodeEdge";
                   node?: {
                     __typename?: "NotebookNode";
-                    id: string;
                     pk: any;
                     updatedAt: any;
                     createdAt: any;
@@ -898,7 +931,7 @@ export const CreateNotebookDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "bookshelfId" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "bookshelfPk" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -925,8 +958,8 @@ export const CreateNotebookDocument = {
                   fields: [
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "bookshelfId" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "bookshelfId" } },
+                      name: { kind: "Name", value: "bookshelfPk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "bookshelfPk" } },
                     },
                     {
                       kind: "ObjectField",
@@ -958,7 +991,6 @@ export const CreateNotebookDocument = {
                         },
                       },
                       { kind: "Field", name: { kind: "Name", value: "pk" } },
-                      { kind: "Field", name: { kind: "Name", value: "id" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                       { kind: "Field", name: { kind: "Name", value: "title" } },
@@ -974,6 +1006,79 @@ export const CreateNotebookDocument = {
     },
   ],
 } as unknown as DocumentNode<CreateNotebookMutation, CreateNotebookMutationVariables>;
+export const CreatePageDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "CreatePage" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "notebookPk" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createPage" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "notebookPk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "notebookPk" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "page" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "notebook" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "pageOrder" } },
+                          ],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<CreatePageMutation, CreatePageMutationVariables>;
 export const MyNotebooksDocument = {
   kind: "Document",
   definitions: [
@@ -984,7 +1089,7 @@ export const MyNotebooksDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
         },
       ],
@@ -998,7 +1103,7 @@ export const MyNotebooksDocument = {
               {
                 kind: "Argument",
                 name: { kind: "Name", value: "id" },
-                value: { kind: "Variable", name: { kind: "Name", value: "id" } },
+                value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
               },
             ],
             selectionSet: {
@@ -1026,7 +1131,6 @@ export const MyNotebooksDocument = {
                                 ],
                               },
                             },
-                            { kind: "Field", name: { kind: "Name", value: "id" } },
                             { kind: "Field", name: { kind: "Name", value: "pk" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
@@ -1050,10 +1154,6 @@ export const MyNotebooksDocument = {
                                           selectionSet: {
                                             kind: "SelectionSet",
                                             selections: [
-                                              {
-                                                kind: "Field",
-                                                name: { kind: "Name", value: "id" },
-                                              },
                                               {
                                                 kind: "Field",
                                                 name: { kind: "Name", value: "pk" },
@@ -1102,6 +1202,75 @@ export const MyNotebooksDocument = {
     },
   ],
 } as unknown as DocumentNode<MyNotebooksQuery, MyNotebooksQueryVariables>;
+export const MyPagesDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "MyPages" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "myPages" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "notebook" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                ],
+                              },
+                            },
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                            { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<MyPagesQuery, MyPagesQueryVariables>;
 export const MyRoomsDocument = {
   kind: "Document",
   definitions: [
@@ -1130,7 +1299,6 @@ export const MyRoomsDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "id" } },
                             { kind: "Field", name: { kind: "Name", value: "pk" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
@@ -1165,10 +1333,6 @@ export const MyRoomsDocument = {
                                                     },
                                                   ],
                                                 },
-                                              },
-                                              {
-                                                kind: "Field",
-                                                name: { kind: "Name", value: "id" },
                                               },
                                               {
                                                 kind: "Field",
@@ -1221,13 +1385,6 @@ export const MyRoomsDocument = {
                                                                         },
                                                                       },
                                                                     ],
-                                                                  },
-                                                                },
-                                                                {
-                                                                  kind: "Field",
-                                                                  name: {
-                                                                    kind: "Name",
-                                                                    value: "id",
                                                                   },
                                                                 },
                                                                 {

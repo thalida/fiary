@@ -13,10 +13,10 @@ const props = defineProps<{
 
 const isLoading = ref(true);
 const isAuthenticated = computed(() => authStore.isAuthenticated);
+const notebook = computed(() => coreStore.notebooks[props.notebookId]);
 const isNotFound = computed(
   () => !isLoading.value && (typeof notebook.value === "undefined" || notebook.value === null)
 );
-const notebook = computed(() => coreStore.notebooks[props.notebookId]);
 const numPages = computed(() => {
   if (typeof notebook.value === "undefined" || notebook.value === null) return 0;
   return notebook.value.pageOrder.length;
@@ -26,14 +26,22 @@ watchEffect(() => {
   if (isAuthenticated.value) {
     isLoading.value = true;
     coreStore.fetchNotebook(props.notebookId).then(() => {
+      console.log(notebook.value);
       isLoading.value = false;
     });
   }
 });
 
-function handlePageCreateClick() {
-  // const page = notebooksStore.createPage({ notebookId: props.notebookId });
-  router.push({ name: "NotebookPage", params: { notebookId: props.notebookId, pageId: page.id } });
+function handlePageCreate() {
+  if (typeof notebook.value === "undefined" || notebook.value === null) return;
+  coreStore.createPage(notebook.value.pk).then((page) => {
+    if (page) {
+      router.push({
+        name: "Page",
+        params: { pageId: page.pk },
+      });
+    }
+  });
 }
 </script>
 
@@ -43,11 +51,11 @@ function handlePageCreateClick() {
     <p v-if="isLoading">Loading...</p>
     <p v-else-if="isNotFound">Notebook not found.</p>
     <section v-else>
-      <button @click="handlePageCreateClick">Create Page</button>
+      <button @click="handlePageCreate">Create Page</button>
       <ul v-if="numPages > 0">
-        <li v-for="pageId in notebook.pageOrder" :key="pageId">
-          <RouterLink :to="{ name: 'NotebookPage', params: { notebookId: notebook.id, pageId: pageId } }">
-            {{ pageId }}
+        <li v-for="pagePk in notebook.pageOrder" :key="pagePk">
+          <RouterLink :to="{ name: 'Page', params: { pageId: pagePk } }">
+            {{ pagePk }}
           </RouterLink>
         </li>
       </ul>

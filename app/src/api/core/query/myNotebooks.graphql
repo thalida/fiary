@@ -1,11 +1,10 @@
-query MyNotebooks($id: ID) {
-  myNotebooks(id: $id) {
+query MyNotebooks($pk: ID) {
+  myNotebooks(id: $pk) {
     edges {
       node {
         bookshelf {
           pk
         }
-        id
         pk
         updatedAt
         createdAt
@@ -14,7 +13,6 @@ query MyNotebooks($id: ID) {
         pages {
           edges {
             node {
-              id
               pk
               updatedAt
               createdAt

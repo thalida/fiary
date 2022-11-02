@@ -6,6 +6,8 @@ import {
   CreateNotebookDocument,
   MyRoomsDocument,
   MyNotebooksDocument,
+  CreatePageDocument,
+  MyPagesDocument,
 } from "@/api/graphql-operations";
 import type { IBookshelves, INotebooks, IPages, IRooms, TPrimaryKey } from "@/types/core";
 
@@ -39,20 +41,19 @@ export const useCoreStore = defineStore("core", () => {
 
     const res = processGraphqlData(data.value);
     for (let i = 0; i < res.myRooms.length; i += 1) {
-      const { pk, id, bookshelfOrder, updatedAt, createdAt } = res.myRooms[i];
-      rooms.value[pk] = { pk, id, bookshelfOrder, updatedAt, createdAt };
+      const { pk, bookshelfOrder, updatedAt, createdAt } = res.myRooms[i];
+      rooms.value[pk] = { pk, bookshelfOrder, updatedAt, createdAt };
     }
 
     for (let i = 0; i < res.bookshelves.length; i += 1) {
-      const { pk, id, notebookOrder, updatedAt, createdAt, room } = res.bookshelves[i];
-      bookshelves.value[pk] = { pk, id, notebookOrder, updatedAt, createdAt, room: room.pk };
+      const { pk, notebookOrder, updatedAt, createdAt, room } = res.bookshelves[i];
+      bookshelves.value[pk] = { pk, notebookOrder, updatedAt, createdAt, room: room.pk };
     }
 
     for (let i = 0; i < res.notebooks.length; i += 1) {
-      const { pk, id, title, pageOrder, updatedAt, createdAt, bookshelf } = res.notebooks[i];
+      const { pk, title, pageOrder, updatedAt, createdAt, bookshelf } = res.notebooks[i];
       notebooks.value[pk] = {
         pk,
-        id,
         title,
         pageOrder,
         updatedAt,
@@ -62,17 +63,25 @@ export const useCoreStore = defineStore("core", () => {
     }
   }
 
-  async function fetchNotebook(id: TPrimaryKey) {
+  async function fetchNotebook(pk: TPrimaryKey) {
     const { data } = await useQuery({
       query: MyNotebooksDocument,
-      variables: { id },
+      variables: { pk },
       cachePolicy: "network-only",
     });
     const res = processGraphqlData(data.value);
+
+    if (
+      typeof res.myNotebooks === "undefined" ||
+      res.myNotebooks === null ||
+      res.myNotebooks.length === 0
+    ) {
+      return;
+    }
+
     const rawNotebook = res.myNotebooks[0];
-    notebooks.value[id] = merge(notebooks.value[id], {
+    notebooks.value[pk] = merge(notebooks.value[pk], {
       pk: rawNotebook.pk,
-      id: rawNotebook.id,
       updatedAt: rawNotebook.updatedAt,
       createdAt: rawNotebook.createdAt,
       title: rawNotebook.title,
@@ -81,18 +90,16 @@ export const useCoreStore = defineStore("core", () => {
     });
 
     for (let i = 0; i < res.pages.length; i += 1) {
-      const { pk, id, updatedAt, createdAt, notebook } = res.pages[i];
-      pages.value[pk] = { pk, id, updatedAt, createdAt, notebook: notebook.pk };
+      const { pk, updatedAt, createdAt, notebook } = res.pages[i];
+      pages.value[pk] = { pk, updatedAt, createdAt, notebook: notebook.pk };
     }
 
-    return notebooks.value[id];
+    return notebooks.value[pk];
   }
 
-  async function createNotebook(title = "Untitled") {
-    if (typeof myBookshelf.value === "undefined" || myBookshelf.value === null) return;
-
+  async function createNotebook(bookshelfPk: TPrimaryKey, title = "Untitled") {
     const { execute, data } = useMutation(CreateNotebookDocument);
-    await execute({ bookshelfId: myBookshelf.value.pk, title });
+    await execute({ bookshelfPk, title });
 
     const notebook = data.value.createNotebook?.notebook;
     if (typeof notebook === "undefined" || notebook === null) {
@@ -101,19 +108,63 @@ export const useCoreStore = defineStore("core", () => {
 
     notebooks.value[notebook.pk] = {
       pk: notebook.pk,
-      id: notebook.id,
       title: notebook.title,
       pageOrder: notebook.pageOrder,
       updatedAt: notebook.updatedAt,
       createdAt: notebook.createdAt,
       bookshelf: notebook.bookshelf.pk,
     };
+
     bookshelves.value[notebook.bookshelf.pk] = merge(
       bookshelves.value[notebook.bookshelf.pk],
       notebook.bookshelf
     );
 
     return notebooks.value[notebook.pk];
+  }
+
+  async function fetchPage(pk: TPrimaryKey) {
+    const { data } = await useQuery({
+      query: MyPagesDocument,
+      variables: { pk },
+      cachePolicy: "network-only",
+    });
+    const res = processGraphqlData(data.value);
+
+    if (typeof res.myPages === "undefined" || res.myPages === null || res.myPages.length === 0) {
+      return;
+    }
+
+    const rawPage = res.myPages[0];
+    pages.value[pk] = merge(pages.value[pk], {
+      pk: rawPage.pk,
+      updatedAt: rawPage.updatedAt,
+      createdAt: rawPage.createdAt,
+      notebook: rawPage.notebook.pk,
+    });
+
+    return pages.value[pk];
+  }
+
+  async function createPage(notebookPk: TPrimaryKey) {
+    const { execute, data } = useMutation(CreatePageDocument);
+    await execute({ notebookPk });
+
+    const page = data.value.createPage?.page;
+    if (typeof page === "undefined" || page === null) {
+      throw new Error("Failed to create page");
+    }
+
+    pages.value[page.pk] = {
+      pk: page.pk,
+      updatedAt: page.updatedAt,
+      createdAt: page.createdAt,
+      notebook: page.notebook.pk,
+    };
+
+    notebooks.value[page.notebook.pk] = merge(notebooks.value[page.notebook.pk], page.notebook);
+
+    return pages.value[page.pk];
   }
 
   return {
@@ -123,8 +174,13 @@ export const useCoreStore = defineStore("core", () => {
     pages,
     myRoom,
     myBookshelf,
+
     fetchMyRooms,
+
     fetchNotebook,
     createNotebook,
+
+    fetchPage,
+    createPage,
   };
 });

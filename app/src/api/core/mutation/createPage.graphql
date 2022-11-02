@@ -1,0 +1,13 @@
+mutation CreatePage($notebookPk: UUID!) {
+  createPage(input: {notebookPk: $notebookPk}) {
+    page {
+      notebook {
+        pk
+        pageOrder
+      }
+      pk
+      updatedAt
+      createdAt
+    }
+  }
+}

@@ -3776,7 +3776,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "bookshelfId",
+              "name": "bookshelfPk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -3856,7 +3856,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "id",
+              "name": "pk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -3880,7 +3880,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "bookshelfId",
+              "name": "bookshelfPk",
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
@@ -3960,7 +3960,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "id",
+              "name": "pk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -4030,7 +4030,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "notebookId",
+              "name": "notebookPk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -4140,7 +4140,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "id",
+              "name": "pk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -4154,7 +4154,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "notebookId",
+              "name": "notebookPk",
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
@@ -4260,7 +4260,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "id",
+              "name": "pk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -4330,7 +4330,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pageId",
+              "name": "pagePk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -4498,7 +4498,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "id",
+              "name": "pk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -4642,7 +4642,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "id",
+              "name": "pk",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,

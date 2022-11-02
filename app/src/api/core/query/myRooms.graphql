@@ -2,7 +2,6 @@ query MyRooms {
   myRooms {
     edges {
       node {
-        id
         pk
         updatedAt
         createdAt
@@ -13,7 +12,6 @@ query MyRooms {
             	room {
                 pk
               }
-              id
               pk
               updatedAt
               createdAt
@@ -24,7 +22,6 @@ query MyRooms {
                     bookshelf {
                       pk
                     }
-                    id
                     pk
                     updatedAt
                     createdAt

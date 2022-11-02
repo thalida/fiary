@@ -1,22 +1,15 @@
 import { createRouter, createWebHistory } from "vue-router";
-import RouterViewOnly from "@/layouts/RouterViewOnly.vue";
-import Signin from "@/views/SigninPage.vue";
-import Signout from "@/views/SignoutPage.vue";
-import Signup from "@/views/SignupPage.vue";
-import Bookshelf from "@/views/BookshelfPage.vue";
-import NotebookOverview from "@/views/NotebookOverview.vue";
-import NotebookPage from "@/views/NotebookPage.vue";
+import Signin from "@/views/SigninView.vue";
+import Signout from "@/views/SignoutView.vue";
+import Signup from "@/views/SignupView.vue";
+import Bookshelf from "@/views/BookshelfView.vue";
+import Notebook from "@/views/NotebookView.vue";
+import Page from "@/views/PageView.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    {
-      path: "/",
-      name: "Home",
-      component: Bookshelf,
-      alias: "/bookshelf",
-    },
     {
       path: "/signin",
       name: "Signin",
@@ -36,23 +29,22 @@ const router = createRouter({
       alias: "/logout",
     },
     {
+      path: "/",
+      name: "Home",
+      component: Bookshelf,
+      alias: "/bookshelf",
+    },
+    {
       path: "/n/:notebookId",
       props: true,
-      component: RouterViewOnly,
-      children: [
-        {
-          path: "",
-          props: true,
-          name: "Notebook",
-          component: NotebookOverview,
-        },
-        {
-          path: "p/:pageId",
-          props: true,
-          name: "NotebookPage",
-          component: NotebookPage,
-        },
-      ],
+      name: "Notebook",
+      component: Notebook,
+    },
+    {
+      path: "/p/:pageId",
+      props: true,
+      name: "Page",
+      component: Page,
     },
   ],
 });
