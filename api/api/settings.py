@@ -68,7 +68,7 @@ INSTALLED_APPS = [
 
     # API Apps
     "users.apps.UsersConfig",
-    "fiary.apps.FiaryConfig",
+    "core.apps.CoreConfig",
 ]
 
 MIDDLEWARE = [

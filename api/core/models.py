@@ -1,7 +1,8 @@
 import uuid
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
-from fiary.choices import Tools
+from django.dispatch import receiver
+from .choices import Tools
 
 
 class Room(models.Model):
@@ -22,6 +23,16 @@ class Room(models.Model):
 
     def __unicode__(self):
         return self.id
+
+
+@receiver(models.signals.post_save, sender=Room)
+def setup_room(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    room = instance
+    bookshelf = Bookshelf.objects.create(owner=room.owner, room=room)
+    bookshelf.save()
 
 
 class Bookshelf(models.Model):
@@ -47,6 +58,26 @@ class Bookshelf(models.Model):
 
     def __unicode__(self):
         return self.id
+
+
+@receiver(models.signals.post_save, sender=Bookshelf)
+def setup_bookshelf(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    bookshelf = instance
+    room = bookshelf.room
+    room.bookshelf_order.append(bookshelf.id)
+    room.save()
+
+    num_bookshelves = len(room.bookshelf_order)
+    if (num_bookshelves == 1):
+        notebook = Notebook.objects.create(
+            owner=bookshelf.owner,
+            bookshelf=bookshelf,
+            title='Untitled'
+        )
+        notebook.save()
 
 
 class Notebook(models.Model):
@@ -79,6 +110,23 @@ class Notebook(models.Model):
 
     def __unicode__(self):
         return self.title
+
+
+@receiver(models.signals.post_save, sender=Notebook)
+def setup_notebook(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    notebook = instance
+    bookshelf = notebook.bookshelf
+    bookshelf.notebook_order.append(notebook.id)
+    bookshelf.save()
+
+    page = Page.objects.create(
+        owner=notebook.owner,
+        notebook=notebook,
+    )
+    page.save()
 
 
 class Page(models.Model):
@@ -128,6 +176,17 @@ class Page(models.Model):
 
     def __unicode__(self):
         return f"{self.owner}'s page {self.id}"
+
+
+@receiver(models.signals.post_save, sender=Page)
+def setup_page(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    page = instance
+    notebook = page.notebook
+    notebook.page_order.append(page.id)
+    notebook.save()
 
 
 class Element(models.Model):

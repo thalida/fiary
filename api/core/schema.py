@@ -78,9 +78,6 @@ class CreateBookshelf(graphene.relay.ClientIDMutation):
             room=room
         )
 
-        room.bookshelf_order.append(bookshelf.id)
-        room.save()
-
         return CreateBookshelf(bookshelf=bookshelf)
 
 
@@ -122,9 +119,6 @@ class CreateNotebook(graphene.relay.ClientIDMutation):
             bookshelf=bookshelf,
             title=input.get('title', None)
         )
-
-        bookshelf.notebook_order.append(notebook.id)
-        bookshelf.save()
 
         return CreateNotebook(notebook=notebook)
 
@@ -203,9 +197,6 @@ class CreatePage(graphene.relay.ClientIDMutation):
             pattern_spacing=input.get('pattern_spacing', None)
         )
 
-        notebook.page_order.append(page.id)
-        notebook.save()
-
         return CreatePage(page=page)
 
 
@@ -230,8 +221,15 @@ class UpdatePage(graphene.relay.ClientIDMutation):
                 continue
 
             if k == 'notebook_id':
-                notebook = Notebook.objects.get(id=v)
-                notebook.notebook = notebook
+                current_notebook = page.notebook
+                current_notebook.page_order.remove(page.id)
+                current_notebook.save()
+
+                new_notebook = Notebook.objects.get(id=v)
+                new_notebook.page_order.append(page.id)
+                new_notebook.save()
+
+                page.notebook = new_notebook
                 continue
 
             setattr(page, k, v)
@@ -331,7 +329,7 @@ class DeleteElement(graphene.relay.ClientIDMutation):
         return DeleteElement(element=element)
 
 
-class FiaryQuery(graphene.ObjectType):
+class CoreQuery(graphene.ObjectType):
     room = graphene.relay.Node.Field(RoomNode)
     my_rooms = DjangoFilterConnectionField(RoomNode)
 
@@ -348,11 +346,11 @@ class FiaryQuery(graphene.ObjectType):
     my_elements = DjangoFilterConnectionField(ElementNode)
 
 
-class FiaryMutation(graphene.ObjectType):
-    create_room = CreateRoom.Field()
+class CoreMutation(graphene.ObjectType):
+    # create_room = CreateRoom.Field()
 
-    create_bookshelf = CreateBookshelf.Field()
-    update_bookshelf = UpdateBookshelf.Field()
+    # create_bookshelf = CreateBookshelf.Field()
+    # update_bookshelf = UpdateBookshelf.Field()
 
     create_notebook = CreateNotebook.Field()
     update_notebook = UpdateNotebook.Field()

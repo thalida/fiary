@@ -57,16 +57,41 @@ export type BookshelfNodeEdge = {
   node?: Maybe<BookshelfNode>;
 };
 
-export type CreateBookshelfInput = {
-  clientMutationId?: InputMaybe<Scalars["String"]>;
-  roomId: Scalars["UUID"];
-};
-
-export type CreateBookshelfPayload = {
-  __typename?: "CreateBookshelfPayload";
-  bookshelf?: Maybe<BookshelfNode>;
-  clientMutationId?: Maybe<Scalars["String"]>;
-};
+/** An enumeration. */
+export enum CoreElementToolChoices {
+  /** Eraser */
+  A_1 = "A_1",
+  /** Clear All */
+  A_2 = "A_2",
+  /** Pen */
+  A_10 = "A_10",
+  /** Marker */
+  A_11 = "A_11",
+  /** Highlighter */
+  A_12 = "A_12",
+  /** Blob */
+  A_20 = "A_20",
+  /** Circle */
+  A_30 = "A_30",
+  /** Rectangle */
+  A_31 = "A_31",
+  /** Triangle */
+  A_32 = "A_32",
+  /** Line */
+  A_33 = "A_33",
+  /** Cut */
+  A_40 = "A_40",
+  /** Paste */
+  A_41 = "A_41",
+  /** Image */
+  A_50 = "A_50",
+  /** Checkbox */
+  A_60 = "A_60",
+  /** Textbox */
+  A_61 = "A_61",
+  /** Paper */
+  A_70 = "A_70",
+}
 
 export type CreateElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
@@ -111,16 +136,6 @@ export type CreatePagePayload = {
   __typename?: "CreatePagePayload";
   clientMutationId?: Maybe<Scalars["String"]>;
   page?: Maybe<PageNode>;
-};
-
-export type CreateRoomInput = {
-  clientMutationId?: InputMaybe<Scalars["String"]>;
-};
-
-export type CreateRoomPayload = {
-  __typename?: "CreateRoomPayload";
-  clientMutationId?: Maybe<Scalars["String"]>;
-  room?: Maybe<RoomNode>;
 };
 
 export type DeleteElementInput = {
@@ -170,7 +185,7 @@ export type ElementNode = Node & {
   points: Array<Scalars["JSONString"]>;
   size?: Maybe<Scalars["Float"]>;
   strokeColor?: Maybe<Scalars["String"]>;
-  tool?: Maybe<FiaryElementToolChoices>;
+  tool?: Maybe<CoreElementToolChoices>;
   updatedAt: Scalars["DateTime"];
 };
 
@@ -191,49 +206,11 @@ export type ElementNodeEdge = {
   node?: Maybe<ElementNode>;
 };
 
-/** An enumeration. */
-export enum FiaryElementToolChoices {
-  /** Eraser */
-  A_1 = "A_1",
-  /** Clear All */
-  A_2 = "A_2",
-  /** Pen */
-  A_10 = "A_10",
-  /** Marker */
-  A_11 = "A_11",
-  /** Highlighter */
-  A_12 = "A_12",
-  /** Blob */
-  A_20 = "A_20",
-  /** Circle */
-  A_30 = "A_30",
-  /** Rectangle */
-  A_31 = "A_31",
-  /** Triangle */
-  A_32 = "A_32",
-  /** Line */
-  A_33 = "A_33",
-  /** Cut */
-  A_40 = "A_40",
-  /** Paste */
-  A_41 = "A_41",
-  /** Image */
-  A_50 = "A_50",
-  /** Checkbox */
-  A_60 = "A_60",
-  /** Textbox */
-  A_61 = "A_61",
-  /** Paper */
-  A_70 = "A_70",
-}
-
 export type Mutation = {
   __typename?: "Mutation";
-  createBookshelf?: Maybe<CreateBookshelfPayload>;
   createElement?: Maybe<CreateElementPayload>;
   createNotebook?: Maybe<CreateNotebookPayload>;
   createPage?: Maybe<CreatePagePayload>;
-  createRoom?: Maybe<CreateRoomPayload>;
   deleteElement?: Maybe<DeleteElementPayload>;
   deleteNotebook?: Maybe<DeleteNotebookPayload>;
   deletePage?: Maybe<DeletePagePayload>;
@@ -243,15 +220,10 @@ export type Mutation = {
   revokeToken?: Maybe<RevokePayload>;
   /** Obtain JSON Web Token mutation */
   tokenAuth?: Maybe<ObtainJsonWebTokenPayload>;
-  updateBookshelf?: Maybe<UpdateBookshelfPayload>;
   updateElement?: Maybe<UpdateElementPayload>;
   updateNotebook?: Maybe<UpdateNotebookPayload>;
   updatePage?: Maybe<UpdatePagePayload>;
   verifyToken?: Maybe<VerifyPayload>;
-};
-
-export type MutationCreateBookshelfArgs = {
-  input: CreateBookshelfInput;
 };
 
 export type MutationCreateElementArgs = {
@@ -264,10 +236,6 @@ export type MutationCreateNotebookArgs = {
 
 export type MutationCreatePageArgs = {
   input: CreatePageInput;
-};
-
-export type MutationCreateRoomArgs = {
-  input: CreateRoomInput;
 };
 
 export type MutationDeleteElementArgs = {
@@ -300,10 +268,6 @@ export type MutationRevokeTokenArgs = {
 
 export type MutationTokenAuthArgs = {
   input: ObtainJsonWebTokenInput;
-};
-
-export type MutationUpdateBookshelfArgs = {
-  input: UpdateBookshelfInput;
 };
 
 export type MutationUpdateElementArgs = {
@@ -620,18 +584,6 @@ export type RoomNodeEdge = {
   node?: Maybe<RoomNode>;
 };
 
-export type UpdateBookshelfInput = {
-  bookshelfId: Scalars["UUID"];
-  clientMutationId?: InputMaybe<Scalars["String"]>;
-  notebookOrder?: InputMaybe<Array<InputMaybe<Scalars["UUID"]>>>;
-};
-
-export type UpdateBookshelfPayload = {
-  __typename?: "UpdateBookshelfPayload";
-  bookshelf?: Maybe<BookshelfNode>;
-  clientMutationId?: Maybe<Scalars["String"]>;
-};
-
 export type UpdateElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   fillColor?: InputMaybe<Scalars["String"]>;
@@ -764,6 +716,26 @@ export type VerifyPayload = {
   payload: Scalars["GenericScalar"];
 };
 
+export type CreateNotebookMutationVariables = Exact<{
+  bookshelfId: Scalars["UUID"];
+  title?: InputMaybe<Scalars["String"]>;
+}>;
+
+export type CreateNotebookMutation = {
+  __typename?: "Mutation";
+  createNotebook?: {
+    __typename?: "CreateNotebookPayload";
+    notebook?: {
+      __typename?: "NotebookNode";
+      pk: any;
+      id: string;
+      title?: string | null;
+      pageOrder: Array<any>;
+      bookshelf: { __typename?: "BookshelfNode"; pk: any; notebookOrder: Array<any> };
+    } | null;
+  } | null;
+};
+
 export type MyRoomsQueryVariables = Exact<{ [key: string]: never }>;
 
 export type MyRoomsQuery = {
@@ -781,7 +753,25 @@ export type MyRoomsQuery = {
           __typename?: "BookshelfNodeConnection";
           edges: Array<{
             __typename?: "BookshelfNodeEdge";
-            node?: { __typename?: "BookshelfNode"; id: string; pk: any } | null;
+            node?: {
+              __typename?: "BookshelfNode";
+              id: string;
+              pk: any;
+              notebookOrder: Array<any>;
+              notebooks: {
+                __typename?: "NotebookNodeConnection";
+                edges: Array<{
+                  __typename?: "NotebookNodeEdge";
+                  node?: {
+                    __typename?: "NotebookNode";
+                    id: string;
+                    pk: any;
+                    title?: string | null;
+                    pageOrder: Array<any>;
+                  } | null;
+                } | null>;
+              };
+            } | null;
           } | null>;
         };
       } | null;
@@ -836,6 +826,90 @@ export type MeQuery = {
   me?: { __typename?: "UserNode"; username: string; pk: any; id: string } | null;
 };
 
+export const CreateNotebookDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "CreateNotebook" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "bookshelfId" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "title" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createNotebook" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "bookshelfId" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "bookshelfId" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "title" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "title" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "notebook" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "bookshelf" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "notebookOrder" } },
+                          ],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "title" } },
+                      { kind: "Field", name: { kind: "Name", value: "pageOrder" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<CreateNotebookMutation, CreateNotebookMutationVariables>;
 export const MyRoomsDocument = {
   kind: "Document",
   definitions: [
@@ -892,6 +966,65 @@ export const MyRoomsDocument = {
                                               {
                                                 kind: "Field",
                                                 name: { kind: "Name", value: "pk" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "notebookOrder" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "notebooks" },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: { kind: "Name", value: "edges" },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: { kind: "Name", value: "node" },
+                                                            selectionSet: {
+                                                              kind: "SelectionSet",
+                                                              selections: [
+                                                                {
+                                                                  kind: "Field",
+                                                                  name: {
+                                                                    kind: "Name",
+                                                                    value: "id",
+                                                                  },
+                                                                },
+                                                                {
+                                                                  kind: "Field",
+                                                                  name: {
+                                                                    kind: "Name",
+                                                                    value: "pk",
+                                                                  },
+                                                                },
+                                                                {
+                                                                  kind: "Field",
+                                                                  name: {
+                                                                    kind: "Name",
+                                                                    value: "title",
+                                                                  },
+                                                                },
+                                                                {
+                                                                  kind: "Field",
+                                                                  name: {
+                                                                    kind: "Name",
+                                                                    value: "pageOrder",
+                                                                  },
+                                                                },
+                                                              ],
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
                                               },
                                             ],
                                           },

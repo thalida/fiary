@@ -1,32 +1,31 @@
 <script setup lang="ts">
 import { computed, watchEffect } from "vue";
 import { useAuthStore } from "@/stores/auth";
-import { useRoomsStore } from "@/stores/rooms";
+import { useCoreStore } from "@/stores/core";
 
 const authStore = useAuthStore();
-const roomsStore = useRoomsStore();
+const coreStore = useCoreStore();
 
 const isAuthenticated = computed(() => authStore.isAuthenticated);
+const myBookshelf = computed(() => coreStore.myBookshelf);
 
 watchEffect(() => {
-  // if (isAuthenticated.value) {
-  //   roomsStore.fetchMyRooms();
-  // }
-  // console.log(isAuthenticated.value);
+  if (isAuthenticated.value) {
+    coreStore.fetchMyRooms();
+  }
 });
 
-// roomsStore.fetchMyRooms();
-
-// function handleNotebookCreate() {
-//   notebooksStore.createNotebook();
-// }
+function handleNotebookCreate() {
+  coreStore.createNotebook();
+}
 </script>
 
 <template>
   <main>
     <template v-if="isAuthenticated">
       <h1>My Notebooks</h1>
-      <!-- <button @click="handleNotebookCreate">Create Notebook</button> -->
+      {{ myBookshelf }}
+      <button @click="handleNotebookCreate">Create Notebook</button>
       <!-- <p v-if="isFetching">Loading...</p>
       <ul v-else-if="numNotebooks > 0">
         <li v-for="notebook in orderedNotebooks" :key="notebook.id">

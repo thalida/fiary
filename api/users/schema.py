@@ -1,10 +1,8 @@
 import graphene
-from graphene_django.filter import DjangoFilterConnectionField
 from graphene_django.types import DjangoObjectType
 import graphql_jwt
 from social_django.utils import load_strategy, load_backend
 from api.permissions import IsAuthenticated
-from fiary.models import Bookshelf, Notebook, Page, Room
 from .models import User
 
 

@@ -1,29 +1,31 @@
 <script setup lang="ts">
-import router from '@/router';
-import { useNotebooksStore } from '@/stores/notebooks';
-import { ref, computed } from '@vue/reactivity';
-const props = defineProps<{ notebookId: string }>();
-const notebooksStore = useNotebooksStore();
-const notebook = computed(() => notebooksStore.getNotebookById(props.notebookId));
-const numPages = computed(() => notebooksStore.numNotebookPages(props.notebookId));
-const orderedPages = computed(() => notebooksStore.orderedNotebookPages(props.notebookId));
-const isFetching = ref(true);
-const isNotFound = computed(() => !isFetching.value && (typeof notebook.value === 'undefined' || notebook.value === null));
+// import router from "@/router";
+// import { useNotebooksStore } from "@/stores/notebooks";
+// import { ref, computed } from "vue";
+// const props = defineProps<{ notebookId: string }>();
+// const notebooksStore = useNotebooksStore();
+// const notebook = computed(() => notebooksStore.getNotebookById(props.notebookId));
+// const numPages = computed(() => notebooksStore.numNotebookPages(props.notebookId));
+// const orderedPages = computed(() => notebooksStore.orderedNotebookPages(props.notebookId));
+// const isFetching = ref(true);
+// const isNotFound = computed(
+//   () => !isFetching.value && (typeof notebook.value === "undefined" || notebook.value === null)
+// );
 
-notebooksStore.fetchNotebook(props.notebookId).then(() => {
-  isFetching.value = false;
-});
+// notebooksStore.fetchNotebook(props.notebookId).then(() => {
+//   isFetching.value = false;
+// });
 
-function handlePageCreateClick() {
-  const page = notebooksStore.createPage({ notebookId: props.notebookId });
-  router.push({ name: 'NotebookPage', params: { notebookId: props.notebookId, pageId: page.id } });
-}
+// function handlePageCreateClick() {
+//   const page = notebooksStore.createPage({ notebookId: props.notebookId });
+//   router.push({ name: "NotebookPage", params: { notebookId: props.notebookId, pageId: page.id } });
+// }
 </script>
 
 <template>
   <main>
     <h1>Notebook</h1>
-    <p v-if="isFetching">
+    <!-- <p v-if="isFetching">
       Loading...
     </p>
     <p v-else-if="isNotFound">
@@ -41,6 +43,6 @@ function handlePageCreateClick() {
         </li>
       </ul>
       <p v-else>No pages found.</p>
-    </section>
+    </section> -->
   </main>
 </template>

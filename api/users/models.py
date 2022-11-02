@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.dispatch import receiver
 
-from fiary.models import Bookshelf, Notebook, Page, Room
+from core.models import Bookshelf, Notebook, Page, Room
 
 
 class User(AbstractUser):
