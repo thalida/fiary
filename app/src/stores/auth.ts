@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import axios from "axios";
 import { useMutation } from "villus";
 import {
@@ -15,6 +15,10 @@ export const useAuthStore = defineStore("auth", () => {
   const authToken = useStorage("fiary:authToken", null as TAuthToken | null | undefined);
   const isAuthenticated = ref(false);
   const isFetching = { verifyToken: ref(false) };
+
+  const isReady = computed(() => {
+    return !isFetching.verifyToken.value;
+  });
 
   function setIsAuthenticated() {
     isAuthenticated.value = typeof authToken.value !== "undefined" && authToken.value !== null;
@@ -70,6 +74,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   return {
     isAuthenticated,
+    isReady,
     isFetching,
     authToken,
     autoLogin,

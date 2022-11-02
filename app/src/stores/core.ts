@@ -8,6 +8,9 @@ export const useCoreStore = defineStore("core", () => {
   const rooms = ref(null as any | null);
   const bookshelves = ref(null as any | null);
   const notebooks = ref(null as any | null);
+  const isFetching = {
+    myRooms: ref(false),
+  };
 
   const myRoom = computed(() => {
     if (rooms.value == null) return null;
@@ -26,18 +29,24 @@ export const useCoreStore = defineStore("core", () => {
   });
 
   async function fetchMyRooms() {
-    const { data } = await useQuery({ query: MyRoomsDocument, cachePolicy: "network-only" });
-    const res = processGraphqlData(data.value);
+    const query = await useQuery({
+      query: MyRoomsDocument,
+      cachePolicy: "network-only",
+    });
+
+    isFetching.myRooms = query.isFetching;
+
+    const res = processGraphqlData(query.data.value);
     rooms.value = res.myRooms;
     bookshelves.value = res.bookshelves;
     notebooks.value = res.notebooks;
   }
 
-  async function createNotebook() {
+  async function createNotebook(title = "Untitled") {
     if (myBookshelf.value === null) return;
 
     const { execute, data } = useMutation(CreateNotebookDocument);
-    await execute({ bookshelfId: myBookshelf.value.pk });
+    await execute({ bookshelfId: myBookshelf.value.pk, title });
 
     const notebook = data.value.createNotebook?.notebook;
     if (typeof notebook === "undefined" || notebook === null) return;
@@ -55,6 +64,7 @@ export const useCoreStore = defineStore("core", () => {
     notebooks,
     myRoom,
     myBookshelf,
+    isFetching,
     fetchMyRooms,
     createNotebook,
   };
