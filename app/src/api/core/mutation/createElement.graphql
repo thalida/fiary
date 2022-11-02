@@ -1,0 +1,19 @@
+mutation CreateElement($pagePk: UUID!, $tool: Int!, $fill_color: String!, $stroke_color: String!, $size: Float!, is_ruler_line: Boolean!, points: List!, options: JSONString) {
+  createElement(input: {pagePk: $pagePk, tool: $tool, fill_color: $fill_color, stroke_color: $stroke_color, size: $size, is_ruler_line: $is_ruler_line, points: $points, options: $options}) {
+    element {
+      page {
+        pk
+      }
+      pk
+      updatedAt
+      createdAt
+      tool
+      fill_color
+      stroke_color
+      size
+      is_ruler_line
+      points
+      options
+    }
+  }
+}

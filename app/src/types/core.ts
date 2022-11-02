@@ -46,3 +46,44 @@ export interface IPage {
   createdAt: string;
   notebook: TPrimaryKey;
 }
+
+export interface IElements {
+  [key: string]: IElement;
+}
+
+export interface IElement {
+  pk: TPrimaryKey;
+  updatedAt: string;
+  createdAt: string;
+  page: TPrimaryKey;
+  tool: number;
+  fill_color: string;
+  stroke_color: string;
+  size: number;
+  is_ruler_line: boolean;
+  points: IElementPoint[];
+  options: IElementOptions;
+}
+
+export interface IElementPoint {
+  x: number;
+  y: number;
+}
+
+export interface IElementOptions {
+  [key: string]: any;
+}
+
+export interface IColor {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+export interface IGradientStop {
+  percent: number;
+  color: IColor;
+}
+
+export type TGradient = IGradientStop[];
