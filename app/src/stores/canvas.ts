@@ -100,13 +100,13 @@ export const useCanvasStore = defineStore("canvas", () => {
   const isDrawingAllowed = computed(() => {
     const isOverlayMode =
       isSwatchOpen.value ||
-      isPasteMode ||
-      isAddImageMode ||
-      isInteractiveEditMode ||
-      isMovingRuler ||
-      isTextboxEditMode;
-    const stylusAllowed = detectedStylus.value && isStylus;
-    const isFingerAllowed = !isStylus.value && allowFingerDrawing;
+      isPasteMode.value ||
+      isAddImageMode.value ||
+      isInteractiveEditMode.value ||
+      isMovingRuler.value ||
+      isTextboxEditMode.value;
+    const stylusAllowed = detectedStylus.value && isStylus.value;
+    const isFingerAllowed = !isStylus.value && allowFingerDrawing.value;
 
     return !isOverlayMode && !isNonDrawingTool.value && (stylusAllowed || isFingerAllowed);
   });
