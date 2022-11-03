@@ -96,7 +96,13 @@ export interface IElementOptions {
   [key: string]: any;
 }
 
-export interface IColor {
+export interface IColorSwatches {
+  [key: string]: TColorSwatch;
+}
+
+export type TColorSwatch = TColor[];
+
+export interface ISolidColor {
   r: number;
   g: number;
   b: number;
@@ -105,7 +111,8 @@ export interface IColor {
 
 export interface IGradientStop {
   percent: number;
-  color: IColor;
+  color: ISolidColor;
 }
 
 export type TGradient = IGradientStop[];
+export type TColor = ISolidColor | TGradient;

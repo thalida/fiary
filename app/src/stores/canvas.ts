@@ -1,14 +1,20 @@
+import { defineStore } from "pinia";
+import { computed, ref, type Ref } from "vue";
+import { v4 as uuidv4 } from "uuid";
 import {
   CanvasTool,
   CANVAS_INTERACTIVE_TOOLS,
   CANVAS_NONDRAWING_TOOLS,
   CANVAS_PAPER_TOOLS,
+  DEFAULT_COLOR_SWATCHES,
+  DEFAULT_PEN_SIZE,
+  DEFAULT_SWATCH_KEY,
   LineEndSide,
   LineEndStyle,
+  MAX_SWATCH_COLORS,
 } from "@/constants/core";
-import type { IElements, TPrimaryKey } from "@/types/core";
-import { defineStore } from "pinia";
-import { computed, ref, type Ref } from "vue";
+import type { IElements, TColor, TPrimaryKey } from "@/types/core";
+import { randomInteger } from "@/utils/math";
 
 export const useCanvasStore = defineStore("canvas", () => {
   const canvasConfig = ref({
@@ -78,10 +84,12 @@ export const useCanvasStore = defineStore("canvas", () => {
   const showRulerControls = computed(() => {
     return !isDrawing.value && !isPanning.value;
   });
-
   const selectedTool = ref(CanvasTool.PEN);
   const isDrawingTool = computed(() => {
     return !CANVAS_NONDRAWING_TOOLS.includes(selectedTool.value);
+  });
+  const isNonDrawingTool = computed(() => {
+    return CANVAS_NONDRAWING_TOOLS.includes(selectedTool.value);
   });
   const isPaperTool = computed(() => {
     return CANVAS_PAPER_TOOLS.includes(selectedTool.value);
@@ -89,7 +97,21 @@ export const useCanvasStore = defineStore("canvas", () => {
   const isInteractiveTool = computed(() => {
     return CANVAS_INTERACTIVE_TOOLS.includes(selectedTool.value);
   });
+  const isDrawingAllowed = computed(() => {
+    const isOverlayMode =
+      isSwatchOpen.value ||
+      isPasteMode ||
+      isAddImageMode ||
+      isInteractiveEditMode ||
+      isMovingRuler ||
+      isTextboxEditMode;
+    const stylusAllowed = detectedStylus.value && isStylus;
+    const isFingerAllowed = !isStylus.value && allowFingerDrawing;
 
+    return !isOverlayMode && !isNonDrawingTool.value && (stylusAllowed || isFingerAllowed);
+  });
+
+  const selectedToolSize = ref(DEFAULT_PEN_SIZE);
   const selectedLineEndSide = ref(LineEndSide.NONE);
   const selectedLineEndStyle = ref(LineEndStyle.NONE);
 
@@ -108,6 +130,29 @@ export const useCanvasStore = defineStore("canvas", () => {
     if (historyIndex.value < 0) return;
     history.value.pop();
     historyIndex.value -= 1;
+  }
+
+  const isSwatchOpen = ref(false);
+  const swatches = ref(DEFAULT_COLOR_SWATCHES);
+  const swatchOrder = ref([DEFAULT_SWATCH_KEY]);
+  function createSwatch() {
+    const swatchId = uuidv4();
+    const colors = [];
+
+    for (let i = 0; i < MAX_SWATCH_COLORS; i += 1) {
+      const color = {
+        r: randomInteger(0, 255),
+        g: randomInteger(0, 255),
+        b: randomInteger(0, 255),
+        a: 1,
+      };
+      colors.push(color);
+    }
+    swatches.value[swatchId] = colors;
+    swatchOrder.value.push(swatchId);
+  }
+  function updateSwatchColor(swatchId: string, colorIdx: number, color: TColor) {
+    swatches.value[swatchId][colorIdx] = color;
   }
 
   return {
@@ -142,9 +187,12 @@ export const useCanvasStore = defineStore("canvas", () => {
 
     selectedTool,
     isDrawingTool,
+    isNonDrawingTool,
     isPaperTool,
     isInteractiveTool,
+    isDrawingAllowed,
 
+    selectedToolSize,
     selectedLineEndSide,
     selectedLineEndStyle,
 
@@ -154,5 +202,11 @@ export const useCanvasStore = defineStore("canvas", () => {
     hasRedo,
     addHistoryEvent,
     popHistoryEvent,
+
+    swatches,
+    swatchOrder,
+    createSwatch,
+    updateSwatchColor,
+    isSwatchOpen,
   };
 });

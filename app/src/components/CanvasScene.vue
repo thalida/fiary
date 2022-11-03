@@ -3,12 +3,9 @@ import { ref, computed, watch, watchEffect, watchPostEffect, onMounted, nextTick
 import { v4 as uuidv4 } from "uuid";
 import cloneDeep from "lodash/cloneDeep";
 import { getStroke } from "perfect-freehand";
-import ColorPicker from "@mcistudio/vue-colorpicker";
-import "@mcistudio/vue-colorpicker/dist/style.css";
 import Moveable from "moveable";
 import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
-import polygonClipping from "polygon-clipping";
 import Ftextarea from "./CanvasTextarea.vue";
 import patternComponents, { defaultPatternProps } from "@/components/CanvasPatterns";
 
@@ -18,27 +15,23 @@ import {
   CanvasTool as Tool,
   CANVAS_TOOL_CHOICES as supportedTools,
   CANVAS_LINE_TOOLS,
-  CANVAS_PAPER_TOOLS,
-  CANVAS_INTERACTIVE_TOOLS,
-  CANVAS_NONDRAWING_TOOLS,
   LineEndSide,
   LINE_END_SIDE_CHOICES,
   LineEndStyle,
   LINE_END_STYLE_CHOICES,
   PEN_SIZES,
-  DEFAULT_PEN_SIZE,
   TRANSPARENT_COLOR,
   SPECIAL_TOOL_SWATCH_KEY,
   SPECIAL_PAPER_SWATCH_KEY,
   DEFAULT_COLOR_SWATCHES,
   DEFAULT_SWATCH_KEY,
-  MAX_SWATCH_COLORS,
   DEFAULT_PAPER_COLOR_INDEX,
   DEFAULT_PATTERN_COLOR_INDEX,
   DEFAULT_PATTERN_OPACITY,
   DEFAULT_ELEMENT_FILLCOLOR_INDEX,
   DEFAULT_ELEMENT_STROKECOLOR_INDEX,
 } from "@/constants/core";
+import ColorPicker from "@/components/ColorPicker.vue";
 
 console.log("Updated CanvasScene");
 const canvasStore = useCanvasStore();
@@ -46,9 +39,9 @@ const canvasStore = useCanvasStore();
 const activeTextbox = ref(null);
 const activeImage = ref(null);
 
-let activePanCoords = [];
-let initTransformMatrix = null;
-const transformMatrix = ref(null as any);
+let activePanCoords: { x: number; y: number }[] = [];
+let initTransformMatrix: DOMMatrix | null = null;
+const transformMatrix = ref(null as DOMMatrix | null);
 const interactiveCanvasTransform = ref();
 const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 
@@ -63,55 +56,38 @@ let moveablePaste: any = null;
 const moveableImage = ref();
 const rulerElement = ref();
 
-const selectedTool = ref(Tool.PEN);
-const isDrawingTool = computed(() => !CANVAS_NONDRAWING_TOOLS.includes(selectedTool.value));
-const isPaperTool = computed(() => CANVAS_PAPER_TOOLS.includes(selectedTool.value));
-const isInteractiveTool = computed(() => CANVAS_INTERACTIVE_TOOLS.includes(selectedTool.value));
-
-const selectedLineEndSide = ref(LineEndSide.NONE);
-const selectedLineEndStyle = ref(LineEndStyle.NONE);
-const selectedToolSize = ref(DEFAULT_PEN_SIZE);
-
 const paperPatterns = ref(patternComponents);
 const patternStyles = ref(defaultPatternProps);
 const selectedPaperPatternIdx = ref(0);
 const selectedPaperPattern = computed(() => paperPatterns.value[selectedPaperPatternIdx.value]);
 const selectedPatternStyles = computed(() => patternStyles.value[selectedPaperPatternIdx.value]);
 
+const colorPickerRefs: any[] = [];
 const swatches = ref(DEFAULT_COLOR_SWATCHES as any);
-const swatchOrder = ref([DEFAULT_SWATCH_KEY]);
 
 const selectedPaperSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY);
 const selectedPaperColorIdx = ref(DEFAULT_PAPER_COLOR_INDEX);
 const selectedPaperColor = computed(
-  () => swatches.value[selectedPaperSwatchId.value][selectedPaperColorIdx.value]
+  () => canvasStore.swatches[selectedPaperSwatchId.value][selectedPaperColorIdx.value]
 );
-const isPaperSwatchDropdownOpen = ref(false);
-const showEditPaperColorModal = ref(false);
 
 const selectedPatternSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY);
 const selectedPatternColorIdx = ref(DEFAULT_PATTERN_COLOR_INDEX);
 const selectedPatternColor = computed(
-  () => swatches.value[selectedPatternSwatchId.value][selectedPatternColorIdx.value]
+  () => canvasStore.swatches[selectedPatternSwatchId.value][selectedPatternColorIdx.value]
 );
 const selectedPatternOpacity = ref(DEFAULT_PATTERN_OPACITY);
-const isPatternSwatchDropdownOpen = ref(false);
-const showEditPatternColorModal = ref(false);
 const selectedFillSwatchId = ref(DEFAULT_SWATCH_KEY);
 const selectedFillColorIdx = ref(DEFAULT_ELEMENT_FILLCOLOR_INDEX);
 const selectedFillColor = computed(
-  () => swatches.value[selectedFillSwatchId.value][selectedFillColorIdx.value]
+  () => canvasStore.swatches[selectedFillSwatchId.value][selectedFillColorIdx.value]
 );
-const isFillSwatchDropdownOpen = ref(false);
-const showEditFillColorModal = ref(false);
 
 const selectedStrokeSwatchId = ref(SPECIAL_TOOL_SWATCH_KEY);
 const selectedStrokeColorIdx = ref(DEFAULT_ELEMENT_STROKECOLOR_INDEX);
 const selectedStrokeColor = computed(
-  () => swatches.value[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]
+  () => canvasStore.swatches[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]
 );
-const isStrokeSwatchDropdownOpen = ref(false);
-const showEditStrokeColorModal = ref(false);
 
 onMounted(() => {
   if (typeof drawingCanvas.value === "undefined") {
@@ -154,8 +130,12 @@ watchEffect(() => {
   setRenderTransforms(transformMatrix.value);
 });
 
+function addColorPickerRef(ref: any) {
+  colorPickerRefs.push(ref);
+}
+
 function handleToolChange(event) {
-  if (selectedTool.value === Tool.CLEAR_ALL) {
+  if (canvasStore.selectedTool === Tool.CLEAR_ALL) {
     handleClearAll();
   }
 
@@ -173,26 +153,11 @@ function checkIsStylus(event) {
 
 function isDrawingAllowed(isDrawingOverride = false) {
   const activelyDrawing = canvasStore.isDrawing || isDrawingOverride;
-  const isOverlayMode =
-    isFillSwatchDropdownOpen.value ||
-    isStrokeSwatchDropdownOpen.value ||
-    isPaperSwatchDropdownOpen.value ||
-    canvasStore.isPasteMode ||
-    canvasStore.isAddImageMode ||
-    canvasStore.isInteractiveEditMode ||
-    canvasStore.isMovingRuler ||
-    canvasStore.isTextboxEditMode;
-  const isNonDrawingTool = [Tool.PAPER, Tool.POINTER].includes(selectedTool.value);
-  const stylusAllowed = canvasStore.detectedStylus && canvasStore.isStylus;
-  const isFingerAllowed = !canvasStore.isStylus && canvasStore.allowFingerDrawing;
-
-  return (
-    !isOverlayMode && !isNonDrawingTool && activelyDrawing && (stylusAllowed || isFingerAllowed)
-  );
+  return canvasStore.isDrawingAllowed && activelyDrawing;
 }
 
 function getPressure(event): number {
-  if (selectedTool.value === Tool.PEN) {
+  if (canvasStore.selectedTool === Tool.PEN) {
     return canvasStore.isStylus ? event.touches[0]["force"] : 1;
   }
 
@@ -200,15 +165,15 @@ function getPressure(event): number {
 }
 
 function getComposition() {
-  if (selectedTool.value === Tool.ERASER) {
+  if (canvasStore.selectedTool === Tool.ERASER) {
     return "destination-out";
   }
 
-  if (selectedTool.value === Tool.MARKER) {
+  if (canvasStore.selectedTool === Tool.MARKER) {
     return "hard-light";
   }
 
-  if (selectedTool.value === Tool.HIGHLIGHTER) {
+  if (canvasStore.selectedTool === Tool.HIGHLIGHTER) {
     return "hue";
   }
 
@@ -216,11 +181,11 @@ function getComposition() {
 }
 
 function getOpacity(): number {
-  if (selectedTool.value === Tool.MARKER) {
+  if (canvasStore.selectedTool === Tool.MARKER) {
     return 0.9;
   }
 
-  if (selectedTool.value === Tool.HIGHLIGHTER) {
+  if (canvasStore.selectedTool === Tool.HIGHLIGHTER) {
     return 0.75;
   }
 
@@ -485,7 +450,7 @@ function getDrawPos(canvas, event, followRuler = false) {
   const cameraZoom = transformMatrix.value.a;
   const relativeZoom = initTransformMatrix.a / cameraZoom;
 
-  if (isInteractiveTool.value) {
+  if (canvasStore.isInteractiveTool) {
     cameraX /= cameraZoom;
     cameraY /= cameraZoom;
   }
@@ -1106,7 +1071,7 @@ function handleClearAll() {
   createCanvasElement(clearElement);
   cacheElement(clearElement);
   drawElements();
-  selectedTool.value = Tool.ERASER;
+  canvasStore.selectedTool = Tool.ERASER;
 }
 
 async function handlePasteStart() {
@@ -1514,39 +1479,27 @@ function handleZoomIn() {
   drawElements();
 }
 
+function closeAllColorPickers() {
+  for (let i = 0; i < colorPickerRefs.length; i++) {
+    colorPickerRefs[i].closeDropdown();
+  }
+}
+
 function handleCanvasTouchStart(event) {
-  if (isFillSwatchDropdownOpen.value) {
-    closeFillSwatchDropdown();
-    return;
-  }
-
-  if (isStrokeSwatchDropdownOpen.value) {
-    closeStrokeSwatchDropdown();
-    return;
-  }
-
-  if (isPaperSwatchDropdownOpen.value) {
-    closePaperSwatchDropdown();
-    return;
-  }
-
-  if (isPatternSwatchDropdownOpen.value) {
-    closePatternSwatchDropdown();
-    return;
-  }
+  closeAllColorPickers();
 
   if (
     canvasStore.activeElements.length === 0 &&
-    (selectedTool.value === Tool.ERASER || selectedTool.value === Tool.CUT)
+    (canvasStore.selectedTool === Tool.ERASER || canvasStore.selectedTool === Tool.CUT)
   ) {
     return;
   }
 
-  if (selectedTool.value === Tool.CHECKBOX || selectedTool.value === Tool.TEXTBOX) {
+  if (canvasStore.selectedTool === Tool.CHECKBOX || canvasStore.selectedTool === Tool.TEXTBOX) {
     return;
   }
 
-  if (selectedTool.value === Tool.POINTER) {
+  if (canvasStore.selectedTool === Tool.POINTER) {
     canvasStore.isPanning = true;
     handlePanTransform(event, true);
     return;
@@ -1564,14 +1517,15 @@ function handleCanvasTouchStart(event) {
   const pressure = getPressure(event);
   const opacity = getOpacity();
   const composition = getComposition();
-  const size = selectedTool.value === Tool.CUT ? 0 : selectedToolSize.value;
+  const size = canvasStore.selectedTool === Tool.CUT ? 0 : canvasStore.selectedToolSize;
   const strokeColor =
-    selectedTool.value === Tool.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
-  const fillColor = selectedTool.value === Tool.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
+    canvasStore.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
+  const fillColor =
+    canvasStore.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
 
   const newElement = {
     id: uuidv4(),
-    tool: selectedTool.value,
+    tool: canvasStore.selectedTool,
     fillColor,
     strokeColor,
     size,
@@ -1580,13 +1534,13 @@ function handleCanvasTouchStart(event) {
     isRulerLine,
     points: [{ x: pos.x, y: pos.y, pressure }],
     toolOptions: {
-      lineEndSide: selectedLineEndSide.value,
-      lineEndStyle: selectedLineEndStyle.value,
+      lineEndSide: canvasStore.selectedLineEndSide,
+      lineEndStyle: canvasStore.selectedLineEndStyle,
     },
     freehandOptions: {
-      size: selectedToolSize.value,
-      simulatePressure: selectedTool.value === Tool.PEN && !canvasStore.isStylus,
-      thinning: selectedTool.value === Tool.PEN ? 0.95 : 0,
+      size: canvasStore.selectedToolSize,
+      simulatePressure: canvasStore.selectedTool === Tool.PEN && !canvasStore.isStylus,
+      thinning: canvasStore.selectedTool === Tool.PEN ? 0.95 : 0,
       streamline: isRulerLine ? 1 : 0.32,
       smoothing: isRulerLine ? 1 : 0.32,
       last: false,
@@ -1682,13 +1636,13 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
-  if (selectedTool.value === Tool.CHECKBOX) {
+  if (canvasStore.selectedTool === Tool.CHECKBOX) {
     const pos = getDrawPos(drawingCanvas.value, event, true);
     handleAddCheckbox(pos);
     return;
   }
 
-  if (selectedTool.value === Tool.TEXTBOX) {
+  if (canvasStore.selectedTool === Tool.TEXTBOX) {
     const pos = getDrawPos(drawingCanvas.value, event, true);
     handleAddTextbox(pos);
     return;
@@ -2047,7 +2001,7 @@ function handleTextboxFocus({ elementId }) {
   }
 
   canvasStore.isTextboxEditMode = true;
-  selectedTool.value = Tool.TEXTBOX;
+  canvasStore.selectedTool = Tool.TEXTBOX;
   activeTextbox.value = elementId;
 }
 
@@ -2089,165 +2043,24 @@ function getColorAsCss(color) {
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
 }
 
-function randomInteger(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function handleAddSwatchClick() {
-  const swatchId = uuidv4();
-  const colors = [];
-
-  for (let i = 0; i < MAX_SWATCH_COLORS; i += 1) {
-    const color = {
-      r: randomInteger(0, 255),
-      g: randomInteger(0, 255),
-      b: randomInteger(0, 255),
-      a: 1,
-    };
-    colors.push(color);
-  }
-  swatches.value[swatchId] = colors;
-  swatchOrder.value.push(swatchId);
-}
-
-async function handleFillSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected =
-    selectedFillSwatchId.value === swatchId && selectedFillColorIdx.value === colorIdx;
-  if (isAlreadySelected && swatchId !== SPECIAL_TOOL_SWATCH_KEY) {
-    showEditFillColorModal.value = true;
-  } else {
-    showEditFillColorModal.value = false;
-  }
-
+function handleFillColorChange(swatchId: string, colorIdx: number) {
   selectedFillSwatchId.value = swatchId;
   selectedFillColorIdx.value = colorIdx;
 }
 
-function handleFillColorChange({ color }) {
-  const swatchId = selectedFillSwatchId.value;
-  const colorIdx = selectedFillColorIdx.value;
-  swatches.value[swatchId][colorIdx] = color;
-}
-
-function closeFillSwatchDropdown() {
-  if (showEditFillColorModal.value) {
-    showEditFillColorModal.value = false;
-  } else {
-    isFillSwatchDropdownOpen.value = false;
-  }
-}
-
-function toggleFillSwatchDropdown() {
-  if (showEditFillColorModal.value) {
-    showEditFillColorModal.value = false;
-  } else {
-    isFillSwatchDropdownOpen.value = !isFillSwatchDropdownOpen.value;
-  }
-}
-
-async function handleStrokeSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected =
-    selectedStrokeSwatchId.value === swatchId && selectedStrokeColorIdx.value === colorIdx;
-  if (isAlreadySelected && swatchId !== SPECIAL_TOOL_SWATCH_KEY) {
-    showEditStrokeColorModal.value = true;
-  } else {
-    showEditStrokeColorModal.value = false;
-  }
-
+function handleStrokeColorChange(swatchId: string, colorIdx: number) {
   selectedStrokeSwatchId.value = swatchId;
   selectedStrokeColorIdx.value = colorIdx;
 }
 
-function handleStrokeColorChange({ color }) {
-  const swatchId = selectedStrokeSwatchId.value;
-  const colorIdx = selectedStrokeColorIdx.value;
-  swatches.value[swatchId][colorIdx] = color;
-}
-
-function closeStrokeSwatchDropdown() {
-  if (showEditStrokeColorModal.value) {
-    showEditStrokeColorModal.value = false;
-  } else {
-    isStrokeSwatchDropdownOpen.value = false;
-  }
-}
-
-function toggleStrokeSwatchDropdown() {
-  if (showEditStrokeColorModal.value) {
-    showEditStrokeColorModal.value = false;
-  } else {
-    isStrokeSwatchDropdownOpen.value = !isStrokeSwatchDropdownOpen.value;
-  }
-}
-
-async function handlePaperSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected =
-    selectedPaperSwatchId.value === swatchId && selectedPaperColorIdx.value === colorIdx;
-  if (isAlreadySelected && swatchId !== SPECIAL_PAPER_SWATCH_KEY) {
-    showEditPaperColorModal.value = true;
-  } else {
-    showEditPaperColorModal.value = false;
-  }
-
+function handlePaperColorChange(swatchId: string, colorIdx: number) {
   selectedPaperSwatchId.value = swatchId;
   selectedPaperColorIdx.value = colorIdx;
 }
 
-function handlePaperColorChange({ color }) {
-  const swatchId = selectedPaperSwatchId.value;
-  const colorIdx = selectedPaperColorIdx.value;
-  swatches.value[swatchId][colorIdx] = color;
-}
-
-function closePaperSwatchDropdown() {
-  if (showEditPaperColorModal.value) {
-    showEditPaperColorModal.value = false;
-  } else {
-    isPaperSwatchDropdownOpen.value = false;
-  }
-}
-
-function togglePaperSwatchDropdown() {
-  if (showEditPaperColorModal.value) {
-    showEditPaperColorModal.value = false;
-  } else {
-    isPaperSwatchDropdownOpen.value = !isPaperSwatchDropdownOpen.value;
-  }
-}
-
-async function handlePatternSwatchClick(colorIdx: number, swatchId: string) {
-  const isAlreadySelected =
-    selectedPatternSwatchId.value === swatchId && selectedPatternColorIdx.value === colorIdx;
-  if (isAlreadySelected && swatchId !== SPECIAL_PAPER_SWATCH_KEY) {
-    showEditPatternColorModal.value = true;
-  } else {
-    showEditPatternColorModal.value = false;
-  }
-
+function handlePatternColorChange(swatchId: string, colorIdx: number) {
   selectedPatternSwatchId.value = swatchId;
   selectedPatternColorIdx.value = colorIdx;
-}
-
-function handlePatternColorChange({ color }) {
-  const swatchId = selectedPatternSwatchId.value;
-  const colorIdx = selectedPatternColorIdx.value;
-  swatches.value[swatchId][colorIdx] = color;
-}
-
-function closePatternSwatchDropdown() {
-  if (showEditPatternColorModal.value) {
-    showEditPatternColorModal.value = false;
-  } else {
-    isPatternSwatchDropdownOpen.value = false;
-  }
-}
-
-function togglePatternSwatchDropdown() {
-  if (showEditPatternColorModal.value) {
-    showEditPatternColorModal.value = false;
-  } else {
-    isPatternSwatchDropdownOpen.value = !isPatternSwatchDropdownOpen.value;
-  }
 }
 </script>
 
@@ -2255,18 +2068,18 @@ function togglePatternSwatchDropdown() {
   <div class="canvas-wrapper">
     <!-- START TOOLS -->
     <div class="tools">
-      <select v-model.number="selectedTool" @change="handleToolChange">
+      <select v-model.number="canvasStore.selectedTool" @change="handleToolChange">
         <option v-for="tool in supportedTools" :key="tool.key" :value="tool.key">
           {{ tool.label }}
         </option>
       </select>
-      <div v-if="selectedTool === Tool.LINE">
-        <select v-model="selectedLineEndSide">
+      <div v-if="canvasStore.selectedTool === Tool.LINE">
+        <select v-model="canvasStore.selectedLineEndSide">
           <option v-for="endSide in LINE_END_SIDE_CHOICES" :key="endSide.key" :value="endSide.key">
             {{ endSide.label }}
           </option>
         </select>
-        <select v-model="selectedLineEndStyle">
+        <select v-model="canvasStore.selectedLineEndStyle">
           <option
             v-for="endStyle in LINE_END_STYLE_CHOICES"
             :key="endStyle.key"
@@ -2276,12 +2089,13 @@ function togglePatternSwatchDropdown() {
           </option>
         </select>
       </div>
-      <label v-else-if="selectedTool === Tool.IMAGE">
+      <label v-else-if="canvasStore.selectedTool === Tool.IMAGE">
         <input type="file" accept="image/*" @change="handleImageUpload" />
       </label>
       <label
         v-else-if="
-          (selectedTool === Tool.CHECKBOX || selectedTool === Tool.TEXTBOX) &&
+          (canvasStore.selectedTool === Tool.CHECKBOX ||
+            canvasStore.selectedTool === Tool.TEXTBOX) &&
           !canvasStore.isInteractiveEditMode
         "
       >
@@ -2295,243 +2109,54 @@ function togglePatternSwatchDropdown() {
         <button @click="handleElementDelete">Delete</button>
         <button @click="handleEndInteractiveEdit">Done</button>
       </div>
-      <select v-if="isDrawingTool" v-model="selectedToolSize">
+      <select v-if="canvasStore.isDrawingTool" v-model="canvasStore.selectedToolSize">
         <option v-for="size in PEN_SIZES" :key="size" :value="size">
           {{ size }}
         </option>
       </select>
-      <div v-if="isDrawingTool" style="display: inline">
-        <button @click="toggleFillSwatchDropdown">
-          <div
-            class="swatch__color"
-            :style="{ background: getColorAsCss(selectedFillColor) }"
-          ></div>
-        </button>
-        <ColorPicker
-          class="color-picker"
-          ref="colorPicker"
-          v-if="showEditFillColorModal"
-          :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']"
-          :showOpacityPicker="false"
-          :showDegreePicker="false"
-          :mode="Array.isArray(selectedFillColor) ? 'linear' : 'solid'"
-          :color="Array.isArray(selectedFillColor) ? {} : selectedFillColor"
-          :gradients="Array.isArray(selectedFillColor) ? selectedFillColor : []"
-          @colorChanged="handleFillColorChange"
-        >
-        </ColorPicker>
-        <div class="color-dropdown" v-if="!showEditFillColorModal && isFillSwatchDropdownOpen">
-          <div
-            class="swatch"
-            :class="{ selected: selectedFillSwatchId === swatchId }"
-            v-for="swatchId in swatchOrder"
-            :key="swatchId"
-          >
-            <div
-              class="swatch__color"
-              v-for="(color, i) in swatches[swatchId]"
-              :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{
-                selected: selectedFillSwatchId === swatchId && selectedFillColorIdx === i,
-              }"
-              @click="handleFillSwatchClick(i, swatchId)"
-            ></div>
-          </div>
-          <div class="swatch">
-            <div
-              class="swatch__color"
-              v-for="(color, i) in swatches[SPECIAL_TOOL_SWATCH_KEY]"
-              :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{
-                selected:
-                  selectedFillSwatchId === SPECIAL_TOOL_SWATCH_KEY && selectedFillColorIdx === i,
-              }"
-              @click="handleFillSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"
-            ></div>
-          </div>
-          <button @click="handleAddSwatchClick">Add Swatch</button>
-        </div>
-      </div>
-      <div v-if="isDrawingTool" style="display: inline">
-        <button @click="toggleStrokeSwatchDropdown">
-          <div
-            class="swatch__color"
-            :style="{ background: getColorAsCss(selectedStrokeColor) }"
-          ></div>
-        </button>
-        <ColorPicker
-          class="color-picker"
-          ref="colorPicker"
-          v-if="showEditStrokeColorModal"
-          :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']"
-          :showOpacityPicker="false"
-          :showDegreePicker="false"
-          :mode="Array.isArray(selectedStrokeColor) ? 'linear' : 'solid'"
-          :color="Array.isArray(selectedStrokeColor) ? {} : selectedStrokeColor"
-          :gradients="Array.isArray(selectedStrokeColor) ? selectedStrokeColor : []"
-          @colorChanged="handleStrokeColorChange"
-        >
-        </ColorPicker>
-        <div class="color-dropdown" v-if="!showEditStrokeColorModal && isStrokeSwatchDropdownOpen">
-          <div
-            class="swatch"
-            :class="{ selected: selectedStrokeSwatchId === swatchId }"
-            v-for="swatchId in swatchOrder"
-            :key="swatchId"
-          >
-            <div
-              class="swatch__color"
-              v-for="(color, i) in swatches[swatchId]"
-              :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{
-                selected: selectedStrokeSwatchId === swatchId && selectedStrokeColorIdx === i,
-              }"
-              @click="handleStrokeSwatchClick(i, swatchId)"
-            ></div>
-          </div>
-          <div class="swatch">
-            <div
-              class="swatch__color"
-              v-for="(color, i) in swatches[SPECIAL_TOOL_SWATCH_KEY]"
-              :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{
-                selected:
-                  selectedStrokeSwatchId === SPECIAL_TOOL_SWATCH_KEY &&
-                  selectedStrokeColorIdx === i,
-              }"
-              @click="handleStrokeSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"
-            ></div>
-          </div>
-          <button @click="handleAddSwatchClick">Add Swatch</button>
-        </div>
-      </div>
-      <select v-if="isPaperTool" v-model="selectedPaperPatternIdx">
+      <ColorPicker
+        v-if="canvasStore.isDrawingTool"
+        style="display: inline"
+        :ref="addColorPickerRef"
+        :swatchId="selectedFillSwatchId"
+        :colorIdx="selectedFillColorIdx"
+        :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
+        @change="handleFillColorChange"
+      />
+      <ColorPicker
+        v-if="canvasStore.isDrawingTool"
+        style="display: inline"
+        :ref="addColorPickerRef"
+        :swatchId="selectedStrokeSwatchId"
+        :colorIdx="selectedStrokeColorIdx"
+        :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
+        @change="handleStrokeColorChange"
+      />
+      <select v-if="canvasStore.isPaperTool" v-model="selectedPaperPatternIdx">
         <option v-for="(pattern, index) in paperPatterns" :key="index" :value="index">
           {{ pattern.LABEL }}
         </option>
       </select>
-      <div v-if="isPaperTool" style="display: inline">
-        <button @click="togglePaperSwatchDropdown">
-          <div
-            class="swatch__color"
-            :style="{ background: getColorAsCss(selectedPaperColor) }"
-          ></div>
-        </button>
-        <ColorPicker
-          class="color-picker"
-          ref="colorPicker"
-          v-if="showEditPaperColorModal"
-          :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']"
-          :showOpacityPicker="false"
-          :showDegreePicker="false"
-          :mode="Array.isArray(selectedPaperColor) ? 'linear' : 'solid'"
-          :color="Array.isArray(selectedPaperColor) ? {} : selectedPaperColor"
-          :gradients="Array.isArray(selectedPaperColor) ? selectedPaperColor : []"
-          @colorChanged="handlePaperColorChange"
-        >
-        </ColorPicker>
-        <div class="color-dropdown" v-if="!showEditPaperColorModal && isPaperSwatchDropdownOpen">
-          <div
-            class="swatch"
-            :class="{ selected: selectedPaperSwatchId === swatchId }"
-            v-for="swatchId in swatchOrder"
-            :key="swatchId"
-          >
-            <div
-              class="swatch__color"
-              v-for="(color, i) in swatches[swatchId]"
-              :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{
-                selected: selectedPaperSwatchId === swatchId && selectedPaperColorIdx === i,
-              }"
-              @click="handlePaperSwatchClick(i, swatchId)"
-            ></div>
-          </div>
-          <div class="swatch">
-            <div
-              class="swatch__color"
-              v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]"
-              :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{
-                selected:
-                  selectedPaperSwatchId === SPECIAL_PAPER_SWATCH_KEY && selectedPaperColorIdx === i,
-              }"
-              @click="handlePaperSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"
-            ></div>
-          </div>
-          <button @click="handleAddSwatchClick">Add Swatch</button>
-        </div>
-      </div>
-      <div v-if="isPaperTool" style="display: inline">
-        <button @click="togglePatternSwatchDropdown">
-          <div
-            class="swatch__color"
-            :style="{ background: getColorAsCss(selectedPatternColor) }"
-          ></div>
-        </button>
-        <ColorPicker
-          class="color-picker"
-          ref="colorPicker"
-          v-if="showEditPatternColorModal"
-          :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']"
-          :showOpacityPicker="false"
-          :showDegreePicker="false"
-          :mode="Array.isArray(selectedPatternColor) ? 'linear' : 'solid'"
-          :color="Array.isArray(selectedPatternColor) ? {} : selectedPatternColor"
-          :gradients="Array.isArray(selectedPatternColor) ? selectedPatternColor : []"
-          @colorChanged="handlePatternColorChange"
-        >
-        </ColorPicker>
-        <div
-          class="color-dropdown"
-          v-if="!showEditPatternColorModal && isPatternSwatchDropdownOpen"
-        >
-          <div
-            class="swatch"
-            :class="{ selected: selectedPatternSwatchId === swatchId }"
-            v-for="swatchId in swatchOrder"
-            :key="swatchId"
-          >
-            <div
-              class="swatch__color"
-              v-for="(color, i) in swatches[swatchId]"
-              :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{
-                selected: selectedPatternSwatchId === swatchId && selectedPatternColorIdx === i,
-              }"
-              @click="handlePatternSwatchClick(i, swatchId)"
-            ></div>
-          </div>
-          <div class="swatch">
-            <div
-              class="swatch__color"
-              v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]"
-              :key="color"
-              :style="{ background: getColorAsCss(color) }"
-              :class="{
-                selected:
-                  selectedPatternSwatchId === SPECIAL_PAPER_SWATCH_KEY &&
-                  selectedPatternColorIdx === i,
-              }"
-              @click="handlePatternSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"
-            ></div>
-          </div>
-          <button @click="handleAddSwatchClick">Add Swatch</button>
-        </div>
-      </div>
+      <ColorPicker
+        v-if="canvasStore.isPaperTool"
+        style="display: inline"
+        :ref="addColorPickerRef"
+        :swatchId="selectedPaperSwatchId"
+        :colorIdx="selectedPaperColorIdx"
+        :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
+        @change="handlePaperColorChange"
+      />
+      <ColorPicker
+        v-if="canvasStore.isPaperTool"
+        style="display: inline"
+        :ref="addColorPickerRef"
+        :swatchId="selectedPatternSwatchId"
+        :colorIdx="selectedPatternColorIdx"
+        :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
+        @change="handlePatternColorChange"
+      />
       <input
-        v-if="isPaperTool"
+        v-if="canvasStore.isPaperTool"
         type="number"
         min="0"
         max="100"
@@ -2539,7 +2164,7 @@ function togglePatternSwatchDropdown() {
         v-model="selectedPatternOpacity"
       />
       <input
-        v-if="isPaperTool"
+        v-if="canvasStore.isPaperTool"
         type="number"
         min="0"
         max="512"
@@ -2547,7 +2172,7 @@ function togglePatternSwatchDropdown() {
         v-model="selectedPatternStyles.lineSize"
       />
       <input
-        v-if="isPaperTool"
+        v-if="canvasStore.isPaperTool"
         type="number"
         min="0"
         max="512"
@@ -2863,67 +2488,9 @@ function togglePatternSwatchDropdown() {
   width: 100%;
   height: 100%;
 }
-
-.color-dropdown {
-  width: 300px;
-  position: absolute;
-  top: 30px;
-  left: 0;
-  z-index: 2;
-  background: white;
-}
-
-.swatch {
-  display: flex;
-  flex-flow: row nowrap;
-  overflow: hidden;
-}
-
-.swatch__color {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid black;
-  overflow: hidden;
-}
-
-.swatch__color.selected {
-  border: 1px solid red;
-}
-
-.swatch__color:after {
-  content: "";
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  background: inherit;
-}
-
-.swatch__color:before {
-  content: "";
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 0.2;
-  background: url("@/assets/transparent-bg.png") repeat center center;
-}
 </style>
 
 <style>
-.color-picker {
-  position: absolute;
-  top: 30px;
-  left: 0;
-}
-
-.color-picker .panel {
-  top: 0;
-}
-
 .hide-ruler-controls .moveable-ruler.moveable-control-box .moveable-rotation {
   display: none;
 }

@@ -1,3 +1,5 @@
+import type { IColorSwatches } from "@/types/core";
+
 export enum PageHistoryEvent {
   ADD_CANVAS_ELEMENT = 1,
   REMOVE_CANVAS_ELEMENT = 2,
@@ -83,7 +85,7 @@ export const TRANSPARENT_COLOR = { r: 0, g: 0, b: 0, a: 0 };
 export const SPECIAL_TOOL_SWATCH_KEY = "special-tool-swatch";
 export const SPECIAL_PAPER_SWATCH_KEY = "special-paper-swatch";
 export const DEFAULT_SWATCH_KEY = "default";
-export const DEFAULT_COLOR_SWATCHES = {
+export const DEFAULT_COLOR_SWATCHES: IColorSwatches = {
   [SPECIAL_TOOL_SWATCH_KEY]: [TRANSPARENT_COLOR],
   [SPECIAL_PAPER_SWATCH_KEY]: [
     { r: 255, g: 255, b: 255, a: 1 },
