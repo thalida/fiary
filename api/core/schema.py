@@ -177,6 +177,7 @@ class DeleteNotebook(graphene.relay.ClientIDMutation):
 class CreatePage(graphene.relay.ClientIDMutation):
     class Input:
         notebook_pk = graphene.UUID(required=True)
+        bg_color = graphene.String(required=False)
         pattern_style = graphene.String(required=False)
         pattern_color = graphene.String(required=False)
         pattern_size = graphene.Float(required=False)
@@ -191,6 +192,7 @@ class CreatePage(graphene.relay.ClientIDMutation):
         page = Page.objects.create(
             owner=info.context.user,
             notebook=notebook,
+            bg_color=input.get('bg_color', None),
             pattern_style=input.get('pattern_style', None),
             pattern_color=input.get('pattern_color', None),
             pattern_size=input.get('pattern_size', None),
@@ -204,6 +206,7 @@ class UpdatePage(graphene.relay.ClientIDMutation):
     class Input:
         pk = graphene.UUID(required=True)
         notebook_pk = graphene.UUID(required=False)
+        bg_color = graphene.String(required=False)
         pattern_style = graphene.String(required=False)
         pattern_color = graphene.String(required=False)
         pattern_size = graphene.Float(required=False)

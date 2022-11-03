@@ -7,7 +7,7 @@ export enum PageHistoryEvent {
   UPDATE_IMAGE_STYLES = 11,
 }
 
-export enum ElementTool {
+export enum CanvasTool {
   POINTER = 0,
   ERASER = 1,
   CLEAR_ALL = 2,
@@ -27,24 +27,29 @@ export enum ElementTool {
   PAPER = 70,
 }
 
-export const ELEMENT_TOOL_CHOICES = [
-  { key: ElementTool.POINTER, label: "Pointer" },
-  { key: ElementTool.PAPER, label: "Paper" },
-  { key: ElementTool.PEN, label: "Pen" },
-  { key: ElementTool.MARKER, label: "Marker" },
-  { key: ElementTool.HIGHLIGHTER, label: "Highlighter" },
-  { key: ElementTool.BLOB, label: "Blob" },
-  { key: ElementTool.CIRCLE, label: "Circle" },
-  { key: ElementTool.RECTANGLE, label: "Rectangle" },
-  { key: ElementTool.TRIANGLE, label: "Triangle" },
-  { key: ElementTool.LINE, label: "Line" },
-  { key: ElementTool.IMAGE, label: "Image" },
-  { key: ElementTool.CHECKBOX, label: "Checkbox" },
-  { key: ElementTool.TEXTBOX, label: "Textbox" },
-  { key: ElementTool.CUT, label: "Cut" },
-  { key: ElementTool.ERASER, label: "Eraser" },
-  { key: ElementTool.CLEAR_ALL, label: "Clear All" },
+export const CANVAS_TOOL_CHOICES = [
+  { key: CanvasTool.POINTER, label: "Pointer" },
+  { key: CanvasTool.PAPER, label: "Paper" },
+  { key: CanvasTool.PEN, label: "Pen" },
+  { key: CanvasTool.MARKER, label: "Marker" },
+  { key: CanvasTool.HIGHLIGHTER, label: "Highlighter" },
+  { key: CanvasTool.BLOB, label: "Blob" },
+  { key: CanvasTool.CIRCLE, label: "Circle" },
+  { key: CanvasTool.RECTANGLE, label: "Rectangle" },
+  { key: CanvasTool.TRIANGLE, label: "Triangle" },
+  { key: CanvasTool.LINE, label: "Line" },
+  { key: CanvasTool.IMAGE, label: "Image" },
+  { key: CanvasTool.CHECKBOX, label: "Checkbox" },
+  { key: CanvasTool.TEXTBOX, label: "Textbox" },
+  { key: CanvasTool.CUT, label: "Cut" },
+  { key: CanvasTool.ERASER, label: "Eraser" },
+  { key: CanvasTool.CLEAR_ALL, label: "Clear All" },
 ];
+
+export const CANVAS_LINE_TOOLS = [CanvasTool.PEN, CanvasTool.MARKER, CanvasTool.HIGHLIGHTER];
+export const CANVAS_PAPER_TOOLS = [CanvasTool.PAPER];
+export const CANVAS_INTERACTIVE_TOOLS = [CanvasTool.CHECKBOX, CanvasTool.TEXTBOX];
+export const CANVAS_NONDRAWING_TOOLS = [CanvasTool.PAPER, CanvasTool.POINTER, CanvasTool.CLEAR_ALL];
 
 export enum LineEndSide {
   NONE = 0,
@@ -116,3 +121,15 @@ export const DEFAULT_COLOR_SWATCHES = {
     ],
   ],
 };
+export const DEFAULT_ELEMENT_FILLCOLOR_INDEX = 0;
+export const DEFAULT_PAPER_COLOR_INDEX = 0;
+export const DEFAULT_PATTERN_COLOR_INDEX = 3;
+export const DEFAULT_PATTERN_OPACITY = 50;
+
+export enum PatternStyles {
+  SOLID = 1,
+  DOTS = 2,
+  SQUARES = 3,
+  LINES = 4,
+  ISOMETRIC = 5,
+}

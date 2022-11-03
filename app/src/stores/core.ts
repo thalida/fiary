@@ -141,6 +141,11 @@ export const useCoreStore = defineStore("core", () => {
       updatedAt: rawPage.updatedAt,
       createdAt: rawPage.createdAt,
       notebook: rawPage.notebook.pk,
+      bgColor: rawPage.bgColor,
+      patternColor: rawPage.patternColor,
+      patternStyle: rawPage.patternStyle,
+      patternSize: rawPage.patternSize,
+      patternSpacing: rawPage.patternSpacing,
     });
 
     return pages.value[pk];
@@ -160,6 +165,11 @@ export const useCoreStore = defineStore("core", () => {
       updatedAt: page.updatedAt,
       createdAt: page.createdAt,
       notebook: page.notebook.pk,
+      bgColor: page.bgColor,
+      patternColor: page.patternColor,
+      patternStyle: page.patternStyle,
+      patternSize: page.patternSize,
+      patternSpacing: page.patternSpacing,
     };
 
     notebooks.value[page.notebook.pk] = merge(notebooks.value[page.notebook.pk], page.notebook);

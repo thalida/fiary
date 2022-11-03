@@ -2,7 +2,7 @@
 import { computed, ref, watchEffect } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useCoreStore } from "@/stores/core";
-import PageCanvas from "@/components/PageCanvas.vue";
+import CanvasScene from "@/components/CanvasScene.vue";
 import type { TPrimaryKey } from "@/types/core";
 
 const authStore = useAuthStore();
@@ -36,6 +36,6 @@ watchEffect(() => {
       Loading...
     </div>
     <p v-else-if="isNotFound">Page not found.</p>
-    <PageCanvas v-else />
+    <CanvasScene v-else />
   </main>
 </template>

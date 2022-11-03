@@ -1,5 +1,5 @@
 mutation CreatePage($notebookPk: UUID!) {
-  createPage(input: {notebookPk: $notebookPk}) {
+  createPage(input: { notebookPk: $notebookPk }) {
     page {
       notebook {
         pk
@@ -8,6 +8,11 @@ mutation CreatePage($notebookPk: UUID!) {
       pk
       updatedAt
       createdAt
+      bgColor
+      patternStyle
+      patternColor
+      patternSize
+      patternSpacing
     }
   }
 }

@@ -10,24 +10,7 @@ import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
 import polygonClipping from "polygon-clipping";
 import Ftextarea from "./Ftextarea.vue";
-import patternComponents, { defaultPatternProps } from "@/components/patterns";
-import {
-  PageHistoryEvent as HistoryEvent,
-  ElementTool as Tool,
-  ELEMENT_TOOL_CHOICES as supportedTools,
-  LineEndSide,
-  LINE_END_SIDE_CHOICES as supportedLineEndSides,
-  LineEndStyle,
-  LINE_END_STYLE_CHOICES as supportedLineEndStyles,
-  PEN_SIZES as penSizes,
-  DEFAULT_PEN_SIZE,
-  TRANSPARENT_COLOR,
-  SPECIAL_TOOL_SWATCH_KEY,
-  SPECIAL_PAPER_SWATCH_KEY,
-  DEFAULT_SWATCH_KEY,
-  DEFAULT_COLOR_SWATCHES,
-  MAX_SWATCH_COLORS,
-} from "@/constants/core";
+import patternComponents, { defaultPatternProps } from "@/components/CanvasPatterns";
 
 const debugMode = ref(false);
 const isPasteMode = ref(false);
@@ -52,7 +35,7 @@ let activePanCoords = [];
 
 const windowDiag = Math.sqrt(
   canvasConfig.value.width * canvasConfig.value.width +
-  canvasConfig.value.height * canvasConfig.value.height
+    canvasConfig.value.height * canvasConfig.value.height
 );
 const drawingCanvas = ref<HTMLCanvasElement>();
 const interactiveCanvas = ref();
@@ -87,6 +70,15 @@ const imageTransform = ref({
   clipStyles: [0, 0, 0, 0],
 });
 
+enum HistoryEvent {
+  ADD_CANVAS_ELEMENT = 1,
+  REMOVE_CANVAS_ELEMENT = 2,
+  UPDATE_CANVAS_ELEMENT_STYLES = 3,
+  UPDATE_CANVAS_ELEMENT_OPTIONS = 4,
+  ADD_IMAGE_START = 10,
+  UPDATE_IMAGE_STYLES = 11,
+}
+
 const history = ref([] as any[]);
 const historyIndex = ref(-1);
 const hasUndo = computed(() => historyIndex.value >= 0);
@@ -120,6 +112,44 @@ const allowFingerDrawing = ref(true);
 const showRulerControls = computed(() => {
   return !isDrawing.value;
 });
+
+enum Tool {
+  POINTER = 0,
+  ERASER = 1,
+  CLEAR_ALL = 2,
+  PEN = 10,
+  MARKER = 11,
+  HIGHLIGHTER = 12,
+  BLOB = 20,
+  CIRCLE = 30,
+  RECTANGLE = 31,
+  TRIANGLE = 32,
+  LINE = 33,
+  CUT = 40,
+  PASTE = 41,
+  IMAGE = 50,
+  CHECKBOX = 60,
+  TEXTBOX = 61,
+  PAPER = 70,
+}
+const supportedTools = ref([
+  { key: Tool.POINTER, label: "Pointer" },
+  { key: Tool.PAPER, label: "Paper" },
+  { key: Tool.PEN, label: "Pen" },
+  { key: Tool.MARKER, label: "Marker" },
+  { key: Tool.HIGHLIGHTER, label: "Highlighter" },
+  { key: Tool.BLOB, label: "Blob" },
+  { key: Tool.CIRCLE, label: "Circle" },
+  { key: Tool.RECTANGLE, label: "Rectangle" },
+  { key: Tool.TRIANGLE, label: "Triangle" },
+  { key: Tool.LINE, label: "Line" },
+  { key: Tool.IMAGE, label: "Image" },
+  { key: Tool.CHECKBOX, label: "Checkbox" },
+  { key: Tool.TEXTBOX, label: "Textbox" },
+  { key: Tool.CUT, label: "Cut" },
+  { key: Tool.ERASER, label: "Eraser" },
+  { key: Tool.CLEAR_ALL, label: "Clear All" },
+]);
 const selectedTool = ref(Tool.PEN);
 const lineTools = [Tool.PEN, Tool.MARKER, Tool.HIGHLIGHTER];
 const paperTools = [Tool.PAPER];
@@ -128,12 +158,80 @@ const nonDrawingTools = [Tool.PAPER, Tool.POINTER, Tool.CLEAR_ALL];
 const isDrawingTool = computed(() => !nonDrawingTools.includes(selectedTool.value));
 const isPaperTool = computed(() => paperTools.includes(selectedTool.value));
 const isInteractiveTool = computed(() => interactiveTools.includes(selectedTool.value));
+
+enum LineEndSide {
+  NONE = 0,
+  ONE = 1,
+  BOTH = 2,
+}
+const supportedLineEndSides = ref([
+  { key: LineEndSide.NONE, label: "None" },
+  { key: LineEndSide.ONE, label: "One Side" },
+  { key: LineEndSide.BOTH, label: "Both Sides" },
+]);
 const selectedLineEndSide = ref(LineEndSide.NONE);
+
+enum LineEndStyle {
+  NONE = 0,
+  ARROW = 1,
+  CIRCLE = 2,
+  SQUARE = 3,
+}
+const supportedLineEndStyles = ref([
+  { key: LineEndStyle.NONE, label: "None" },
+  { key: LineEndStyle.ARROW, label: "Arrow" },
+  { key: LineEndStyle.CIRCLE, label: "Circle" },
+  { key: LineEndStyle.SQUARE, label: "Square" },
+]);
 const selectedLineEndStyle = ref(LineEndStyle.NONE);
-const penSize = ref(DEFAULT_PEN_SIZE);
-const swatches = ref(DEFAULT_COLOR_SWATCHES as any);
-const maxSwatchColors = ref(MAX_SWATCH_COLORS);
-const swatchOrder = ref([DEFAULT_SWATCH_KEY]);
+
+const penSizes = [5, 10, 20, 40, 60];
+const penSize = ref(40); // 20, 40, 60, 80
+
+const TRANSPARENT_COLOR = { r: 0, g: 0, b: 0, a: 0 };
+const SPECIAL_TOOL_SWATCH_KEY = "special-tool-swatch";
+const SPECIAL_PAPER_SWATCH_KEY = "special-paper-swatch";
+const swatches = ref({
+  [SPECIAL_TOOL_SWATCH_KEY]: [TRANSPARENT_COLOR],
+  [SPECIAL_PAPER_SWATCH_KEY]: [
+    { r: 255, g: 255, b: 255, a: 1 },
+    { r: 0, g: 0, b: 0, a: 1 },
+    { r: 255, g: 250, b: 232, a: 1 },
+    { r: 127, g: 127, b: 127, a: 1 },
+  ],
+  default: [
+    { r: 0, g: 0, b: 0, a: 1 },
+    { r: 255, g: 0, b: 0, a: 1 },
+    { r: 0, g: 255, b: 0, a: 1 },
+    { r: 0, g: 0, b: 255, a: 1 },
+    { r: 255, g: 255, b: 0, a: 1 },
+    { r: 0, g: 255, b: 255, a: 1 },
+    { r: 255, g: 0, b: 255, a: 1 },
+    [
+      {
+        percent: 0,
+        color: { r: 255, g: 0, b: 0, a: 1 },
+      },
+      {
+        percent: 100,
+        color: { r: 0, g: 0, b: 255, a: 1 },
+      },
+    ],
+    [
+      {
+        percent: 0,
+        color: { r: 0, g: 255, b: 0, a: 1 },
+      },
+      {
+        percent: 100,
+        color: { r: 0, g: 0, b: 255, a: 1 },
+      },
+    ],
+  ],
+} as any);
+const maxSwatchColors = ref(9);
+const swatchOrder = ref(["default"]);
+
 const selectedPaperSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY as string);
 const selectedPaperColorIdx = ref(0 as number);
 const selectedPaperColor = computed(
@@ -1065,10 +1163,12 @@ function getInteractiveElementTransform(element): string {
     x: transformMatrix.value.e / initTransformMatrix.a,
     y: transformMatrix.value.f / initTransformMatrix.a,
   };
-  const translate = `translate(${newOrigin.x + element.style.transform.translate[0] * htmlRelativeZoom
-    }px, ${newOrigin.y + element.style.transform.translate[1] * htmlRelativeZoom}px)`;
-  const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom}, ${element.style.transform.scale[1] * htmlRelativeZoom
-    })`;
+  const translate = `translate(${
+    newOrigin.x + element.style.transform.translate[0] * htmlRelativeZoom
+  }px, ${newOrigin.y + element.style.transform.translate[1] * htmlRelativeZoom}px)`;
+  const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom}, ${
+    element.style.transform.scale[1] * htmlRelativeZoom
+  })`;
   const rotate = `rotate(${element.style.transform.rotate}deg)`;
 
   const transformStr = `${translate} ${scale} ${rotate}`;
@@ -1889,8 +1989,9 @@ function setImageStyles(target, transform) {
   const rotate = `rotate(${nextTransform.rotate}deg)`;
 
   imagePreviewCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
-  imagePreviewCanvas.value.style.clipPath = `${nextTransform.clipType
-    }(${nextTransform.clipStyles.join(" ")})`;
+  imagePreviewCanvas.value.style.clipPath = `${
+    nextTransform.clipType
+  }(${nextTransform.clipStyles.join(" ")})`;
 
   if (typeof imageBackdropCanvas.value !== "undefined") {
     imageBackdropCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
@@ -2323,7 +2424,11 @@ function togglePatternSwatchDropdown() {
           </option>
         </select>
         <select v-model="selectedLineEndStyle">
-          <option v-for="endStyle in supportedLineEndStyles" :key="endStyle.key" :value="endStyle.key">
+          <option
+            v-for="endStyle in supportedLineEndStyles"
+            :key="endStyle.key"
+            :value="endStyle.key"
+          >
             {{ endStyle.label }}
           </option>
         </select>
@@ -2331,10 +2436,12 @@ function togglePatternSwatchDropdown() {
       <label v-else-if="selectedTool === Tool.IMAGE">
         <input type="file" accept="image/*" @change="handleImageUpload" />
       </label>
-      <label v-else-if="
-        (selectedTool === Tool.CHECKBOX || selectedTool === Tool.TEXTBOX) &&
-        !isInteractiveEditMode
-      ">
+      <label
+        v-else-if="
+          (selectedTool === Tool.CHECKBOX || selectedTool === Tool.TEXTBOX) &&
+          !isInteractiveEditMode
+        "
+      >
         <button @click="handleStartInteractiveEdit">Edit</button>
       </label>
 
@@ -2353,58 +2460,111 @@ function togglePatternSwatchDropdown() {
       </select>
       <div v-if="isDrawingTool" style="display: inline">
         <button @click="toggleFillSwatchDropdown">
-          <div class="swatch__color" :style="{ background: getColorAsCss(selectedFillColor) }"></div>
+          <div
+            class="swatch__color"
+            :style="{ background: getColorAsCss(selectedFillColor) }"
+          ></div>
         </button>
-        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditFillColorModal" :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
+        <ColorPicker
+          class="color-picker"
+          ref="colorPicker"
+          v-if="showEditFillColorModal"
+          :showPanelOnly="true"
+          :supportedModes="['solid', 'linear']"
+          :showOpacityPicker="false"
+          :showDegreePicker="false"
           :mode="Array.isArray(selectedFillColor) ? 'linear' : 'solid'"
           :color="Array.isArray(selectedFillColor) ? {} : selectedFillColor"
-          :gradients="Array.isArray(selectedFillColor) ? selectedFillColor : []" @colorChanged="handleFillColorChange">
+          :gradients="Array.isArray(selectedFillColor) ? selectedFillColor : []"
+          @colorChanged="handleFillColorChange"
+        >
         </ColorPicker>
         <div class="color-dropdown" v-if="!showEditFillColorModal && isFillSwatchDropdownOpen">
-          <div class="swatch" :class="{ selected: selectedFillSwatchId === swatchId }" v-for="swatchId in swatchOrder"
-            :key="swatchId">
-            <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
-              :style="{ background: getColorAsCss(color) }" :class="{
+          <div
+            class="swatch"
+            :class="{ selected: selectedFillSwatchId === swatchId }"
+            v-for="swatchId in swatchOrder"
+            :key="swatchId"
+          >
+            <div
+              class="swatch__color"
+              v-for="(color, i) in swatches[swatchId]"
+              :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{
                 selected: selectedFillSwatchId === swatchId && selectedFillColorIdx === i,
-              }" @click="handleFillSwatchClick(i, swatchId)"></div>
+              }"
+              @click="handleFillSwatchClick(i, swatchId)"
+            ></div>
           </div>
           <div class="swatch">
-            <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_TOOL_SWATCH_KEY]" :key="color"
-              :style="{ background: getColorAsCss(color) }" :class="{
+            <div
+              class="swatch__color"
+              v-for="(color, i) in swatches[SPECIAL_TOOL_SWATCH_KEY]"
+              :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{
                 selected:
                   selectedFillSwatchId === SPECIAL_TOOL_SWATCH_KEY && selectedFillColorIdx === i,
-              }" @click="handleFillSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"></div>
+              }"
+              @click="handleFillSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"
+            ></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
       <div v-if="isDrawingTool" style="display: inline">
         <button @click="toggleStrokeSwatchDropdown">
-          <div class="swatch__color" :style="{ background: getColorAsCss(selectedStrokeColor) }"></div>
+          <div
+            class="swatch__color"
+            :style="{ background: getColorAsCss(selectedStrokeColor) }"
+          ></div>
         </button>
-        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditStrokeColorModal" :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
+        <ColorPicker
+          class="color-picker"
+          ref="colorPicker"
+          v-if="showEditStrokeColorModal"
+          :showPanelOnly="true"
+          :supportedModes="['solid', 'linear']"
+          :showOpacityPicker="false"
+          :showDegreePicker="false"
           :mode="Array.isArray(selectedStrokeColor) ? 'linear' : 'solid'"
           :color="Array.isArray(selectedStrokeColor) ? {} : selectedStrokeColor"
           :gradients="Array.isArray(selectedStrokeColor) ? selectedStrokeColor : []"
-          @colorChanged="handleStrokeColorChange">
+          @colorChanged="handleStrokeColorChange"
+        >
         </ColorPicker>
         <div class="color-dropdown" v-if="!showEditStrokeColorModal && isStrokeSwatchDropdownOpen">
-          <div class="swatch" :class="{ selected: selectedStrokeSwatchId === swatchId }" v-for="swatchId in swatchOrder"
-            :key="swatchId">
-            <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
-              :style="{ background: getColorAsCss(color) }" :class="{
+          <div
+            class="swatch"
+            :class="{ selected: selectedStrokeSwatchId === swatchId }"
+            v-for="swatchId in swatchOrder"
+            :key="swatchId"
+          >
+            <div
+              class="swatch__color"
+              v-for="(color, i) in swatches[swatchId]"
+              :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{
                 selected: selectedStrokeSwatchId === swatchId && selectedStrokeColorIdx === i,
-              }" @click="handleStrokeSwatchClick(i, swatchId)"></div>
+              }"
+              @click="handleStrokeSwatchClick(i, swatchId)"
+            ></div>
           </div>
           <div class="swatch">
-            <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_TOOL_SWATCH_KEY]" :key="color"
-              :style="{ background: getColorAsCss(color) }" :class="{
+            <div
+              class="swatch__color"
+              v-for="(color, i) in swatches[SPECIAL_TOOL_SWATCH_KEY]"
+              :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{
                 selected:
                   selectedStrokeSwatchId === SPECIAL_TOOL_SWATCH_KEY &&
                   selectedStrokeColorIdx === i,
-              }" @click="handleStrokeSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"></div>
+              }"
+              @click="handleStrokeSwatchClick(i, SPECIAL_TOOL_SWATCH_KEY)"
+            ></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
@@ -2416,69 +2576,147 @@ function togglePatternSwatchDropdown() {
       </select>
       <div v-if="isPaperTool" style="display: inline">
         <button @click="togglePaperSwatchDropdown">
-          <div class="swatch__color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
+          <div
+            class="swatch__color"
+            :style="{ background: getColorAsCss(selectedPaperColor) }"
+          ></div>
         </button>
-        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditPaperColorModal" :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
+        <ColorPicker
+          class="color-picker"
+          ref="colorPicker"
+          v-if="showEditPaperColorModal"
+          :showPanelOnly="true"
+          :supportedModes="['solid', 'linear']"
+          :showOpacityPicker="false"
+          :showDegreePicker="false"
           :mode="Array.isArray(selectedPaperColor) ? 'linear' : 'solid'"
           :color="Array.isArray(selectedPaperColor) ? {} : selectedPaperColor"
           :gradients="Array.isArray(selectedPaperColor) ? selectedPaperColor : []"
-          @colorChanged="handlePaperColorChange">
+          @colorChanged="handlePaperColorChange"
+        >
         </ColorPicker>
         <div class="color-dropdown" v-if="!showEditPaperColorModal && isPaperSwatchDropdownOpen">
-          <div class="swatch" :class="{ selected: selectedPaperSwatchId === swatchId }" v-for="swatchId in swatchOrder"
-            :key="swatchId">
-            <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
-              :style="{ background: getColorAsCss(color) }" :class="{
+          <div
+            class="swatch"
+            :class="{ selected: selectedPaperSwatchId === swatchId }"
+            v-for="swatchId in swatchOrder"
+            :key="swatchId"
+          >
+            <div
+              class="swatch__color"
+              v-for="(color, i) in swatches[swatchId]"
+              :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{
                 selected: selectedPaperSwatchId === swatchId && selectedPaperColorIdx === i,
-              }" @click="handlePaperSwatchClick(i, swatchId)"></div>
+              }"
+              @click="handlePaperSwatchClick(i, swatchId)"
+            ></div>
           </div>
           <div class="swatch">
-            <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]" :key="color"
-              :style="{ background: getColorAsCss(color) }" :class="{
+            <div
+              class="swatch__color"
+              v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]"
+              :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{
                 selected:
                   selectedPaperSwatchId === SPECIAL_PAPER_SWATCH_KEY && selectedPaperColorIdx === i,
-              }" @click="handlePaperSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"></div>
+              }"
+              @click="handlePaperSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"
+            ></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
       <div v-if="isPaperTool" style="display: inline">
         <button @click="togglePatternSwatchDropdown">
-          <div class="swatch__color" :style="{ background: getColorAsCss(selectedPatternColor) }"></div>
+          <div
+            class="swatch__color"
+            :style="{ background: getColorAsCss(selectedPatternColor) }"
+          ></div>
         </button>
-        <ColorPicker class="color-picker" ref="colorPicker" v-if="showEditPatternColorModal" :showPanelOnly="true"
-          :supportedModes="['solid', 'linear']" :showOpacityPicker="false" :showDegreePicker="false"
+        <ColorPicker
+          class="color-picker"
+          ref="colorPicker"
+          v-if="showEditPatternColorModal"
+          :showPanelOnly="true"
+          :supportedModes="['solid', 'linear']"
+          :showOpacityPicker="false"
+          :showDegreePicker="false"
           :mode="Array.isArray(selectedPatternColor) ? 'linear' : 'solid'"
           :color="Array.isArray(selectedPatternColor) ? {} : selectedPatternColor"
           :gradients="Array.isArray(selectedPatternColor) ? selectedPatternColor : []"
-          @colorChanged="handlePatternColorChange">
+          @colorChanged="handlePatternColorChange"
+        >
         </ColorPicker>
-        <div class="color-dropdown" v-if="!showEditPatternColorModal && isPatternSwatchDropdownOpen">
-          <div class="swatch" :class="{ selected: selectedPatternSwatchId === swatchId }"
-            v-for="swatchId in swatchOrder" :key="swatchId">
-            <div class="swatch__color" v-for="(color, i) in swatches[swatchId]" :key="color"
-              :style="{ background: getColorAsCss(color) }" :class="{
+        <div
+          class="color-dropdown"
+          v-if="!showEditPatternColorModal && isPatternSwatchDropdownOpen"
+        >
+          <div
+            class="swatch"
+            :class="{ selected: selectedPatternSwatchId === swatchId }"
+            v-for="swatchId in swatchOrder"
+            :key="swatchId"
+          >
+            <div
+              class="swatch__color"
+              v-for="(color, i) in swatches[swatchId]"
+              :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{
                 selected: selectedPatternSwatchId === swatchId && selectedPatternColorIdx === i,
-              }" @click="handlePatternSwatchClick(i, swatchId)"></div>
+              }"
+              @click="handlePatternSwatchClick(i, swatchId)"
+            ></div>
           </div>
           <div class="swatch">
-            <div class="swatch__color" v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]" :key="color"
-              :style="{ background: getColorAsCss(color) }" :class="{
+            <div
+              class="swatch__color"
+              v-for="(color, i) in swatches[SPECIAL_PAPER_SWATCH_KEY]"
+              :key="color"
+              :style="{ background: getColorAsCss(color) }"
+              :class="{
                 selected:
                   selectedPatternSwatchId === SPECIAL_PAPER_SWATCH_KEY &&
                   selectedPatternColorIdx === i,
-              }" @click="handlePatternSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"></div>
+              }"
+              @click="handlePatternSwatchClick(i, SPECIAL_PAPER_SWATCH_KEY)"
+            ></div>
           </div>
           <button @click="handleAddSwatchClick">Add Swatch</button>
         </div>
       </div>
-      <input v-if="isPaperTool" type="number" min="0" max="100" step="1" v-model="selectedPatternOpacity" />
-      <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternStyles.lineSize" />
-      <input v-if="isPaperTool" type="number" min="0" max="512" step="1" v-model="selectedPatternStyles.spacing" />
+      <input
+        v-if="isPaperTool"
+        type="number"
+        min="0"
+        max="100"
+        step="1"
+        v-model="selectedPatternOpacity"
+      />
+      <input
+        v-if="isPaperTool"
+        type="number"
+        min="0"
+        max="512"
+        step="1"
+        v-model="selectedPatternStyles.lineSize"
+      />
+      <input
+        v-if="isPaperTool"
+        type="number"
+        min="0"
+        max="512"
+        step="1"
+        v-model="selectedPatternStyles.spacing"
+      />
 
       <label><input type="checkbox" v-model="ruler.isVisible" /> Show Ruler?</label>
-      <label><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label>
+      <label
+        ><input type="checkbox" v-model="detectedStlyus" :disabled="true" /> Detected Stylus?</label
+      >
       <label><input type="checkbox" v-model="isStylus" :disabled="true" /> isStylus?</label>
       <label><input type="checkbox" v-model="allowFingerDrawing" /> finger?</label>
       <label><input type="checkbox" v-model="debugMode" /> debug?</label>
@@ -2488,10 +2726,20 @@ function togglePatternSwatchDropdown() {
       <button :disabled="!hasRedo" @click="handleRedoClick">Redo</button>
     </div>
     <!-- END TOOLS -->
-    <div class="surface" @mousedown="handleCanvasTouchStart" @touchstart="handleCanvasTouchStart"
-      @mouseup="handleCanvasTouchEnd" @touchend="handleCanvasTouchEnd" @mousemove="handleCanvasTouchMove"
-      @touchmove="handleCanvasTouchMove">
-      <div class="ruler-layer" v-if="ruler.isVisible" :class="{ 'hide-ruler-controls': !showRulerControls }">
+    <div
+      class="surface"
+      @mousedown="handleCanvasTouchStart"
+      @touchstart="handleCanvasTouchStart"
+      @mouseup="handleCanvasTouchEnd"
+      @touchend="handleCanvasTouchEnd"
+      @mousemove="handleCanvasTouchMove"
+      @touchmove="handleCanvasTouchMove"
+    >
+      <div
+        class="ruler-layer"
+        v-if="ruler.isVisible"
+        :class="{ 'hide-ruler-controls': !showRulerControls }"
+      >
         <div class="ruler" ref="rulerElement" :style="{ width: ruler.width + 'px' }">
           <div class="ruler__label">
             {{ Math.round(ruler.transform.rotate) }}&deg;
@@ -2508,10 +2756,21 @@ function togglePatternSwatchDropdown() {
           </div>
           <div class="ruler__tool" :style="{ width: ruler.width + 'px' }"></div>
         </div>
-        <MoveableVue ref="moveableRuler" v-if="ruler.isVisible" className="moveable-ruler" :target="['.ruler']"
-          :pinchable="['rotatable']" :draggable="!isDrawing" :rotatable="!isDrawing" :scalable="false"
-          :throttleRotate="1" @drag="onRulerDrag" @rotate="onRulerRotate" @renderStart="onRulerMoveStart"
-          @renderEnd="onRulerMoveEnd" />
+        <MoveableVue
+          ref="moveableRuler"
+          v-if="ruler.isVisible"
+          className="moveable-ruler"
+          :target="['.ruler']"
+          :pinchable="['rotatable']"
+          :draggable="!isDrawing"
+          :rotatable="!isDrawing"
+          :scalable="false"
+          :throttleRotate="1"
+          @drag="onRulerDrag"
+          @rotate="onRulerRotate"
+          @renderStart="onRulerMoveStart"
+          @renderEnd="onRulerMoveEnd"
+        />
       </div>
 
       <div class="image-layer" v-if="isAddImageMode">
@@ -2519,10 +2778,22 @@ function togglePatternSwatchDropdown() {
           <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
           <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>
         </div>
-        <MoveableVue ref="moveableImage" className="moveable-image" :target="['.image-canvas--preview']"
-          :pinchable="true" :draggable="true" :rotatable="true" :scalable="true" :clippable="true"
-          :clipTargetBounds="true" :keepRatio="true" @drag="onImageDrag" @rotate="onImageRotate" @scale="onImageScale"
-          @clip="onImageClip" />
+        <MoveableVue
+          ref="moveableImage"
+          className="moveable-image"
+          :target="['.image-canvas--preview']"
+          :pinchable="true"
+          :draggable="true"
+          :rotatable="true"
+          :scalable="true"
+          :clippable="true"
+          :clipTargetBounds="true"
+          :keepRatio="true"
+          @drag="onImageDrag"
+          @rotate="onImageRotate"
+          @scale="onImageScale"
+          @clip="onImageClip"
+        />
       </div>
 
       <div class="paste-layer" v-if="isPasteMode" ref="pasteLayer">
@@ -2530,44 +2801,85 @@ function togglePatternSwatchDropdown() {
       </div>
 
       <div class="drawing-layer">
-        <div ref="interactiveCanvas" class="interactive-canvas" :style="{
-          width: canvasConfig.width + 'px',
-          height: canvasConfig.height + 'px',
-          transform: interactiveCanvasTransform,
-        }">
+        <div
+          ref="interactiveCanvas"
+          class="interactive-canvas"
+          :style="{
+            width: canvasConfig.width + 'px',
+            height: canvasConfig.height + 'px',
+            transform: interactiveCanvasTransform,
+          }"
+        >
           <template v-for="(elementId, index) in htmlElements" :key="index">
-            <input v-if="elements[elementId].tool === Tool.CHECKBOX" class="interactiveElement"
-              v-model="elements[elementId].toolOptions.isChecked" :data-element-id="elements[elementId].id"
-              type="checkbox" :style="{
+            <input
+              v-if="elements[elementId].tool === Tool.CHECKBOX"
+              class="interactiveElement"
+              v-model="elements[elementId].toolOptions.isChecked"
+              :data-element-id="elements[elementId].id"
+              type="checkbox"
+              :style="{
                 position: 'absolute',
                 transform: getInteractiveElementTransform(elements[elementId]),
-              }" @mousedown="handleInteractiveElementEvent" @touchstart="handleInteractiveElementEvent"
-              @mouseup="handleInteractiveElementEvent" @touchend="handleInteractiveElementEvent"
-              @mousemove="handleInteractiveElementEvent" @touchmove="handleInteractiveElementEvent" />
-            <Ftextarea v-else-if="elements[elementId].tool === Tool.TEXTBOX" :data-element-id="elements[elementId].id"
-              class="interactiveElement" :style="{
+              }"
+              @mousedown="handleInteractiveElementEvent"
+              @touchstart="handleInteractiveElementEvent"
+              @mouseup="handleInteractiveElementEvent"
+              @touchend="handleInteractiveElementEvent"
+              @mousemove="handleInteractiveElementEvent"
+              @touchmove="handleInteractiveElementEvent"
+            />
+            <Ftextarea
+              v-else-if="elements[elementId].tool === Tool.TEXTBOX"
+              :data-element-id="elements[elementId].id"
+              class="interactiveElement"
+              :style="{
                 position: 'absolute',
                 transform: getInteractiveElementTransform(elements[elementId]),
-              }" :element="elements[elementId]" :is-active="elements[elementId].id === activeTextbox"
-              :colorSwatches="swatches" @change="handleTextboxChange" @focus="handleTextboxFocus"
-              @blur="handleTextboxBlur" @mousedown="handleInteractiveElementEvent"
-              @touchstart="handleInteractiveElementEvent" @mouseup="handleInteractiveElementEvent"
-              @touchend="handleInteractiveElementEvent" @mousemove="handleInteractiveElementEvent"
-              @touchmove="handleInteractiveElementEvent" />
+              }"
+              :element="elements[elementId]"
+              :is-active="elements[elementId].id === activeTextbox"
+              :colorSwatches="swatches"
+              @change="handleTextboxChange"
+              @focus="handleTextboxFocus"
+              @blur="handleTextboxBlur"
+              @mousedown="handleInteractiveElementEvent"
+              @touchstart="handleInteractiveElementEvent"
+              @mouseup="handleInteractiveElementEvent"
+              @touchend="handleInteractiveElementEvent"
+              @mousemove="handleInteractiveElementEvent"
+              @touchmove="handleInteractiveElementEvent"
+            />
           </template>
         </div>
-        <canvas class="drawing-canvas" ref="drawingCanvas" :width="canvasConfig.width" :height="canvasConfig.height">
+        <canvas
+          class="drawing-canvas"
+          ref="drawingCanvas"
+          :width="canvasConfig.width"
+          :height="canvasConfig.height"
+        >
         </canvas>
       </div>
 
       <div class="paper-layer">
         <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
         <svg class="paper-pattern" width="100%" height="100%">
-          <component id="paper-svg-pattern" :is="selectedPaperPattern.COMPONENT"
-            :fillColor="getColorAsCss(selectedPatternColor)" :lineSize="paperPatternTransform.lineSize"
-            :spacing="paperPatternTransform.spacing" :x="paperPatternTransform.x" :y="paperPatternTransform.y" />
-          <rect x="0" y="0" width="100%" height="100%" fill="url(#paper-svg-pattern)"
-            :opacity="selectedPatternOpacity / 100"></rect>
+          <component
+            id="paper-svg-pattern"
+            :is="selectedPaperPattern.COMPONENT"
+            :fillColor="getColorAsCss(selectedPatternColor)"
+            :lineSize="paperPatternTransform.lineSize"
+            :spacing="paperPatternTransform.spacing"
+            :x="paperPatternTransform.x"
+            :y="paperPatternTransform.y"
+          />
+          <rect
+            x="0"
+            y="0"
+            width="100%"
+            height="100%"
+            fill="url(#paper-svg-pattern)"
+            :opacity="selectedPatternOpacity / 100"
+          ></rect>
         </svg>
       </div>
     </div>

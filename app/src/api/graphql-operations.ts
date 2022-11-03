@@ -94,6 +94,20 @@ export enum CoreElementToolChoices {
   A_70 = "A_70",
 }
 
+/** An enumeration. */
+export enum CorePagePatternStyleChoices {
+  /** Solid */
+  A_1 = "A_1",
+  /** Dots */
+  A_2 = "A_2",
+  /** Squares */
+  A_3 = "A_3",
+  /** Lines */
+  A_4 = "A_4",
+  /** Isometric */
+  A_5 = "A_5",
+}
+
 export type CreateElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   fillColor: Scalars["String"];
@@ -125,6 +139,7 @@ export type CreateNotebookPayload = {
 };
 
 export type CreatePageInput = {
+  bgColor?: InputMaybe<Scalars["String"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookPk: Scalars["UUID"];
   patternColor?: InputMaybe<Scalars["String"]>;
@@ -365,7 +380,7 @@ export type PageInfo = {
 
 export type PageNode = Node & {
   __typename?: "PageNode";
-  color?: Maybe<Scalars["String"]>;
+  bgColor?: Maybe<Scalars["String"]>;
   createdAt: Scalars["DateTime"];
   elements: ElementNodeConnection;
   /** The ID of the object */
@@ -375,7 +390,7 @@ export type PageNode = Node & {
   patternColor?: Maybe<Scalars["String"]>;
   patternSize?: Maybe<Scalars["Float"]>;
   patternSpacing?: Maybe<Scalars["Float"]>;
-  patternStyle?: Maybe<Scalars["String"]>;
+  patternStyle: CorePagePatternStyleChoices;
   pk: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
@@ -626,6 +641,7 @@ export type UpdateNotebookPayload = {
 };
 
 export type UpdatePageInput = {
+  bgColor?: InputMaybe<Scalars["String"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookPk?: InputMaybe<Scalars["UUID"]>;
   patternColor?: InputMaybe<Scalars["String"]>;
@@ -730,6 +746,38 @@ export type VerifyPayload = {
   payload: Scalars["GenericScalar"];
 };
 
+export type CreateElementMutationVariables = Exact<{
+  pagePk: Scalars["UUID"];
+  tool: Scalars["Int"];
+  fillColor: Scalars["String"];
+  strokeColor: Scalars["String"];
+  size: Scalars["Float"];
+  isRulerLine: Scalars["Boolean"];
+  points: Array<InputMaybe<Scalars["JSONString"]>> | InputMaybe<Scalars["JSONString"]>;
+  options?: InputMaybe<Scalars["JSONString"]>;
+}>;
+
+export type CreateElementMutation = {
+  __typename?: "Mutation";
+  createElement?: {
+    __typename?: "CreateElementPayload";
+    element?: {
+      __typename?: "ElementNode";
+      pk: any;
+      updatedAt: any;
+      createdAt: any;
+      tool?: CoreElementToolChoices | null;
+      fillColor?: string | null;
+      strokeColor?: string | null;
+      size?: number | null;
+      isRulerLine: boolean;
+      points: Array<any>;
+      options?: any | null;
+      page: { __typename?: "PageNode"; pk: any };
+    } | null;
+  } | null;
+};
+
 export type CreateNotebookMutationVariables = Exact<{
   bookshelfPk: Scalars["UUID"];
   title?: InputMaybe<Scalars["String"]>;
@@ -764,6 +812,11 @@ export type CreatePageMutation = {
       pk: any;
       updatedAt: any;
       createdAt: any;
+      bgColor?: string | null;
+      patternStyle: CorePagePatternStyleChoices;
+      patternColor?: string | null;
+      patternSize?: number | null;
+      patternSpacing?: number | null;
       notebook: { __typename?: "NotebookNode"; pk: any; pageOrder: Array<any> };
     } | null;
   } | null;
@@ -820,6 +873,11 @@ export type MyPagesQuery = {
         pk: any;
         updatedAt: any;
         createdAt: any;
+        bgColor?: string | null;
+        patternStyle: CorePagePatternStyleChoices;
+        patternColor?: string | null;
+        patternSize?: number | null;
+        patternSpacing?: number | null;
         notebook: { __typename?: "NotebookNode"; pk: any };
       } | null;
     } | null>;
@@ -921,6 +979,174 @@ export type MeQuery = {
   me?: { __typename?: "UserNode"; username: string; pk: any; id: string } | null;
 };
 
+export const CreateElementDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "CreateElement" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "pagePk" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "tool" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "fillColor" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "strokeColor" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "size" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isRulerLine" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "points" } },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "ListType",
+              type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+            },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "options" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createElement" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "pagePk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "pagePk" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "tool" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "tool" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "fillColor" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "fillColor" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "strokeColor" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "strokeColor" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "size" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "size" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isRulerLine" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isRulerLine" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "points" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "points" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "options" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "options" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "element" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "page" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "pk" } }],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "tool" } },
+                      { kind: "Field", name: { kind: "Name", value: "fillColor" } },
+                      { kind: "Field", name: { kind: "Name", value: "strokeColor" } },
+                      { kind: "Field", name: { kind: "Name", value: "size" } },
+                      { kind: "Field", name: { kind: "Name", value: "isRulerLine" } },
+                      { kind: "Field", name: { kind: "Name", value: "points" } },
+                      { kind: "Field", name: { kind: "Name", value: "options" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<CreateElementMutation, CreateElementMutationVariables>;
 export const CreateNotebookDocument = {
   kind: "Document",
   definitions: [
@@ -1068,6 +1294,11 @@ export const CreatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "pk" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "bgColor" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternStyle" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternColor" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternSize" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                     ],
                   },
                 },
@@ -1257,6 +1488,11 @@ export const MyPagesDocument = {
                             { kind: "Field", name: { kind: "Name", value: "pk" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                            { kind: "Field", name: { kind: "Name", value: "bgColor" } },
+                            { kind: "Field", name: { kind: "Name", value: "patternStyle" } },
+                            { kind: "Field", name: { kind: "Name", value: "patternColor" } },
+                            { kind: "Field", name: { kind: "Name", value: "patternSize" } },
+                            { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                           ],
                         },
                       },

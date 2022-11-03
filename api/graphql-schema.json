@@ -2710,7 +2710,7 @@
               "deprecationReason": null,
               "description": null,
               "isDeprecated": false,
-              "name": "color",
+              "name": "bgColor",
               "type": {
                 "kind": "SCALAR",
                 "name": "String",
@@ -2724,9 +2724,13 @@
               "isDeprecated": false,
               "name": "patternStyle",
               "type": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "ENUM",
+                  "name": "CorePagePatternStyleChoices",
+                  "ofType": null
+                }
               }
             },
             {
@@ -2889,6 +2893,47 @@
           ],
           "kind": "OBJECT",
           "name": "PageNode",
+          "possibleTypes": null
+        },
+        {
+          "description": "An enumeration.",
+          "enumValues": [
+            {
+              "deprecationReason": null,
+              "description": "Solid",
+              "isDeprecated": false,
+              "name": "A_1"
+            },
+            {
+              "deprecationReason": null,
+              "description": "Dots",
+              "isDeprecated": false,
+              "name": "A_2"
+            },
+            {
+              "deprecationReason": null,
+              "description": "Squares",
+              "isDeprecated": false,
+              "name": "A_3"
+            },
+            {
+              "deprecationReason": null,
+              "description": "Lines",
+              "isDeprecated": false,
+              "name": "A_4"
+            },
+            {
+              "deprecationReason": null,
+              "description": "Isometric",
+              "isDeprecated": false,
+              "name": "A_5"
+            }
+          ],
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "kind": "ENUM",
+          "name": "CorePagePatternStyleChoices",
           "possibleTypes": null
         },
         {
@@ -4044,6 +4089,16 @@
             {
               "defaultValue": null,
               "description": null,
+              "name": "bgColor",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            {
+              "defaultValue": null,
+              "description": null,
               "name": "patternStyle",
               "type": {
                 "kind": "SCALAR",
@@ -4158,6 +4213,16 @@
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
+                "ofType": null
+              }
+            },
+            {
+              "defaultValue": null,
+              "description": null,
+              "name": "bgColor",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
                 "ofType": null
               }
             },

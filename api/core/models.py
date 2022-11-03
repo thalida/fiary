@@ -2,7 +2,7 @@ import uuid
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.dispatch import receiver
-from .choices import Tools
+from .choices import PatternStyles, Tools
 
 
 class Room(models.Model):
@@ -145,17 +145,15 @@ class Page(models.Model):
         on_delete=models.CASCADE
     )
 
-    color = models.CharField(
+    bg_color = models.CharField(
         max_length=255,
         default=None,
         blank=True,
         null=True
     )
-    pattern_style = models.CharField(
-        max_length=255,
-        default=None,
-        blank=True,
-        null=True
+    pattern_style = models.IntegerField(
+        choices=PatternStyles.choices,
+        default=PatternStyles.SOLID
     )
     pattern_color = models.CharField(
         max_length=255,

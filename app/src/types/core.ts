@@ -1,3 +1,5 @@
+import type { PatternStyles } from "@/constants/core";
+
 export type TPrimaryKey = string;
 
 export interface IRooms {
@@ -45,6 +47,11 @@ export interface IPage {
   updatedAt: string;
   createdAt: string;
   notebook: TPrimaryKey;
+  bgColor: string | null | undefined;
+  patternStyle: PatternStyles | null | undefined;
+  patternColor: string | null | undefined;
+  patternSize: number | null | undefined;
+  patternSpacing: number | null | undefined;
 }
 
 export interface IElements {
@@ -57,17 +64,32 @@ export interface IElement {
   createdAt: string;
   page: TPrimaryKey;
   tool: number;
-  fill_color: string;
-  stroke_color: string;
+  fillColor: string;
+  strokeColor: string;
   size: number;
-  is_ruler_line: boolean;
+  isRulerLine: boolean;
   points: IElementPoint[];
   options: IElementOptions;
+
+  id: TPrimaryKey;
+  isDeleted: boolean;
+  isHTMLElement: boolean;
+  isDrawingCached: boolean;
+  isCompletedCut: boolean;
+  composition: string;
+  cache: any;
+  toolOptions: any;
+  dimensions: any;
+  tmpFromStyle: any;
+  style: any;
+  freehandOptions: any;
+  smoothPoints: any;
 }
 
 export interface IElementPoint {
   x: number;
   y: number;
+  pressure?: number;
 }
 
 export interface IElementOptions {

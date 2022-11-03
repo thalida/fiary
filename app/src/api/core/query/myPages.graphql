@@ -8,6 +8,11 @@ query MyPages($pk: ID) {
         pk
         updatedAt
         createdAt
+        bgColor
+        patternStyle
+        patternColor
+        patternSize
+        patternSpacing
       }
     }
   }

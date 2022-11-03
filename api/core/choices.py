@@ -19,3 +19,11 @@ class Tools(models.IntegerChoices):
     CHECKBOX = 60,
     TEXTBOX = 61,
     PAPER = 70,
+
+
+class PatternStyles(models.IntegerChoices):
+    SOLID = 1,
+    DOTS = 2,
+    SQUARES = 3,
+    LINES = 4,
+    ISOMETRIC = 5,
