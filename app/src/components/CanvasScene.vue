@@ -7,7 +7,6 @@ import Moveable from "moveable";
 import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
 import Ftextarea from "./CanvasTextarea.vue";
-import patternComponents, { defaultPatternProps } from "@/components/CanvasPatterns";
 
 import { useCanvasStore } from "@/stores/canvas";
 import {
@@ -59,13 +58,6 @@ const moveableRuler = ref();
 let moveablePaste: any = null;
 const moveableImage = ref();
 const rulerElement = ref();
-
-const paperPatterns = ref(patternComponents);
-const patternStyles = ref(defaultPatternProps);
-const selectedPaperPatternIdx = ref(0);
-const selectedPaperPattern = computed(() => paperPatterns.value[selectedPaperPatternIdx.value]);
-const selectedPatternStyles = computed(() => patternStyles.value[selectedPaperPatternIdx.value]);
-
 const colorPickerRefs: any[] = [];
 
 onMounted(() => {
@@ -122,12 +114,6 @@ function handleToolChange(event) {
   activeTextbox.value = null;
 
   event.target.blur();
-}
-
-function checkIsStylus(event) {
-  const force = event.touches ? event.touches[0]["force"] : 0;
-  canvasStore.isStylus = force > 0;
-  canvasStore.detectedStylus = canvasStore.detectedStylus || canvasStore.isStylus;
 }
 
 function isDrawingAllowed(isDrawingOverride = false) {
@@ -465,34 +451,8 @@ function getSvgPathFromStroke(stroke) {
   return d.join(" ");
 }
 
-function getFlatSvgPathFromStroke(stroke) {
-  return getSvgPathFromStroke(stroke);
-  // const faces = polygonClipping.union([stroke])
-
-  // const d = []
-
-  // faces.forEach((face) =>
-  //   face.forEach((points) => {
-  //     d.push(getSvgPathFromStroke(points))
-  //   })
-  // )
-
-  // return d.join(' ')
-}
-
-function getCanvasElement(elementId) {
-  return canvasStore.elements[elementId];
-}
-
-function setCanvasElement(element) {
-  canvasStore.elements[element.id] = element;
-
-  return canvasStore.elements[element.id];
-}
-
 function createCanvasElement(element) {
-  setCanvasElement(element);
-  canvasStore.elementOrder.push(element.id);
+  canvasStore.setElement(element);
 
   const updatedElement = showCanvasElement(element.id);
   const historyEvent: any = {
@@ -521,7 +481,7 @@ function deleteCanvasElement(elementId, trackHistory = true) {
 }
 
 function showCanvasElement(elementId) {
-  const element = getCanvasElement(elementId);
+  const element = canvasStore.elementById(elementId);
   element.isDeleted = false;
 
   if (element.tool === Tool.CLEAR_ALL) {
@@ -534,7 +494,7 @@ function showCanvasElement(elementId) {
 }
 
 function hideCanvasElement(elementId) {
-  const element = getCanvasElement(elementId);
+  const element = canvasStore.elementById(elementId);
   element.isDeleted = true;
 
   if (element.tool === Tool.CLEAR_ALL) {
@@ -712,7 +672,7 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.beginPath();
     const strokePoints = element.smoothPoints.stroke;
     ctx.moveTo(strokePoints[0][0], strokePoints[0][1]);
-    const strokeData = getFlatSvgPathFromStroke(strokePoints);
+    const strokeData = getSvgPathFromStroke(strokePoints);
     const myStroke = new Path2D(strokeData);
     ctx.fillStyle = ctx.strokeStyle;
     ctx.fill(myStroke);
@@ -726,7 +686,7 @@ function drawElement(canvas, element, isCaching = false) {
     ctx.beginPath();
     const pathPoints = element.smoothPoints.path;
     ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
-    const pathData = getFlatSvgPathFromStroke(pathPoints);
+    const pathData = getSvgPathFromStroke(pathPoints);
     const myPath = new Path2D(pathData);
     ctx.fill(myPath);
     ctx.restore();
@@ -943,7 +903,7 @@ function drawElements() {
   const drawElementIds = canvasStore.activeElements;
   for (let i = 0; i < drawElementIds.length; i += 1) {
     const elementId = drawElementIds[i];
-    const element = getCanvasElement(elementId);
+    const element = canvasStore.elementById(elementId);
     drawElement(drawingCanvas.value, element);
   }
 }
@@ -1031,7 +991,7 @@ function handleAddTextbox(pos) {
 
 function handleClearAll() {
   const lastElementId = canvasStore.lastActiveElementId;
-  const lastElement = getCanvasElement(lastElementId);
+  const lastElement = canvasStore.elementById(lastElementId);
   if (
     canvasStore.elementOrder.length === 0 ||
     (canvasStore.elementOrder.length > 0 && lastElement.tool === Tool.CLEAR_ALL)
@@ -1089,7 +1049,7 @@ async function handlePasteStart() {
   }
 
   const cutSelectionId = canvasStore.activeElements[canvasStore.activeElements.length - 1];
-  const cutSelection = getCanvasElement(cutSelectionId);
+  const cutSelection = canvasStore.elementById(cutSelectionId);
 
   if (!cutSelection.isDrawingCached) {
     cutSelection.isCompletedCut = true;
@@ -1120,7 +1080,7 @@ async function handlePasteStart() {
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
   for (let i = 0; i < canvasStore.activeElements.length - 1; i += 1) {
     const elementId = canvasStore.activeElements[i];
-    const element = getCanvasElement(elementId);
+    const element = canvasStore.elementById(elementId);
     drawElement(pasteCanvas.value, element);
   }
   const cutSelectionClip = cloneDeep(cutSelection);
@@ -1153,7 +1113,7 @@ function handlePasteEnd() {
   }
 
   const cutSelectionId = canvasStore.activeElements[canvasStore.activeElements.length - 1];
-  const cutSelection = getCanvasElement(cutSelectionId);
+  const cutSelection = canvasStore.elementById(cutSelectionId);
   const moveableRect = moveablePaste.getRect();
   const pasteElement = {
     id: uuidv4(),
@@ -1423,8 +1383,8 @@ function setRenderTransforms(matrix: DOMMatrix | null | undefined = null) {
     paperPatternTransform.value.y = matrix.f / initMatrixA;
   }
 
-  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
-  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / relativeZoom;
+  paperPatternTransform.value.lineSize = canvasStore.selectedPatternStyles.lineSize / relativeZoom;
+  paperPatternTransform.value.spacing = canvasStore.selectedPatternStyles.spacing / relativeZoom;
 }
 
 function handlePanTransform(event, isStart = false) {
@@ -1513,7 +1473,7 @@ function handleCanvasTouchStart(event: Event) {
     return;
   }
 
-  checkIsStylus(event);
+  canvasStore.setIsStylus(event);
 
   if (!isDrawingAllowed(true) || drawingCanvas.value === null) {
     return;
@@ -1598,7 +1558,7 @@ function handleCanvasTouchMove(event: Event) {
   }
 
   const lastElementId = canvasStore.elementOrder[canvasStore.elementOrder.length - 1];
-  const lastElement = getCanvasElement(lastElementId);
+  const lastElement = canvasStore.elementById(lastElementId);
   const followRuler = lastElement.isRulerLine || !CANVAS_LINE_TOOLS.includes(lastElement.tool);
   const pos = getDrawPos(drawingCanvas.value, event, followRuler);
   const pressure = getPressure(event);
@@ -1665,7 +1625,7 @@ function handleCanvasTouchEnd(event) {
   }
 
   const lastElementId = canvasStore.elementOrder[canvasStore.elementOrder.length - 1];
-  const lastElement = getCanvasElement(lastElementId);
+  const lastElement = canvasStore.elementById(lastElementId);
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = calculateDimensions(lastElement);
 
@@ -1834,14 +1794,14 @@ function handleUndoClick() {
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     cancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = getCanvasElement(action.elementId);
+    const element = canvasStore.elementById(action.elementId);
     redoPaste = element.tool === Tool.PASTE;
     redoAddImage = element.tool === Tool.IMAGE;
     hideCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     showCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = getCanvasElement(action.elementId);
+    const element = canvasStore.elementById(action.elementId);
     element.style = cloneDeep(action.from);
   }
 
@@ -1863,13 +1823,13 @@ function handleRedoClick() {
   let redoAddImage = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = getCanvasElement(action.elementId);
+    const element = canvasStore.elementById(action.elementId);
     redoPaste = element.tool === Tool.CUT;
     showCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     hideCanvasElement(action.elementId);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = getCanvasElement(action.elementId);
+    const element = canvasStore.elementById(action.elementId);
     element.style = cloneDeep(action.to);
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     redoAddImage = true;
@@ -1968,7 +1928,7 @@ function handleEndInteractiveEdit() {
 
 function setInteractiveElementStyles(target, transform) {
   const elementId = target.getAttribute("data-element-id");
-  const element = getCanvasElement(elementId);
+  const element = canvasStore.elementById(elementId);
 
   setInteractiveElementTransform(element, transform);
   target.style.transform = element.style.transformStr;
@@ -1984,13 +1944,13 @@ function handleInteractiveRotate({ target, rotate, drag }) {
 
 function handleInteractiveStart(target) {
   const elementId = target.getAttribute("data-element-id");
-  const element = getCanvasElement(elementId);
+  const element = canvasStore.elementById(elementId);
   element.tmpFromStyle = cloneDeep(element.style);
 }
 
 function handleInteractiveEnd(target) {
   const elementId = target.getAttribute("data-element-id");
-  const element = getCanvasElement(elementId);
+  const element = canvasStore.elementById(elementId);
   canvasStore.addHistoryEvent({
     type: HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
     elementId: element.id,
@@ -2002,7 +1962,7 @@ function handleInteractiveEnd(target) {
 }
 
 function handleTextboxChange({ elementId, textContents }) {
-  const element = getCanvasElement(elementId);
+  const element = canvasStore.elementById(elementId);
   (element.toolOptions as ITextboxElementOptions).textContents = textContents;
 }
 
@@ -2143,8 +2103,8 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
         @update="handleStrokeColorChange"
       />
-      <select v-if="canvasStore.isPaperTool" v-model="selectedPaperPatternIdx">
-        <option v-for="(pattern, index) in paperPatterns" :key="index" :value="index">
+      <select v-if="canvasStore.isPaperTool" v-model="canvasStore.selectedPaperPatternIdx">
+        <option v-for="(pattern, index) in canvasStore.paperPatterns" :key="index" :value="index">
           {{ pattern.LABEL }}
         </option>
       </select>
@@ -2180,7 +2140,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         min="0"
         max="512"
         step="1"
-        v-model="selectedPatternStyles.lineSize"
+        v-model="canvasStore.selectedPatternStyles.lineSize"
       />
       <input
         v-if="canvasStore.isPaperTool"
@@ -2188,7 +2148,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         min="0"
         max="512"
         step="1"
-        v-model="selectedPatternStyles.spacing"
+        v-model="canvasStore.selectedPatternStyles.spacing"
       />
 
       <label><input type="checkbox" v-model="canvasStore.ruler.isVisible" /> Show Ruler?</label>
@@ -2364,7 +2324,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         <svg class="paper-pattern" width="100%" height="100%">
           <component
             id="paper-svg-pattern"
-            :is="selectedPaperPattern.COMPONENT"
+            :is="canvasStore.selectedPaperPattern.COMPONENT"
             :fillColor="getColorAsCss(canvasStore.selectedPatternColor)"
             :lineSize="paperPatternTransform.lineSize"
             :spacing="paperPatternTransform.spacing"

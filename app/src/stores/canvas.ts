@@ -20,8 +20,9 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
   SPECIAL_TOOL_SWATCH_KEY,
 } from "@/constants/core";
-import type { IElements, TColor, TPrimaryKey } from "@/types/core";
+import type { IElements, TColor, TElement, TPrimaryKey } from "@/types/core";
 import { randomInteger } from "@/utils/math";
+import patternComponents, { defaultPatternProps } from "@/components/CanvasPatterns";
 
 export const useCanvasStore = defineStore("canvas", () => {
   const canvasConfig = ref({
@@ -54,6 +55,13 @@ export const useCanvasStore = defineStore("canvas", () => {
     )
   );
   const lastActiveElementId = computed(() => activeElements.value[activeElements.value.length - 1]);
+  const elementById = computed(() => (id: TPrimaryKey) => elements.value[id]);
+  function setElement(element: TElement) {
+    elements.value[element.id] = element;
+    elementOrder.value.push(element.id);
+
+    return elements.value[element.id];
+  }
 
   const ruler = ref({
     isVisible: false,
@@ -82,15 +90,25 @@ export const useCanvasStore = defineStore("canvas", () => {
   const isAddImageMode = ref(false);
   const isInteractiveEditMode = ref(false);
   const isTextboxEditMode = ref(false);
+
   const isPanning = ref(false);
   const isMovingRuler = ref(false);
   const isDrawing = ref(false);
+
   const isStylus = ref(false);
   const detectedStylus = ref(false);
   const allowFingerDrawing = ref(true);
+
+  function setIsStylus(event: Event) {
+    const force = event.touches ? event.touches[0]["force"] : 0;
+    isStylus.value = force > 0;
+    detectedStylus.value = detectedStylus.value || isStylus.value;
+  }
+
   const showRulerControls = computed(() => {
     return !isDrawing.value && !isPanning.value;
   });
+
   const selectedTool = ref(CanvasTool.PEN);
   const isDrawingTool = computed(() => {
     return !CANVAS_NONDRAWING_TOOLS.includes(selectedTool.value);
@@ -138,6 +156,12 @@ export const useCanvasStore = defineStore("canvas", () => {
     history.value.pop();
     historyIndex.value -= 1;
   }
+
+  const paperPatterns = ref(patternComponents);
+  const patternStyles = ref(defaultPatternProps);
+  const selectedPaperPatternIdx = ref(0);
+  const selectedPaperPattern = computed(() => paperPatterns.value[selectedPaperPatternIdx.value]);
+  const selectedPatternStyles = computed(() => patternStyles.value[selectedPaperPatternIdx.value]);
 
   const isSwatchOpen = ref(false);
   const swatches = ref(DEFAULT_COLOR_SWATCHES);
@@ -197,6 +221,8 @@ export const useCanvasStore = defineStore("canvas", () => {
     activeElements,
     activeHtmlElements,
     lastActiveElementId,
+    elementById,
+    setElement,
 
     debugMode,
     isPasteMode,
@@ -208,6 +234,7 @@ export const useCanvasStore = defineStore("canvas", () => {
     isStylus,
     detectedStylus,
     allowFingerDrawing,
+    setIsStylus,
 
     isMovingRuler,
     ruler,
@@ -233,6 +260,12 @@ export const useCanvasStore = defineStore("canvas", () => {
     hasRedo,
     addHistoryEvent,
     popHistoryEvent,
+
+    paperPatterns,
+    patternStyles,
+    selectedPaperPatternIdx,
+    selectedPaperPattern,
+    selectedPatternStyles,
 
     swatches,
     swatchOrder,
