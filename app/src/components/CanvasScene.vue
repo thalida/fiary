@@ -1488,7 +1488,7 @@ function handleZoomIn() {
 }
 
 function closeAllColorPickers() {
-  for (let i = 0; i < colorPickerRefs.length; i++) {
+  for (let i = 0; i < colorPickerRefs.length; i += 1) {
     colorPickerRefs[i].closeDropdown();
   }
 }
@@ -2132,7 +2132,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         :swatchId="canvasStore.selectedFillSwatchId"
         :colorIdx="canvasStore.selectedFillColorIdx"
         :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
-        @change="handleFillColorChange"
+        @update="handleFillColorChange"
       />
       <ColorPicker
         v-if="canvasStore.isDrawingTool"
@@ -2141,7 +2141,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         :swatchId="canvasStore.selectedStrokeSwatchId"
         :colorIdx="canvasStore.selectedStrokeColorIdx"
         :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
-        @change="handleStrokeColorChange"
+        @update="handleStrokeColorChange"
       />
       <select v-if="canvasStore.isPaperTool" v-model="selectedPaperPatternIdx">
         <option v-for="(pattern, index) in paperPatterns" :key="index" :value="index">
@@ -2155,7 +2155,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         :swatchId="canvasStore.selectedPaperSwatchId"
         :colorIdx="canvasStore.selectedPaperColorIdx"
         :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
-        @change="handlePaperColorChange"
+        @update="handlePaperColorChange"
       />
       <ColorPicker
         v-if="canvasStore.isPaperTool"
@@ -2164,7 +2164,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         :swatchId="canvasStore.selectedPatternSwatchId"
         :colorIdx="canvasStore.selectedPatternColorIdx"
         :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
-        @change="handlePatternColorChange"
+        @update="handlePatternColorChange"
       />
       <input
         v-if="canvasStore.isPaperTool"
