@@ -23,15 +23,19 @@ import {
   TRANSPARENT_COLOR,
   SPECIAL_TOOL_SWATCH_KEY,
   SPECIAL_PAPER_SWATCH_KEY,
-  DEFAULT_COLOR_SWATCHES,
-  DEFAULT_SWATCH_KEY,
-  DEFAULT_PAPER_COLOR_INDEX,
-  DEFAULT_PATTERN_COLOR_INDEX,
-  DEFAULT_PATTERN_OPACITY,
-  DEFAULT_ELEMENT_FILLCOLOR_INDEX,
-  DEFAULT_ELEMENT_STROKECOLOR_INDEX,
 } from "@/constants/core";
 import ColorPicker from "@/components/ColorPicker.vue";
+import type {
+  ICanvasElement,
+  ICheckboxElementOptions,
+  IClearElement,
+  IInteractiveElement,
+  ILineElementOptions,
+  ISolidColor,
+  ITextboxElementOptions,
+  TColor,
+  TElement,
+} from "@/types/core";
 
 console.log("Updated CanvasScene");
 const canvasStore = useCanvasStore();
@@ -40,8 +44,8 @@ const activeTextbox = ref(null);
 const activeImage = ref(null);
 
 let activePanCoords: { x: number; y: number }[] = [];
-let initTransformMatrix: DOMMatrix | null = null;
-const transformMatrix = ref(null as DOMMatrix | null);
+let initTransformMatrix: DOMMatrix | undefined;
+const transformMatrix = ref(undefined as DOMMatrix | undefined);
 const interactiveCanvasTransform = ref();
 const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 
@@ -63,31 +67,6 @@ const selectedPaperPattern = computed(() => paperPatterns.value[selectedPaperPat
 const selectedPatternStyles = computed(() => patternStyles.value[selectedPaperPatternIdx.value]);
 
 const colorPickerRefs: any[] = [];
-const swatches = ref(DEFAULT_COLOR_SWATCHES as any);
-
-const selectedPaperSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY);
-const selectedPaperColorIdx = ref(DEFAULT_PAPER_COLOR_INDEX);
-const selectedPaperColor = computed(
-  () => canvasStore.swatches[selectedPaperSwatchId.value][selectedPaperColorIdx.value]
-);
-
-const selectedPatternSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY);
-const selectedPatternColorIdx = ref(DEFAULT_PATTERN_COLOR_INDEX);
-const selectedPatternColor = computed(
-  () => canvasStore.swatches[selectedPatternSwatchId.value][selectedPatternColorIdx.value]
-);
-const selectedPatternOpacity = ref(DEFAULT_PATTERN_OPACITY);
-const selectedFillSwatchId = ref(DEFAULT_SWATCH_KEY);
-const selectedFillColorIdx = ref(DEFAULT_ELEMENT_FILLCOLOR_INDEX);
-const selectedFillColor = computed(
-  () => canvasStore.swatches[selectedFillSwatchId.value][selectedFillColorIdx.value]
-);
-
-const selectedStrokeSwatchId = ref(SPECIAL_TOOL_SWATCH_KEY);
-const selectedStrokeColorIdx = ref(DEFAULT_ELEMENT_STROKECOLOR_INDEX);
-const selectedStrokeColor = computed(
-  () => canvasStore.swatches[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]
-);
 
 onMounted(() => {
   if (typeof drawingCanvas.value === "undefined") {
@@ -192,11 +171,12 @@ function getOpacity(): number {
   return 1;
 }
 
-function isTransparent(color) {
-  return (typeof color === "string" && color === "transparent") || color.a === 0;
+function isTransparent(color: TColor) {
+  const isGradient = Array.isArray(color);
+  return !isGradient && color.a === 0;
 }
 
-function formatColor(color, opacity = 1) {
+function formatColor(color: ISolidColor, opacity = 1) {
   if (isTransparent(color)) {
     return "transparent";
   }
@@ -204,7 +184,7 @@ function formatColor(color, opacity = 1) {
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
 }
 
-function getSmoothPoints(element) {
+function getSmoothPoints(element: ICanvasElement) {
   const stroke = getStroke(element.points, {
     ...element.freehandOptions,
     size: element.freehandOptions.size * 1.5,
@@ -218,7 +198,7 @@ function getSmoothPoints(element) {
   };
 }
 
-function calculateDimensions(element) {
+function calculateDimensions(element: TElement) {
   let xPoints, yPoints;
   if (CANVAS_LINE_TOOLS.includes(element.tool)) {
     xPoints = element.smoothPoints.path.map((point) => point[0]);
@@ -296,21 +276,23 @@ function calculateDimensions(element) {
   return dimensions;
 }
 
-function calculateLinePoints(element, toPos): any {
+function calculateLinePoints(element: ICanvasElement, toPos: { x: number; y: number }): any {
   const fromx = element.points[0].x;
   const fromy = element.points[0].y;
   const tox = toPos.x;
   const toy = toPos.y;
 
+  const toolOptions = element.toolOptions as unknown as ILineElementOptions;
+
   if (
-    element.toolOptions.lineEndStyle === LineEndStyle.NONE ||
-    element.toolOptions.lineEndSide === LineEndSide.NONE
+    toolOptions.lineEndStyle === LineEndStyle.NONE ||
+    toolOptions.lineEndSide === LineEndSide.NONE
   ) {
     return [
       { x: fromx, y: fromy },
       { x: toPos.x, y: toPos.y },
     ];
-  } else if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
+  } else if (toolOptions.lineEndStyle === LineEndStyle.ARROW) {
     const headlen = element.size * 2; // length of head in pixels
     const endAngle = Math.atan2(toy - fromy, tox - fromx);
     const endA1 = {
@@ -325,7 +307,7 @@ function calculateLinePoints(element, toPos): any {
 
     let startAngle;
     let startPoints: any[] = [];
-    if (element.toolOptions.lineEndSide === LineEndSide.BOTH) {
+    if (toolOptions.lineEndSide === LineEndSide.BOTH) {
       startAngle = Math.atan2(fromy - toy, fromx - tox);
       const startA1 = {
         x: fromx - headlen * Math.cos(startAngle - Math.PI / 5),
@@ -340,8 +322,8 @@ function calculateLinePoints(element, toPos): any {
 
     return [{ x: fromx, y: fromy }, ...startPoints, ...endPoints, { x: toPos.x, y: toPos.y }];
   } else if (
-    element.toolOptions.lineEndStyle === LineEndStyle.SQUARE ||
-    element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE
+    toolOptions.lineEndStyle === LineEndStyle.SQUARE ||
+    toolOptions.lineEndStyle === LineEndStyle.CIRCLE
   ) {
     const headSize = element.size * 2;
     const endStartPoint = {
@@ -355,7 +337,7 @@ function calculateLinePoints(element, toPos): any {
     const endPoints = [endStartPoint, endEndPoint];
 
     let startPoints: any[] = [];
-    if (element.toolOptions.lineEndSide === LineEndSide.BOTH) {
+    if (toolOptions.lineEndSide === LineEndSide.BOTH) {
       const startStartPoint = {
         x: fromx - headSize / 2,
         y: fromy - headSize / 2,
@@ -445,10 +427,11 @@ function getMousePos(canvas, event, followRuler = false) {
 
 function getDrawPos(canvas, event, followRuler = false) {
   const pos = getMousePos(canvas, event, followRuler);
-  let cameraX = transformMatrix.value.e;
-  let cameraY = transformMatrix.value.f;
-  const cameraZoom = transformMatrix.value.a;
-  const relativeZoom = initTransformMatrix.a / cameraZoom;
+  let cameraX = transformMatrix.value ? transformMatrix.value.e : 0;
+  let cameraY = transformMatrix.value ? transformMatrix.value.f : 0;
+  const cameraZoom = transformMatrix.value ? transformMatrix.value.a : 1;
+  const initMatrixA = initTransformMatrix ? initTransformMatrix.a : 1;
+  const relativeZoom = initMatrixA / cameraZoom;
 
   if (canvasStore.isInteractiveTool) {
     cameraX /= cameraZoom;
@@ -567,6 +550,11 @@ function hideCanvasElement(elementId) {
 function cacheElement(element) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
+
+  if (ctx === null) {
+    return;
+  }
+
   const dpi = window.devicePixelRatio;
 
   const minX = element.dimensions.outerMinX;
@@ -960,11 +948,15 @@ function drawElements() {
   }
 }
 
-function getInteractiveElementTransform(element): string {
-  const htmlRelativeZoom = transformMatrix.value.a / initTransformMatrix.a;
+function getInteractiveElementTransform(element: IInteractiveElement): string {
+  const initMatrixA = initTransformMatrix ? initTransformMatrix.a : 1;
+  const currMatrixA = transformMatrix.value ? transformMatrix.value.a : 1;
+  const currMatrixE = transformMatrix.value ? transformMatrix.value.e : 0;
+  const currMatrixF = transformMatrix.value ? transformMatrix.value.f : 0;
+  const htmlRelativeZoom = currMatrixA / initMatrixA;
   const newOrigin = {
-    x: transformMatrix.value.e / initTransformMatrix.a,
-    y: transformMatrix.value.f / initTransformMatrix.a,
+    x: currMatrixE / initMatrixA,
+    y: currMatrixF / initMatrixA,
   };
   const translate = `translate(${
     newOrigin.x + element.style.transform.translate[0] * htmlRelativeZoom
@@ -978,7 +970,7 @@ function getInteractiveElementTransform(element): string {
   return transformStr;
 }
 
-function setInteractiveElementTransform(element, transform = {}): string {
+function setInteractiveElementTransform(element: IInteractiveElement, transform = {}): string {
   const nextTransform = {
     ...element.style.transform,
     ...transform,
@@ -990,12 +982,12 @@ function setInteractiveElementTransform(element, transform = {}): string {
 }
 
 function handleAddCheckbox(pos) {
-  const checkboxElement = {
+  const checkboxElement: IInteractiveElement = {
     id: uuidv4(),
     tool: Tool.CHECKBOX,
     toolOptions: {
       isChecked: false,
-    },
+    } as ICheckboxElementOptions,
     style: {
       transform: {
         translate: [pos.x, pos.y],
@@ -1009,7 +1001,7 @@ function handleAddCheckbox(pos) {
     isDeleted: false,
   };
 
-  setInteractiveElementTransform(checkboxElement);
+  setInteractiveElementTransform(checkboxElement as TElement);
   createCanvasElement(checkboxElement);
 }
 
@@ -1047,13 +1039,13 @@ function handleClearAll() {
     return;
   }
 
-  const clearElement = {
+  const clearElement: IClearElement = {
     id: uuidv4(),
     tool: Tool.CLEAR_ALL,
     composition: "destination-out",
-    lineWidth: 0,
     strokeColor: TRANSPARENT_COLOR,
     fillColor: { r: 255, g: 255, b: 255, a: 1 },
+    toolOptions: null,
     points: [
       {
         x: 0,
@@ -1065,9 +1057,12 @@ function handleClearAll() {
       },
     ],
     dimensions: {},
+    isDrawingCached: false,
+    isDeleted: false,
+    isHTMLElement: false,
     cache: {},
   };
-  clearElement.dimensions = calculateDimensions(clearElement);
+  clearElement.dimensions = calculateDimensions(clearElement as TElement);
   createCanvasElement(clearElement);
   cacheElement(clearElement);
   drawElements();
@@ -1417,14 +1412,15 @@ function cancelAddImage() {
   canvasStore.isAddImageMode = false;
 }
 
-function setRenderTransforms(matrix) {
+function setRenderTransforms(matrix: DOMMatrix | null | undefined = null) {
   let relativeZoom = 1;
 
   if (typeof matrix !== "undefined" && matrix !== null) {
-    relativeZoom = initTransformMatrix.a / matrix.a;
+    const initMatrixA = initTransformMatrix ? initTransformMatrix.a : 1;
+    relativeZoom = initMatrixA / matrix.a;
     interactiveCanvasTransform.value = `matrix(1, 0, 0, 1, 0, 0)`;
-    paperPatternTransform.value.x = matrix.e / initTransformMatrix.a;
-    paperPatternTransform.value.y = matrix.f / initTransformMatrix.a;
+    paperPatternTransform.value.x = matrix.e / initMatrixA;
+    paperPatternTransform.value.y = matrix.f / initMatrixA;
   }
 
   paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
@@ -1432,6 +1428,10 @@ function setRenderTransforms(matrix) {
 }
 
 function handlePanTransform(event, isStart = false) {
+  if (typeof transformMatrix.value === "undefined") {
+    return;
+  }
+
   const pos = getMousePos(drawingCanvas.value, event);
 
   if (isStart) {
@@ -1458,6 +1458,10 @@ function handlePanTransform(event, isStart = false) {
 }
 
 function handleZoomOut() {
+  if (typeof transformMatrix.value === "undefined") {
+    return;
+  }
+
   if (transformMatrix.value.a > 0.5) {
     transformMatrix.value.a -= 0.1;
     transformMatrix.value.a = Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100;
@@ -1469,6 +1473,10 @@ function handleZoomOut() {
 }
 
 function handleZoomIn() {
+  if (typeof transformMatrix.value === "undefined") {
+    return;
+  }
+
   if (transformMatrix.value.a < 6) {
     transformMatrix.value.a += 0.1;
     transformMatrix.value.a = Math.round((transformMatrix.value.a + Number.EPSILON) * 100) / 100;
@@ -1485,7 +1493,7 @@ function closeAllColorPickers() {
   }
 }
 
-function handleCanvasTouchStart(event) {
+function handleCanvasTouchStart(event: Event) {
   closeAllColorPickers();
 
   if (
@@ -1510,6 +1518,7 @@ function handleCanvasTouchStart(event) {
   if (!isDrawingAllowed(true) || drawingCanvas.value === null) {
     return;
   }
+
   canvasStore.isDrawing = true;
 
   const pos = getDrawPos(drawingCanvas.value, event, true);
@@ -1519,11 +1528,11 @@ function handleCanvasTouchStart(event) {
   const composition = getComposition();
   const size = canvasStore.selectedTool === Tool.CUT ? 0 : canvasStore.selectedToolSize;
   const strokeColor =
-    canvasStore.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
+    canvasStore.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : canvasStore.selectedStrokeColor;
   const fillColor =
-    canvasStore.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
+    canvasStore.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : canvasStore.selectedFillColor;
 
-  const newElement = {
+  const newElement: ICanvasElement = {
     id: uuidv4(),
     tool: canvasStore.selectedTool,
     fillColor,
@@ -1548,6 +1557,9 @@ function handleCanvasTouchStart(event) {
     smoothPoints: {},
     dimensions: {},
     cache: {},
+    isDeleted: false,
+    isHTMLElement: false,
+    isDrawingCached: false,
   };
 
   if (
@@ -1567,13 +1579,13 @@ function handleCanvasTouchStart(event) {
   if (CANVAS_LINE_TOOLS.includes(newElement.tool)) {
     newElement.smoothPoints = getSmoothPoints(newElement);
   }
-  newElement.dimensions = calculateDimensions(newElement);
+  newElement.dimensions = calculateDimensions(newElement as TElement);
 
   createCanvasElement(newElement);
   drawElements();
 }
 
-function handleCanvasTouchMove(event) {
+function handleCanvasTouchMove(event: Event) {
   if (!(canvasStore.isPanning || isDrawingAllowed()) || drawingCanvas.value === null) {
     return;
   }
@@ -1698,7 +1710,6 @@ function onRulerDrag({ target, translate }) {
 }
 
 function onRulerRotate({ target, drag, rotation }) {
-  const translate = drag.translate;
   const normalizedRotation = rotation % 360;
   const absRotation = Math.abs(normalizedRotation);
   let transformRotation = normalizedRotation;
@@ -1992,7 +2003,7 @@ function handleInteractiveEnd(target) {
 
 function handleTextboxChange({ elementId, textContents }) {
   const element = getCanvasElement(elementId);
-  element.toolOptions.textContents = textContents;
+  (element.toolOptions as ITextboxElementOptions).textContents = textContents;
 }
 
 function handleTextboxFocus({ elementId }) {
@@ -2044,23 +2055,23 @@ function getColorAsCss(color) {
 }
 
 function handleFillColorChange(swatchId: string, colorIdx: number) {
-  selectedFillSwatchId.value = swatchId;
-  selectedFillColorIdx.value = colorIdx;
+  canvasStore.selectedFillSwatchId = swatchId;
+  canvasStore.selectedFillColorIdx = colorIdx;
 }
 
 function handleStrokeColorChange(swatchId: string, colorIdx: number) {
-  selectedStrokeSwatchId.value = swatchId;
-  selectedStrokeColorIdx.value = colorIdx;
+  canvasStore.selectedStrokeSwatchId = swatchId;
+  canvasStore.selectedStrokeColorIdx = colorIdx;
 }
 
 function handlePaperColorChange(swatchId: string, colorIdx: number) {
-  selectedPaperSwatchId.value = swatchId;
-  selectedPaperColorIdx.value = colorIdx;
+  canvasStore.selectedPaperSwatchId = swatchId;
+  canvasStore.selectedPaperColorIdx = colorIdx;
 }
 
 function handlePatternColorChange(swatchId: string, colorIdx: number) {
-  selectedPatternSwatchId.value = swatchId;
-  selectedPatternColorIdx.value = colorIdx;
+  canvasStore.selectedPatternSwatchId = swatchId;
+  canvasStore.selectedPatternColorIdx = colorIdx;
 }
 </script>
 
@@ -2118,8 +2129,8 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         v-if="canvasStore.isDrawingTool"
         style="display: inline"
         :ref="addColorPickerRef"
-        :swatchId="selectedFillSwatchId"
-        :colorIdx="selectedFillColorIdx"
+        :swatchId="canvasStore.selectedFillSwatchId"
+        :colorIdx="canvasStore.selectedFillColorIdx"
         :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
         @change="handleFillColorChange"
       />
@@ -2127,8 +2138,8 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         v-if="canvasStore.isDrawingTool"
         style="display: inline"
         :ref="addColorPickerRef"
-        :swatchId="selectedStrokeSwatchId"
-        :colorIdx="selectedStrokeColorIdx"
+        :swatchId="canvasStore.selectedStrokeSwatchId"
+        :colorIdx="canvasStore.selectedStrokeColorIdx"
         :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
         @change="handleStrokeColorChange"
       />
@@ -2141,8 +2152,8 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         v-if="canvasStore.isPaperTool"
         style="display: inline"
         :ref="addColorPickerRef"
-        :swatchId="selectedPaperSwatchId"
-        :colorIdx="selectedPaperColorIdx"
+        :swatchId="canvasStore.selectedPaperSwatchId"
+        :colorIdx="canvasStore.selectedPaperColorIdx"
         :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
         @change="handlePaperColorChange"
       />
@@ -2150,8 +2161,8 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         v-if="canvasStore.isPaperTool"
         style="display: inline"
         :ref="addColorPickerRef"
-        :swatchId="selectedPatternSwatchId"
-        :colorIdx="selectedPatternColorIdx"
+        :swatchId="canvasStore.selectedPatternSwatchId"
+        :colorIdx="canvasStore.selectedPatternColorIdx"
         :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
         @change="handlePatternColorChange"
       />
@@ -2161,7 +2172,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         min="0"
         max="100"
         step="1"
-        v-model="selectedPatternOpacity"
+        v-model="canvasStore.selectedPatternOpacity"
       />
       <input
         v-if="canvasStore.isPaperTool"
@@ -2299,7 +2310,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
             <input
               v-if="canvasStore.elements[elementId].tool === Tool.CHECKBOX"
               class="interactiveElement"
-              v-model="canvasStore.elements[elementId].toolOptions.isChecked"
+              v-model="(canvasStore.elements[elementId].toolOptions as ICheckboxElementOptions).isChecked"
               :data-element-id="canvasStore.elements[elementId].id"
               type="checkbox"
               :style="{
@@ -2323,7 +2334,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
               }"
               :element="canvasStore.elements[elementId]"
               :is-active="canvasStore.elements[elementId].id === activeTextbox"
-              :colorSwatches="swatches"
+              :colorSwatches="canvasStore.swatches"
               @change="handleTextboxChange"
               @focus="handleTextboxFocus"
               @blur="handleTextboxBlur"
@@ -2346,12 +2357,15 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
       </div>
 
       <div class="paper-layer">
-        <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
+        <div
+          class="paper-color"
+          :style="{ background: getColorAsCss(canvasStore.selectedPaperColor) }"
+        ></div>
         <svg class="paper-pattern" width="100%" height="100%">
           <component
             id="paper-svg-pattern"
             :is="selectedPaperPattern.COMPONENT"
-            :fillColor="getColorAsCss(selectedPatternColor)"
+            :fillColor="getColorAsCss(canvasStore.selectedPatternColor)"
             :lineSize="paperPatternTransform.lineSize"
             :spacing="paperPatternTransform.spacing"
             :x="paperPatternTransform.x"
@@ -2363,7 +2377,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
             width="100%"
             height="100%"
             fill="url(#paper-svg-pattern)"
-            :opacity="selectedPatternOpacity / 100"
+            :opacity="canvasStore.selectedPatternOpacity / 100"
           ></rect>
         </svg>
       </div>

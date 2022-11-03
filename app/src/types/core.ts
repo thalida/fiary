@@ -55,35 +55,50 @@ export interface IPage {
 }
 
 export interface IElements {
-  [key: string]: IElement;
+  [key: string]: TElement;
 }
 
-export interface IElement {
-  pk: TPrimaryKey;
-  updatedAt: string;
-  createdAt: string;
-  page: TPrimaryKey;
-  tool: number;
-  fillColor: string;
-  strokeColor: string;
-  size: number;
-  isRulerLine: boolean;
-  points: IElementPoint[];
-  options: IElementOptions;
+export type TElement = ICanvasElement & IInteractiveElement & IClearElement;
 
+export interface IElementBase {
   id: TPrimaryKey;
+  pk?: TPrimaryKey;
+  updatedAt?: string;
+  createdAt?: string;
+  page?: TPrimaryKey;
+  tool: number;
+  points: IElementPoint[];
+  toolOptions: TElementOptions | null;
   isDeleted: boolean;
   isHTMLElement: boolean;
-  isDrawingCached: boolean;
-  isCompletedCut: boolean;
-  composition: string;
+}
+
+export interface ICanvasElement extends IElementBase {
+  fillColor: TColor;
+  strokeColor: TColor;
+  opacity: number;
+  size: number;
+  isRulerLine: boolean;
   cache: any;
-  toolOptions: any;
+  isDrawingCached: boolean;
+  composition: string;
   dimensions: any;
-  tmpFromStyle: any;
-  style: any;
   freehandOptions: any;
   smoothPoints: any;
+  isCompletedCut?: boolean;
+}
+
+export interface IClearElement extends IElementBase {
+  fillColor: TColor;
+  strokeColor: TColor;
+  cache: any;
+  isDrawingCached: boolean;
+  composition: string;
+  dimensions: any;
+}
+export interface IInteractiveElement extends IElementBase {
+  style: any;
+  tmpFromStyle?: any;
 }
 
 export interface IElementPoint {
@@ -92,8 +107,27 @@ export interface IElementPoint {
   pressure?: number;
 }
 
-export interface IElementOptions {
-  [key: string]: any;
+export type TElementOptions =
+  | ILineElementOptions
+  | IImageElementOptions
+  | ICheckboxElementOptions
+  | ITextboxElementOptions;
+
+export interface ILineElementOptions {
+  lineEndStyle: number;
+  lineEndSide: number;
+}
+
+export interface IImageElementOptions {
+  image: any;
+}
+
+export interface ICheckboxElementOptions {
+  isChecked: boolean;
+}
+
+export interface ITextboxElementOptions {
+  textContents: string | null;
 }
 
 export interface IColorSwatches {

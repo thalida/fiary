@@ -7,11 +7,18 @@ import {
   CANVAS_NONDRAWING_TOOLS,
   CANVAS_PAPER_TOOLS,
   DEFAULT_COLOR_SWATCHES,
+  DEFAULT_ELEMENT_FILLCOLOR_INDEX,
+  DEFAULT_ELEMENT_STROKECOLOR_INDEX,
+  DEFAULT_PAPER_COLOR_INDEX,
+  DEFAULT_PATTERN_COLOR_INDEX,
+  DEFAULT_PATTERN_OPACITY,
   DEFAULT_PEN_SIZE,
   DEFAULT_SWATCH_KEY,
   LineEndSide,
   LineEndStyle,
   MAX_SWATCH_COLORS,
+  SPECIAL_PAPER_SWATCH_KEY,
+  SPECIAL_TOOL_SWATCH_KEY,
 } from "@/constants/core";
 import type { IElements, TColor, TPrimaryKey } from "@/types/core";
 import { randomInteger } from "@/utils/math";
@@ -135,6 +142,30 @@ export const useCanvasStore = defineStore("canvas", () => {
   const isSwatchOpen = ref(false);
   const swatches = ref(DEFAULT_COLOR_SWATCHES);
   const swatchOrder = ref([DEFAULT_SWATCH_KEY]);
+  const selectedPaperSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY);
+  const selectedPaperColorIdx = ref(DEFAULT_PAPER_COLOR_INDEX);
+  const selectedPaperColor = computed(
+    () => swatches.value[selectedPaperSwatchId.value][selectedPaperColorIdx.value]
+  );
+
+  const selectedPatternSwatchId = ref(SPECIAL_PAPER_SWATCH_KEY);
+  const selectedPatternColorIdx = ref(DEFAULT_PATTERN_COLOR_INDEX);
+  const selectedPatternColor = computed(
+    () => swatches.value[selectedPatternSwatchId.value][selectedPatternColorIdx.value]
+  );
+  const selectedPatternOpacity = ref(DEFAULT_PATTERN_OPACITY);
+  const selectedFillSwatchId = ref(DEFAULT_SWATCH_KEY);
+  const selectedFillColorIdx = ref(DEFAULT_ELEMENT_FILLCOLOR_INDEX);
+  const selectedFillColor = computed(
+    () => swatches.value[selectedFillSwatchId.value][selectedFillColorIdx.value]
+  );
+
+  const selectedStrokeSwatchId = ref(SPECIAL_TOOL_SWATCH_KEY);
+  const selectedStrokeColorIdx = ref(DEFAULT_ELEMENT_STROKECOLOR_INDEX);
+  const selectedStrokeColor = computed(
+    () => swatches.value[selectedStrokeSwatchId.value][selectedStrokeColorIdx.value]
+  );
+
   function createSwatch() {
     const swatchId = uuidv4();
     const colors = [];
@@ -208,5 +239,18 @@ export const useCanvasStore = defineStore("canvas", () => {
     createSwatch,
     updateSwatchColor,
     isSwatchOpen,
+    selectedPaperSwatchId,
+    selectedPaperColorIdx,
+    selectedPaperColor,
+    selectedPatternSwatchId,
+    selectedPatternColorIdx,
+    selectedPatternColor,
+    selectedPatternOpacity,
+    selectedFillSwatchId,
+    selectedFillColorIdx,
+    selectedFillColor,
+    selectedStrokeSwatchId,
+    selectedStrokeColorIdx,
+    selectedStrokeColor,
   };
 });
