@@ -2,13 +2,11 @@
 import { computed, ref, watchEffect } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useCoreStore } from "@/stores/core";
-import { useCanvasStore } from "@/stores/canvas";
 import CanvasScene from "@/components/CanvasScene.vue";
 import type { TPrimaryKey } from "@/types/core";
 
 const authStore = useAuthStore();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
 const props = defineProps<{
   pageId: TPrimaryKey;
 }>();

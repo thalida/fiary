@@ -1,7 +1,7 @@
 import { TRANSPARENT_COLOR } from "@/constants/core";
-import type { IColor } from "@/types/core";
+import type { ISolidColor, TColor } from "@/types/core";
 
-export function getColorAsCss(color: IColor): string {
+export function getColorAsCss(color: TColor): string {
   if (color === TRANSPARENT_COLOR) {
     return "transparent";
   }
@@ -18,4 +18,17 @@ export function getColorAsCss(color: IColor): string {
   }
 
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
+}
+
+export function isTransparent(color: TColor) {
+  const isGradient = Array.isArray(color);
+  return !isGradient && color.a === 0;
+}
+
+export function formatColor(color: ISolidColor, opacity = 1) {
+  if (isTransparent(color)) {
+    return "transparent";
+  }
+
+  return `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
 }
