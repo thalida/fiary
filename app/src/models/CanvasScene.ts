@@ -69,9 +69,16 @@ export class CanvasScene {
   selectedStrokeSwatchId = SPECIAL_TOOL_SWATCH_KEY;
   selectedStrokeColorIdx = DEFAULT_ELEMENT_STROKECOLOR_INDEX;
 
-  constructor(pageId: TPrimaryKey, canvasDiagSize: number) {
+  activePanCoords: { x: number; y: number }[] = [];
+  initTransformMatrix: DOMMatrix;
+  transformMatrix: DOMMatrix;
+  paperPatternTransform = { x: 0, y: 0, lineSize: 0, spacing: 0 };
+
+  constructor(pageId: TPrimaryKey, matrix: DOMMatrix, canvasDiagSize: number) {
     this.pageId = pageId;
     this.canvasDiagSize = canvasDiagSize;
+    this.initTransformMatrix = matrix;
+    this.transformMatrix = matrix;
     this.ruler = {
       isVisible: false,
       width: this.canvasDiagSize,

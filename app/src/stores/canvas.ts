@@ -21,9 +21,10 @@ export const useCanvasStore = defineStore("canvas", () => {
   });
 
   const scenes = reactive({} as { [key: TPrimaryKey]: UnwrapNestedRefs<CanvasScene> });
-  function setupSceneStore(pageId: TPrimaryKey) {
+  function setupSceneStore(pageId: TPrimaryKey, matrix: DOMMatrix) {
     scenes[pageId] = new CanvasScene(
       pageId,
+      matrix,
       canvasDiagSize.value
     ) as unknown as UnwrapNestedRefs<CanvasScene>;
   }
