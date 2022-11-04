@@ -1,4 +1,4 @@
-import type { ICheckboxElementOptions, IElementPoint } from "@/types/core";
+import type { ICheckboxElementOptions } from "@/types/core";
 import { CanvasTool } from "@/constants/core";
 import BaseInteractiveElement from "./BaseInteractiveElement";
 

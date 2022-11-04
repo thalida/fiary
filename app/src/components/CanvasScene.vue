@@ -34,6 +34,7 @@ import type {
 } from "@/types/core";
 import { isTransparent, formatColor } from "@/utils/color";
 import CheckboxElement from "@/models/CheckboxElement";
+import TextboxElement from "@/models/TextboxElement";
 
 console.log("Updated CanvasScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -655,26 +656,11 @@ function handleAddCheckbox(pos: IElementPoint) {
 }
 
 function handleAddTextbox(pos) {
-  const textboxElement: IInteractiveElement = {
-    id: uuidv4(),
-    tool: Tool.TEXTBOX,
-    isHTMLElement: true,
-    isDeleted: false,
-    toolOptions: {
-      textContents: null,
-    },
-    style: {
-      transform: {
-        translate: [pos.x, pos.y],
-        scale: [1, 1],
-        rotate: 0,
-      },
-      transformStr: "",
-    },
-    points: [pos],
-  };
-
-  // setInteractiveElementTransform(textboxElement);
+  const textboxElement = new TextboxElement(
+    pos,
+    sceneStore.value.initTransformMatrix,
+    sceneStore.value.transformMatrix
+  );
   sceneStore.value.createElement(textboxElement);
 }
 
@@ -1651,8 +1637,11 @@ function handleEndInteractiveEdit() {
 function setInteractiveElementStyles(target, transform) {
   const elementId = target.getAttribute("data-element-id");
   const element = sceneStore.value.elementById(elementId);
-
-  element.setTransform(transform);
+  element.setTransform(
+    sceneStore.value.initTransformMatrix,
+    sceneStore.value.transformMatrix,
+    transform
+  );
   target.style.transform = element.style.transformStr;
 }
 
@@ -1998,10 +1987,6 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
               :style="{
                 position: 'absolute',
                 transform: sceneStore.elements[elementId].style.transformStr,
-                // transform: sceneStore.elements[elementId].getInteractiveElementTransform(
-                //   sceneStore.initTransformMatrix,
-                //   sceneStore.transformMatrix
-                // ),
               }"
               @mousedown="handleInteractiveElementEvent"
               @touchstart="handleInteractiveElementEvent"
@@ -2016,10 +2001,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
               class="interactiveElement"
               :style="{
                 position: 'absolute',
-                transform: sceneStore.elements[elementId].getInteractiveElementTransform(
-                  sceneStore.initTransformMatrix,
-                  sceneStore.transformMatrix
-                ),
+                transform: sceneStore.elements[elementId].style.transformStr,
               }"
               :element="sceneStore.elements[elementId]"
               :is-active="sceneStore.elements[elementId].id === activeTextbox"
