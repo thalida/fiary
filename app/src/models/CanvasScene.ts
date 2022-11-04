@@ -38,6 +38,7 @@ export class CanvasScene {
   elements: { [key: TPrimaryKey]: any } = {};
   elementOrder: TPrimaryKey[] = [];
   clearAllElementIndexes: number[] = [];
+  activeElementId: TPrimaryKey | null = null;
   debugMode = false;
   isPasteMode = false;
   isAddImageMode = false;

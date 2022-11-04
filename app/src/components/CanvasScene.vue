@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, watchPostEffect, onMounted, nextTick } from "vue";
+import { ref, computed, watch, watchPostEffect, onMounted, nextTick } from "vue";
 import { v4 as uuidv4 } from "uuid";
 import cloneDeep from "lodash/cloneDeep";
 import Moveable from "moveable";
-import Selecto from "selecto";
 import MoveableVue from "vue3-moveable";
-import Ftextarea from "./CanvasTextarea.vue";
 
 import { useCanvasStore } from "@/stores/canvas";
 import {
@@ -22,17 +20,11 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
 import ColorPicker from "@/components/ColorPicker.vue";
-import type {
-  ICanvasElement,
-  ICheckboxElementOptions,
-  IClearElement,
-  IElementPoint,
-  ITextboxElementOptions,
-  TPrimaryKey,
-} from "@/types/core";
+import type { ICanvasElement, IClearElement, IElementPoint, TPrimaryKey } from "@/types/core";
 import { isTransparent, formatColor, getColorAsCss } from "@/utils/color";
 import CheckboxElement from "@/models/CheckboxElement";
 import TextboxElement from "@/models/TextboxElement";
+import CanvasInteractiveLayer from "@/components/CanvasInteractiveLayer.vue";
 
 console.log("Updated CanvasScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -40,10 +32,9 @@ const canvasStore = useCanvasStore();
 
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 
-const activeTextbox = ref(null);
 const activeImage = ref(null);
 const drawingCanvas = ref<HTMLCanvasElement>();
-const interactiveCanvas = ref();
+const interactiveLayer = ref<typeof CanvasInteractiveLayer>();
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
 const imageBackdropCanvas = ref<HTMLCanvasElement>();
 const pasteLayer = ref<HTMLElement>();
@@ -134,7 +125,7 @@ function handleToolChange(event) {
   }
 
   sceneStore.value.isTextboxEditMode = false;
-  activeTextbox.value = null;
+  sceneStore.value.activeElementId = null;
 
   event.target.blur();
 }
@@ -1554,156 +1545,6 @@ function handleRedoClick() {
   }
 }
 
-let selectoInteractive, moveableInteractive;
-let moveableElements: any[] = [];
-function handleStartInteractiveEdit() {
-  sceneStore.value.isInteractiveEditMode = true;
-  activeTextbox.value = null;
-  moveableElements = [];
-  selectoInteractive = new Selecto({
-    container: interactiveCanvas.value,
-    selectableTargets: [".interactiveElement"],
-    selectByClick: true,
-    selectFromInside: false,
-    continueSelect: false,
-    toggleContinueSelect: "shift",
-    hitRate: 0,
-  });
-
-  moveableInteractive = new Moveable(interactiveCanvas.value, {
-    draggable: true,
-    rotatable: true,
-    pinchable: true,
-  });
-
-  moveableInteractive
-    .on("renderStart", ({ target }) => {
-      handleInteractiveStart(target);
-    })
-    .on("renderGroupStart", (e) => {
-      e.targets.forEach(handleInteractiveStart);
-    })
-    .on("clickGroup", (e) => {
-      selectoInteractive.clickTarget(e.inputEvent, e.inputTarget);
-    })
-    .on("drag", handleInteractiveDrag)
-    .on("dragGroup", (e) => {
-      e.events.forEach(handleInteractiveDrag);
-    })
-    .on("rotate", handleInteractiveRotate)
-    .on("rotateGroup", (e) => {
-      e.events.forEach(handleInteractiveRotate);
-    })
-    .on("renderEnd", ({ target }) => {
-      handleInteractiveEnd(target);
-    })
-    .on("renderGroupEnd", (e) => {
-      e.targets.forEach(handleInteractiveEnd);
-    });
-
-  selectoInteractive
-    .on("dragStart", (e) => {
-      const target = e.inputEvent.target;
-      if (
-        moveableInteractive.isMoveableElement(target) ||
-        moveableElements.some((t) => t === target || t.contains(target))
-      ) {
-        e.stop();
-      }
-    })
-    .on("select", (e) => {
-      moveableElements = e.selected;
-      moveableInteractive.target = moveableElements;
-    })
-    .on("selectEnd", (e) => {
-      if (e.isDragStart) {
-        e.inputEvent.preventDefault();
-
-        setTimeout(() => {
-          moveableInteractive.dragStart(e.inputEvent);
-        });
-      }
-    });
-}
-
-function handleEndInteractiveEdit() {
-  sceneStore.value.isInteractiveEditMode = false;
-  selectoInteractive.destroy();
-  moveableInteractive.destroy();
-}
-
-function setInteractiveElementStyles(target, transform) {
-  const elementId = target.getAttribute("data-element-id");
-  const element = sceneStore.value.elementById(elementId);
-  element.setTransform(
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix,
-    transform
-  );
-  target.style.transform = element.style.transformStr;
-}
-
-function handleInteractiveDrag({ target, translate }) {
-  setInteractiveElementStyles(target, { translate });
-}
-
-function handleInteractiveRotate({ target, rotate, drag }) {
-  setInteractiveElementStyles(target, { rotate, translate: drag.translate });
-}
-
-function handleInteractiveStart(target) {
-  const elementId = target.getAttribute("data-element-id");
-  const element = sceneStore.value.elementById(elementId);
-  element.tmpFromStyle = cloneDeep(element.style);
-}
-
-function handleInteractiveEnd(target) {
-  const elementId = target.getAttribute("data-element-id");
-  const element = sceneStore.value.elementById(elementId);
-  sceneStore.value.addHistoryEvent({
-    type: HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
-    elementId: element.id,
-    to: cloneDeep(element.style),
-    from: cloneDeep(element.tmpFromStyle),
-  });
-
-  delete element.tmpFromStyle;
-}
-
-function handleTextboxChange({ elementId, textContents }) {
-  const element = sceneStore.value.elementById(elementId);
-  (element.toolOptions as ITextboxElementOptions).textContents = textContents;
-}
-
-function handleTextboxFocus({ elementId }) {
-  if (sceneStore.value.isDrawing) {
-    return;
-  }
-
-  sceneStore.value.isTextboxEditMode = true;
-  sceneStore.value.selectedTool = Tool.TEXTBOX;
-  activeTextbox.value = elementId;
-}
-
-function handleTextboxBlur() {
-  sceneStore.value.isTextboxEditMode = false;
-}
-
-function handleInteractiveElementEvent(e) {
-  if (!sceneStore.value.isInteractiveEditMode && !sceneStore.value.isDrawing) {
-    e.stopPropagation();
-  }
-}
-
-function handleInteractiveElementDelete() {
-  for (let i = 0; i < moveableElements.length; i += 1) {
-    const elementId = moveableElements[i].getAttribute("data-element-id");
-    sceneStore.value.deleteElement(elementId);
-  }
-  moveableElements = [];
-  moveableInteractive.target = [];
-}
-
 function handleFillColorChange(swatchId: string, colorIdx: number) {
   sceneStore.value.selectedFillSwatchId = swatchId;
   sceneStore.value.selectedFillColorIdx = colorIdx;
@@ -1722,6 +1563,30 @@ function handlePaperColorChange(swatchId: string, colorIdx: number) {
 function handlePatternColorChange(swatchId: string, colorIdx: number) {
   sceneStore.value.selectedPatternSwatchId = swatchId;
   sceneStore.value.selectedPatternColorIdx = colorIdx;
+}
+
+function handleStartInteractiveEdit() {
+  if (typeof interactiveLayer.value === "undefined") {
+    return;
+  }
+
+  interactiveLayer.value.handleStartInteractiveEdit();
+}
+
+function handleInteractiveElementDelete() {
+  if (typeof interactiveLayer.value === "undefined") {
+    return;
+  }
+
+  interactiveLayer.value.handleInteractiveElementDelete();
+}
+
+function handleEndInteractiveEdit() {
+  if (typeof interactiveLayer.value === "undefined") {
+    return;
+  }
+
+  interactiveLayer.value.handleEndInteractiveEdit();
 }
 </script>
 
@@ -1946,57 +1811,11 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
       </div>
 
       <div class="drawing-layer">
-        <div
-          v-if="sceneStore"
-          ref="interactiveCanvas"
+        <CanvasInteractiveLayer
+          ref="interactiveLayer"
           class="interactive-canvas"
-          :style="{
-            width: canvasStore.canvasConfig.width + 'px',
-            height: canvasStore.canvasConfig.height + 'px',
-            transform: `matrix(1, 0, 0, 1, 0, 0)`,
-          }"
-        >
-          <template v-for="(elementId, index) in sceneStore.activeHtmlElements" :key="index">
-            <input
-              v-if="sceneStore.elements[elementId].tool === Tool.CHECKBOX"
-              class="interactiveElement"
-              v-model="(sceneStore.elements[elementId].toolOptions as ICheckboxElementOptions).isChecked"
-              :data-element-id="sceneStore.elements[elementId].id"
-              type="checkbox"
-              :style="{
-                position: 'absolute',
-                transform: sceneStore.elements[elementId].style.transformStr,
-              }"
-              @mousedown="handleInteractiveElementEvent"
-              @touchstart="handleInteractiveElementEvent"
-              @mouseup="handleInteractiveElementEvent"
-              @touchend="handleInteractiveElementEvent"
-              @mousemove="handleInteractiveElementEvent"
-              @touchmove="handleInteractiveElementEvent"
-            />
-            <Ftextarea
-              v-else-if="sceneStore.elements[elementId].tool === Tool.TEXTBOX"
-              :data-element-id="sceneStore.elements[elementId].id"
-              class="interactiveElement"
-              :style="{
-                position: 'absolute',
-                transform: sceneStore.elements[elementId].style.transformStr,
-              }"
-              :element="sceneStore.elements[elementId]"
-              :is-active="sceneStore.elements[elementId].id === activeTextbox"
-              :colorSwatches="canvasStore.swatches"
-              @change="handleTextboxChange"
-              @focus="handleTextboxFocus"
-              @blur="handleTextboxBlur"
-              @mousedown="handleInteractiveElementEvent"
-              @touchstart="handleInteractiveElementEvent"
-              @mouseup="handleInteractiveElementEvent"
-              @touchend="handleInteractiveElementEvent"
-              @mousemove="handleInteractiveElementEvent"
-              @touchmove="handleInteractiveElementEvent"
-            />
-          </template>
-        </div>
+          :pageId="props.pageId"
+        />
         <canvas
           class="drawing-canvas"
           ref="drawingCanvas"
