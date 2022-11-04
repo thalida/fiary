@@ -1,7 +1,7 @@
 import type { IElementPoint } from "@/types/core";
 import BaseElement from "./BaseElement";
 
-export default class BaseInteractiveElement extends BaseElement {
+export default class Base extends BaseElement {
   style = {
     transform: {
       translate: [] as number[],
@@ -19,31 +19,21 @@ export default class BaseInteractiveElement extends BaseElement {
     this.points = [pos];
     this.style.transform.translate = [pos.x, pos.y];
     this.style.transform.scale = [1, 1];
-    this.setInteractiveElementTransform(initMatrix, matrix);
+    this.setTransform(initMatrix, matrix);
   }
 
-  setInteractiveElementTransform(
-    initTransformMatrix: DOMMatrix,
-    transformMatrix: DOMMatrix,
-    transform = {}
-  ) {
-    const nextTransform = {
+  setTransform(initTransformMatrix: DOMMatrix, transformMatrix: DOMMatrix, newTransform = {}) {
+    const transform = {
       ...this.style.transform,
-      ...transform,
+      ...newTransform,
     };
 
-    this.style.transform = nextTransform;
-    this.style.transformStr = this.getInteractiveElementTransform(
-      initTransformMatrix,
-      transformMatrix
-    );
-    return nextTransform;
+    this.style.transform = transform;
+    this.style.transformStr = this.getRelativeTransformStr(initTransformMatrix, transformMatrix);
+    return transform;
   }
 
-  getInteractiveElementTransform(
-    initTransformMatrix: DOMMatrix,
-    transformMatrix: DOMMatrix
-  ): string {
+  getRelativeTransformStr(initTransformMatrix: DOMMatrix, transformMatrix: DOMMatrix): string {
     const initMatrixA = initTransformMatrix ? initTransformMatrix.a : 1;
     const currMatrixA = transformMatrix ? transformMatrix.a : 1;
     const currMatrixE = transformMatrix ? transformMatrix.e : 0;

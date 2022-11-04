@@ -1088,7 +1088,7 @@ function setInteractiveElementTransforms(initMatrix: DOMMatrix, transformMatrix:
   for (let i = 0; i < sceneStore.value.activeHtmlElements.length; i += 1) {
     const elementId = sceneStore.value.activeHtmlElements[i];
     const element = sceneStore.value.elements[elementId];
-    element.setInteractiveElementTransform(initMatrix, transformMatrix);
+    element.setTransform(initMatrix, transformMatrix);
   }
 }
 
@@ -1652,16 +1652,16 @@ function setInteractiveElementStyles(target, transform) {
   const elementId = target.getAttribute("data-element-id");
   const element = sceneStore.value.elementById(elementId);
 
-  // setInteractiveElementTransform(element, transform);
+  element.setTransform(transform);
   target.style.transform = element.style.transformStr;
 }
 
 function handleInteractiveDrag({ target, translate }) {
-  // setInteractiveElementStyles(target, { translate });
+  setInteractiveElementStyles(target, { translate });
 }
 
 function handleInteractiveRotate({ target, rotate, drag }) {
-  // setInteractiveElementStyles(target, { rotate, translate: drag.translate });
+  setInteractiveElementStyles(target, { rotate, translate: drag.translate });
 }
 
 function handleInteractiveStart(target) {
