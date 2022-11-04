@@ -1,4 +1,5 @@
 import type { PatternStyles } from "@/constants/core";
+import type { ComputedRef, Ref } from "vue";
 
 export type TPrimaryKey = string;
 
@@ -150,3 +151,75 @@ export interface IGradientStop {
 
 export type TGradient = IGradientStop[];
 export type TColor = ISolidColor | TGradient;
+
+export interface ICanvasStore {
+  elements: Ref<IElements>;
+  elementOrder: Ref<TPrimaryKey[]>;
+  clearAllElementIndexes: Ref<number[]>;
+  activeElementStartIdx: Ref<ComputedRef<number>>;
+  activeElements: ComputedRef<TPrimaryKey[]>;
+  activeHTMLElements: ComputedRef<TPrimaryKey[]>;
+  lastActiveElement: ComputedRef<TPrimaryKey | null>;
+  elementById: Ref<(id: TPrimaryKey) => TElement>;
+  ruler: Ref<ICanvasRulerStore>;
+  pasteTransform: Ref<ICanvasPasteTransformStore>;
+  imageTransform: Ref<ICanvasImageTransformStore>;
+  debugMode: Ref<boolean>;
+  isPasteMode: Ref<boolean>;
+  isAddImageMode: Ref<boolean>;
+  isInteractiveEditMode: Ref<boolean>;
+  isTextboxEditMode: Ref<boolean>;
+  isPanning: Ref<boolean>;
+  isMovingRuler: Ref<boolean>;
+  isDrawing: Ref<boolean>;
+  isStylus: Ref<boolean>;
+  detectedStylus: Ref<boolean>;
+  allowFingerDrawing: Ref<boolean>; // allowFreehand(?)
+  showRulerControls: ComputedRef<boolean>;
+  selectedTool: Ref<number>;
+  isDrawingTool: ComputedRef<boolean>;
+  isNonDrawingTool: ComputedRef<boolean>;
+  isPaperTool: ComputedRef<boolean>;
+  isInteractiveTool: ComputedRef<boolean>;
+  isDrawingAllowed: ComputedRef<boolean>;
+  selectedToolSize: Ref<number>;
+  selectedLineEndSide: Ref<number>;
+  selectedLineEndStyle: Ref<number>;
+  history: Ref<any[]>;
+  historyIndex: Ref<number>;
+  hasUndo: ComputedRef<boolean>;
+  hasRedo: ComputedRef<boolean>;
+  selectedPaperPatternIdx: Ref<number>;
+  selectedPaperPattern: ComputedRef<any>;
+  selectedPatternStyles: ComputedRef<any>;
+  isSwatchOpen: Ref<boolean>;
+  selectedPaperSwatchId: Ref<string>;
+  selectedPaperColorIdx: Ref<number>;
+  selectedPaperColor: ComputedRef<TColor>;
+  selectedPatternSwatchId: Ref<string>;
+  selectedPatternColorIdx: Ref<number>;
+  selectedPatternColor: ComputedRef<TColor>;
+  selectedPatternOpacity: Ref<number>;
+  selectedFillSwatchId: Ref<string>;
+  selectedFillColorIdx: Ref<number>;
+  selectedFillColor: ComputedRef<TColor>;
+  selectedStrokeSwatchId: Ref<string>;
+  selectedStrokeColorIdx: Ref<number>;
+  selectedStrokeColor: ComputedRef<TColor>;
+}
+
+export interface ICanvasRulerStore {
+  isVisibile: boolean;
+  width: number;
+  transform: ICanvasTransformStore;
+}
+export interface ICanvasTransformStore {
+  translate: number[];
+  scale: number[];
+  rotate: number;
+}
+export type ICanvasPasteTransformStore = ICanvasTransformStore;
+export interface ICanvasImageTransformStore extends ICanvasTransformStore {
+  clipType: string;
+  clipStyles: number[];
+}
