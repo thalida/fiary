@@ -5,7 +5,7 @@ import { DEFAULT_COLOR_SWATCHES, DEFAULT_SWATCH_KEY, MAX_SWATCH_COLORS } from "@
 import type { TColor, TPrimaryKey } from "@/types/core";
 import { randomInteger } from "@/utils/math";
 import patternComponents, { defaultPatternProps } from "@/components/CanvasPatterns";
-import { CanvasScene } from "./CanvasScene";
+import { CanvasScene } from "@/models/CanvasScene";
 
 export const useCanvasStore = defineStore("canvas", () => {
   const canvasConfig = ref({

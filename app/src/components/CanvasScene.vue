@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import {
-  ref,
-  computed,
-  watch,
-  watchEffect,
-  watchPostEffect,
-  onMounted,
-  nextTick,
-  type UnwrapNestedRefs,
-} from "vue";
+import { ref, computed, watch, watchEffect, watchPostEffect, onMounted, nextTick } from "vue";
 import { v4 as uuidv4 } from "uuid";
 import cloneDeep from "lodash/cloneDeep";
 import { getStroke } from "perfect-freehand";
@@ -45,7 +36,6 @@ import type {
   TElement,
   TPrimaryKey,
 } from "@/types/core";
-import type { CanvasScene } from "@/stores/CanvasScene";
 
 console.log("Updated CanvasScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
