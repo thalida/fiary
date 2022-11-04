@@ -27,9 +27,7 @@ import type {
   ICheckboxElementOptions,
   IClearElement,
   IElementPoint,
-  IInteractiveElement,
   ITextboxElementOptions,
-  TElement,
   TPrimaryKey,
 } from "@/types/core";
 import { isTransparent, formatColor, getColorAsCss } from "@/utils/color";
@@ -1697,7 +1695,7 @@ function handleInteractiveElementEvent(e) {
   }
 }
 
-function handleElementDelete() {
+function handleInteractiveElementDelete() {
   for (let i = 0; i < moveableElements.length; i += 1) {
     const elementId = moveableElements[i].getAttribute("data-element-id");
     sceneStore.value.deleteElement(elementId);
@@ -1768,7 +1766,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
       <button v-if="sceneStore.isPasteMode" @click="handlePasteEnd">Done</button>
       <button v-if="sceneStore.isPasteMode" @click="handlePasteDelete">Delete Selection</button>
       <div v-if="sceneStore.isInteractiveEditMode">
-        <button @click="handleElementDelete">Delete</button>
+        <button @click="handleInteractiveElementDelete">Delete</button>
         <button @click="handleEndInteractiveEdit">Done</button>
       </div>
       <select v-if="sceneStore.isDrawingTool" v-model="sceneStore.selectedToolSize">
