@@ -32,7 +32,7 @@ import type {
   TElement,
   TPrimaryKey,
 } from "@/types/core";
-import { isTransparent, formatColor } from "@/utils/color";
+import { isTransparent, formatColor, getColorAsCss } from "@/utils/color";
 import CheckboxElement from "@/models/CheckboxElement";
 import TextboxElement from "@/models/TextboxElement";
 
@@ -1704,25 +1704,6 @@ function handleElementDelete() {
   }
   moveableElements = [];
   moveableInteractive.target = [];
-}
-
-function getColorAsCss(color) {
-  if (color === TRANSPARENT_COLOR) {
-    return TRANSPARENT_COLOR;
-  }
-
-  if (Array.isArray(color)) {
-    const gradientStops = [];
-    for (let i = 0; i < color.length; i += 1) {
-      const colorStop = getColorAsCss(color[i].color);
-      const percent = color[i].percent;
-      gradientStops.push(`${colorStop} ${percent}%`);
-    }
-
-    return `linear-gradient(135deg, ${gradientStops.join(", ")})`;
-  }
-
-  return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
 }
 
 function handleFillColorChange(swatchId: string, colorIdx: number) {
