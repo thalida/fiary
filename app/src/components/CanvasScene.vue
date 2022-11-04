@@ -61,29 +61,24 @@ const selectedPaperColor = computed(() => {
     sceneStore.value.selectedPaperColorIdx
   );
 });
-
 const selectedPatternComponent = computed(() => {
   return canvasStore.getPaperPatternComponentByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
-
 const selectedPatternStyles = computed(() => {
   return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
-
 const selectedPatternColor = computed(() => {
   return canvasStore.getSwatchColor(
     sceneStore.value.selectedPatternSwatchId,
     sceneStore.value.selectedPatternColorIdx
   );
 });
-
 const selectedFillColor = computed(() => {
   return canvasStore.getSwatchColor(
     sceneStore.value.selectedFillSwatchId,
     sceneStore.value.selectedFillColorIdx
   );
 });
-
 const selectedStrokeColor = computed(() => {
   return canvasStore.getSwatchColor(
     sceneStore.value.selectedStrokeSwatchId,
@@ -112,6 +107,7 @@ onMounted(() => {
   ctx.scale(dpi, dpi);
 
   canvasStore.setupSceneStore(props.pageId, ctx.getTransform());
+  setRenderTransforms(sceneStore.value.transformMatrix);
 
   watch(
     () => (sceneStore.value ? sceneStore.value.debugMode : false),
@@ -124,10 +120,6 @@ onMounted(() => {
     if (sceneStore.value?.ruler.isVisible) {
       setRulerTransform(rulerElement.value, {});
     }
-  });
-
-  watchEffect(() => {
-    setRenderTransforms(sceneStore.value?.transformMatrix);
   });
 });
 
@@ -653,47 +645,13 @@ function drawElements() {
   }
 }
 
-// function getInteractiveElementTransform(element: IInteractiveElement): string {
-//   const initMatrixA = sceneStore.initTransformMatrix ? sceneStore.initTransformMatrix.a : 1;
-//   const currMatrixA = sceneStore.transformMatrix ? sceneStore.transformMatrix.a : 1;
-//   const currMatrixE = sceneStore.transformMatrix ? sceneStore.transformMatrix.e : 0;
-//   const currMatrixF = sceneStore.transformMatrix ? sceneStore.transformMatrix.f : 0;
-//   const htmlRelativeZoom = currMatrixA / initMatrixA;
-//   const newOrigin = {
-//     x: currMatrixE / initMatrixA,
-//     y: currMatrixF / initMatrixA,
-//   };
-//   const translate = `translate(${
-//     newOrigin.x + element.style.transform.translate[0] * htmlRelativeZoom
-//   }px, ${newOrigin.y + element.style.transform.translate[1] * htmlRelativeZoom}px)`;
-//   const scale = `scale(${element.style.transform.scale[0] * htmlRelativeZoom}, ${
-//     element.style.transform.scale[1] * htmlRelativeZoom
-//   })`;
-//   const rotate = `rotate(${element.style.transform.rotate}deg)`;
-
-//   const transformStr = `${translate} ${scale} ${rotate}`;
-//   return transformStr;
-// }
-
-// function setInteractiveElementTransform(element: IInteractiveElement, transform = {}): string {
-//   const nextTransform = {
-//     ...element.style.transform,
-//     ...transform,
-//   };
-
-//   element.style.transform = nextTransform;
-//   element.style.transformStr = getInteractiveElementTransform(element);
-//   return nextTransform;
-// }
-
 function handleAddCheckbox(pos: IElementPoint) {
-  const checkboxElement = new CheckboxElement(pos);
-
-  checkboxElement.setInteractiveElementTransform(
+  const checkboxElement = new CheckboxElement(
+    pos,
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
   );
-  sceneStore.value.createElement(checkboxElement as TElement);
+  sceneStore.value.createElement(checkboxElement);
 }
 
 function handleAddTextbox(pos) {
@@ -716,8 +674,8 @@ function handleAddTextbox(pos) {
     points: [pos],
   };
 
-  setInteractiveElementTransform(textboxElement);
-  sceneStore.value.createElement(textboxElement as TElement);
+  // setInteractiveElementTransform(textboxElement);
+  sceneStore.value.createElement(textboxElement);
 }
 
 function handleClearAll() {
@@ -753,8 +711,8 @@ function handleClearAll() {
     isHTMLElement: false,
     cache: {},
   };
-  clearElement.dimensions = sceneStore.value.calculateDimensions(clearElement as TElement);
-  sceneStore.value.createElement(clearElement as TElement);
+  clearElement.dimensions = sceneStore.value.calculateDimensions(clearElement);
+  sceneStore.value.createElement(clearElement);
   cacheElement(clearElement.id);
   drawElements();
   sceneStore.value.selectedTool = Tool.ERASER;
@@ -920,7 +878,7 @@ function handlePasteEnd() {
     canvas: pasteCacheCanvas,
   };
 
-  sceneStore.value.createElement(pasteElement as TElement);
+  sceneStore.value.createElement(pasteElement);
   drawElements();
   sceneStore.value.isPasteMode = false;
 }
@@ -1098,7 +1056,7 @@ function handleAddImageEnd() {
     canvas: imageCacheCanvas,
   };
 
-  sceneStore.value.createElement(imageElement as TElement);
+  sceneStore.value.createElement(imageElement);
   drawElements();
   activeImage.value = null;
   sceneStore.value.isAddImageMode = false;
@@ -1124,6 +1082,14 @@ function setRenderTransforms(matrix: DOMMatrix | null | undefined = null) {
     selectedPatternStyles.value.lineSize / relativeZoom;
   sceneStore.value.paperPatternTransform.spacing =
     selectedPatternStyles.value.spacing / relativeZoom;
+}
+
+function setInteractiveElementTransforms(initMatrix: DOMMatrix, transformMatrix: DOMMatrix) {
+  for (let i = 0; i < sceneStore.value.activeHtmlElements.length; i += 1) {
+    const elementId = sceneStore.value.activeHtmlElements[i];
+    const element = sceneStore.value.elements[elementId];
+    element.setInteractiveElementTransform(initMatrix, transformMatrix);
+  }
 }
 
 function handlePanTransform(event, isStart = false) {
@@ -1153,6 +1119,10 @@ function handlePanTransform(event, isStart = false) {
   sceneStore.value.transformMatrix.f = transformOrigin.y;
 
   setRenderTransforms(sceneStore.value.transformMatrix);
+  setInteractiveElementTransforms(
+    sceneStore.value.initTransformMatrix,
+    sceneStore.value.transformMatrix
+  );
   drawElements();
 }
 
@@ -1169,6 +1139,10 @@ function handleZoomOut() {
   }
 
   setRenderTransforms(sceneStore.value.transformMatrix);
+  setInteractiveElementTransforms(
+    sceneStore.value.initTransformMatrix,
+    sceneStore.value.transformMatrix
+  );
   drawElements();
 }
 
@@ -1185,6 +1159,10 @@ function handleZoomIn() {
   }
 
   setRenderTransforms(sceneStore.value.transformMatrix);
+  setInteractiveElementTransforms(
+    sceneStore.value.initTransformMatrix,
+    sceneStore.value.transformMatrix
+  );
   drawElements();
 }
 
@@ -1283,9 +1261,9 @@ function handleCanvasTouchStart(event: Event) {
   if (CANVAS_LINE_TOOLS.includes(newElement.tool)) {
     newElement.smoothPoints = sceneStore.value.getSmoothPoints(newElement);
   }
-  newElement.dimensions = sceneStore.value.calculateDimensions(newElement as TElement);
+  newElement.dimensions = sceneStore.value.calculateDimensions(newElement);
 
-  sceneStore.value.createElement(newElement as TElement);
+  sceneStore.value.createElement(newElement);
   drawElements();
 }
 
@@ -1674,16 +1652,16 @@ function setInteractiveElementStyles(target, transform) {
   const elementId = target.getAttribute("data-element-id");
   const element = sceneStore.value.elementById(elementId);
 
-  setInteractiveElementTransform(element, transform);
+  // setInteractiveElementTransform(element, transform);
   target.style.transform = element.style.transformStr;
 }
 
 function handleInteractiveDrag({ target, translate }) {
-  setInteractiveElementStyles(target, { translate });
+  // setInteractiveElementStyles(target, { translate });
 }
 
 function handleInteractiveRotate({ target, rotate, drag }) {
-  setInteractiveElementStyles(target, { rotate, translate: drag.translate });
+  // setInteractiveElementStyles(target, { rotate, translate: drag.translate });
 }
 
 function handleInteractiveStart(target) {
@@ -2019,10 +1997,11 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
               type="checkbox"
               :style="{
                 position: 'absolute',
-                transform: sceneStore.elements[elementId].getInteractiveElementTransform(
-                  sceneStore.initTransformMatrix,
-                  sceneStore.transformMatrix
-                ),
+                transform: sceneStore.elements[elementId].style.transformStr,
+                // transform: sceneStore.elements[elementId].getInteractiveElementTransform(
+                //   sceneStore.initTransformMatrix,
+                //   sceneStore.transformMatrix
+                // ),
               }"
               @mousedown="handleInteractiveElementEvent"
               @touchstart="handleInteractiveElementEvent"

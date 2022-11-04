@@ -14,6 +14,14 @@ export default class BaseInteractiveElement extends BaseElement {
   isHTMLElement = true;
   isDeleted = false;
 
+  constructor(pos: IElementPoint, initMatrix: DOMMatrix, matrix: DOMMatrix) {
+    super();
+    this.points = [pos];
+    this.style.transform.translate = [pos.x, pos.y];
+    this.style.transform.scale = [1, 1];
+    this.setInteractiveElementTransform(initMatrix, matrix);
+  }
+
   setInteractiveElementTransform(
     initTransformMatrix: DOMMatrix,
     transformMatrix: DOMMatrix,

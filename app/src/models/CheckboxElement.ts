@@ -7,10 +7,4 @@ export default class CheckboxElement extends BaseInteractiveElement {
   toolOptions: ICheckboxElementOptions = {
     isChecked: false,
   };
-
-  constructor(pos: IElementPoint) {
-    super();
-    this.points = [pos];
-    this.style.transform.translate = [pos.x, pos.y];
-  }
 }

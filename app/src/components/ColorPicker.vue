@@ -30,7 +30,6 @@ function handleAddSwatchClick() {
 }
 
 async function handleSwatchClick(colorIdx: number, swatchId: string) {
-  console.log("handleSwatchClick", colorIdx, swatchId);
   const isAlreadySelected = props.swatchId === swatchId && props.colorIdx === colorIdx;
   if (isAlreadySelected && swatchId !== props.specialSwatchKey) {
     showModal.value = true;

@@ -35,7 +35,7 @@ import { isTransparent } from "@/utils/color";
 export class CanvasScene {
   pageId: TPrimaryKey | undefined;
   canvasDiagSize = 0;
-  elements: IElements = {};
+  elements: { [key: TPrimaryKey]: any } = {};
   elementOrder: TPrimaryKey[] = [];
   clearAllElementIndexes: number[] = [];
   debugMode = false;
@@ -77,7 +77,7 @@ export class CanvasScene {
   constructor(pageId: TPrimaryKey, matrix: DOMMatrix, canvasDiagSize: number) {
     this.pageId = pageId;
     this.canvasDiagSize = canvasDiagSize;
-    this.initTransformMatrix = matrix;
+    this.initTransformMatrix = DOMMatrix.fromMatrix(matrix);
     this.transformMatrix = matrix;
     this.ruler = {
       isVisible: false,
@@ -156,14 +156,14 @@ export class CanvasScene {
     return this.historyIndex < this.history.length - 1;
   }
 
-  setElement(element: TElement) {
+  setElement(element: any) {
     this.elements[element.id] = element;
     this.elementOrder.push(element.id);
 
     return this.elements[element.id];
   }
 
-  createElement(element: TElement) {
+  createElement(element: any) {
     this.setElement(element);
 
     const updatedElement = this.showElement(element.id);
