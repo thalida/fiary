@@ -105,7 +105,7 @@ onMounted(() => {
   );
 
   watchEffect(() => {
-    setRenderTransforms(sceneStore.value.transformMatrix);
+    setPaperTransforms(sceneStore.value.transformMatrix);
   });
 
   watchPostEffect(() => {
@@ -152,12 +152,13 @@ function drawElements() {
   }
 
   const ctx = drawingCanvas.value.getContext("2d");
+
   if (ctx === null) {
     return;
   }
+
   ctx.setTransform(sceneStore.value.initTransformMatrix);
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
-
   ctx.setTransform(sceneStore.value.transformMatrix);
 
   const drawElementIds = sceneStore.value.activeElements;
@@ -528,7 +529,7 @@ function cancelAddImage() {
   sceneStore.value.isAddImageMode = false;
 }
 
-function setRenderTransforms(matrix: DOMMatrix | null | undefined = null) {
+function setPaperTransforms(matrix: DOMMatrix | null | undefined = null) {
   let relativeZoom = 1;
 
   if (typeof matrix !== "undefined" && matrix !== null) {
@@ -555,11 +556,10 @@ function setInteractiveElementTransforms(initMatrix: DOMMatrix, transformMatrix:
 }
 
 function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
-  if (typeof sceneStore.value.transformMatrix === "undefined") {
-    return;
-  }
-
-  if (typeof drawingCanvas.value === "undefined") {
+  if (
+    typeof sceneStore.value.transformMatrix === "undefined" ||
+    typeof drawingCanvas.value === "undefined"
+  ) {
     return;
   }
 
@@ -584,7 +584,7 @@ function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
   sceneStore.value.transformMatrix.e = transformOrigin.x;
   sceneStore.value.transformMatrix.f = transformOrigin.y;
 
-  setRenderTransforms(sceneStore.value.transformMatrix);
+  setPaperTransforms(sceneStore.value.transformMatrix);
   setInteractiveElementTransforms(
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
@@ -604,7 +604,7 @@ function handleZoomOut() {
     sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
   }
 
-  setRenderTransforms(sceneStore.value.transformMatrix);
+  setPaperTransforms(sceneStore.value.transformMatrix);
   setInteractiveElementTransforms(
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
@@ -624,7 +624,7 @@ function handleZoomIn() {
     sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
   }
 
-  setRenderTransforms(sceneStore.value.transformMatrix);
+  setPaperTransforms(sceneStore.value.transformMatrix);
   setInteractiveElementTransforms(
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
@@ -1138,30 +1138,6 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
   sceneStore.value.selectedPatternSwatchId = swatchId;
   sceneStore.value.selectedPatternColorIdx = colorIdx;
 }
-
-function handleStartInteractiveEdit() {
-  if (typeof interactiveLayer.value === "undefined") {
-    return;
-  }
-
-  interactiveLayer.value.handleStartInteractiveEdit();
-}
-
-function handleInteractiveElementDelete() {
-  if (typeof interactiveLayer.value === "undefined") {
-    return;
-  }
-
-  interactiveLayer.value.handleInteractiveElementDelete();
-}
-
-function handleEndInteractiveEdit() {
-  if (typeof interactiveLayer.value === "undefined") {
-    return;
-  }
-
-  interactiveLayer.value.handleEndInteractiveEdit();
-}
 </script>
 
 <template>
@@ -1199,15 +1175,15 @@ function handleEndInteractiveEdit() {
           !sceneStore.isInteractiveEditMode
         "
       >
-        <button @click="handleStartInteractiveEdit">Edit</button>
+        <button @click="interactiveLayer?.handleStartInteractiveEdit">Edit</button>
       </label>
 
       <button v-if="sceneStore.isAddImageMode" @click="handleAddImageEnd">Done</button>
       <button v-if="sceneStore.isPasteMode" @click="handlePasteEnd">Done</button>
       <button v-if="sceneStore.isPasteMode" @click="handlePasteDelete">Delete Selection</button>
       <div v-if="sceneStore.isInteractiveEditMode">
-        <button @click="handleInteractiveElementDelete">Delete</button>
-        <button @click="handleEndInteractiveEdit">Done</button>
+        <button @click="interactiveLayer?.handleInteractiveElementDelete">Delete</button>
+        <button @click="interactiveLayer?.handleEndInteractiveEdit">Done</button>
       </div>
       <select v-if="sceneStore.isDrawingTool" v-model="sceneStore.selectedToolSize">
         <option v-for="size in PEN_SIZES" :key="size" :value="size">
