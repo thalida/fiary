@@ -23,7 +23,8 @@ import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
 import ColorPicker from "@/components/PageColorPicker.vue";
 import PageInteractiveLayer from "@/components/PageInteractiveLayer.vue";
-import PagePaperLayer from "./PagePaperLayer.vue";
+import PagePaperLayer from "@/components/PagePaperLayer.vue";
+import PageDrawingLayer from "@/components/PageDrawingLayer.vue";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -32,9 +33,10 @@ const canvasStore = useCanvasStore();
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 
 const activeImage = ref<HTMLImageElement | null>(null);
-const drawingCanvas = ref<HTMLCanvasElement>();
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const paperLayer = ref<typeof PagePaperLayer>();
+const drawingLayer = ref<typeof PageDrawingLayer>();
+const drawingCanvas = ref<HTMLCanvasElement>();
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
 const imageBackdropCanvas = ref<HTMLCanvasElement>();
 const pasteLayer = ref<HTMLElement>();
@@ -61,26 +63,18 @@ const selectedPatternStyles = computed(() => {
   return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
 
-onMounted(() => {
-  if (typeof drawingCanvas.value === "undefined") {
+function initScene(canvas: HTMLCanvasElement) {
+  if (typeof canvas === "undefined") {
     return;
   }
 
-  const ctx = drawingCanvas.value.getContext("2d");
+  const ctx = canvas.getContext("2d");
 
   if (ctx === null) {
     return;
   }
 
-  const dpi = canvasStore.canvasConfig.dpi;
-  drawingCanvas.value.width = canvasStore.canvasConfig.width * dpi;
-  drawingCanvas.value.height = canvasStore.canvasConfig.height * dpi;
-
-  drawingCanvas.value.style.width = `${canvasStore.canvasConfig.width}px`;
-  drawingCanvas.value.style.height = `${canvasStore.canvasConfig.height}px`;
-
-  ctx.scale(dpi, dpi);
-
+  drawingCanvas.value = canvas;
   canvasStore.setupSceneStore(props.pageId, ctx.getTransform());
 
   watch(
@@ -99,7 +93,7 @@ onMounted(() => {
       setRulerTransform(rulerElement.value, {});
     }
   });
-});
+}
 
 function addColorPickerRef(ref: any) {
   if (ref !== null) {
@@ -1321,19 +1315,13 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         <canvas class="paste-canvas" ref="pasteCanvas"></canvas>
       </div>
 
-      <div class="drawing-layer">
+      <div class="drawing-area">
         <PageInteractiveLayer
           ref="interactiveLayer"
-          class="interactive-canvas"
+          class="interactive-layer"
           :pageId="props.pageId"
         />
-        <canvas
-          class="drawing-canvas"
-          ref="drawingCanvas"
-          :width="canvasStore.canvasConfig.width"
-          :height="canvasStore.canvasConfig.height"
-        >
-        </canvas>
+        <PageDrawingLayer ref="drawingLayer" class="drawing-layer" @ready="initScene" />
       </div>
       <PagePaperLayer ref="paperLayer" class="paper-layer" :pageId="props.pageId" />
     </div>
@@ -1364,7 +1352,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
   height: 100vh;
 }
 
-.drawing-layer,
+.drawing-area,
 .paste-layer,
 .image-layer,
 .ruler-layer,
@@ -1380,7 +1368,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
   z-index: 0;
 }
 
-.drawing-layer {
+.drawing-area {
   z-index: 1;
 }
 
@@ -1396,18 +1384,18 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
   z-index: 3;
 }
 
-.drawing-layer .drawing-canvas,
-.drawing-layer .interactive-canvas {
+.drawing-area .drawing-layer,
+.drawing-area .interactive-layer {
   position: absolute;
   top: 0;
   left: 0;
 }
 
-.drawing-layer .drawing-canvas {
+.drawing-area .drawing-layer {
   z-index: 0;
 }
 
-.drawing-layer .interactive-canvas {
+.drawing-area .interactive-layer {
   z-index: 1;
 }
 
