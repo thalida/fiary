@@ -5,7 +5,7 @@ import Moveable from "moveable";
 import { useCanvasStore } from "@/stores/canvas";
 import type { TPrimaryKey, ICheckboxElementOptions, ITextboxElementOptions } from "@/types/core";
 import { ELEMENT_TYPE, PageHistoryEvent } from "@/constants/core";
-import CanvasTextarea from "@/components/CanvasTextarea.vue";
+import PageTextarea from "@/components/PageTextarea.vue";
 import cloneDeep from "lodash/cloneDeep";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -238,7 +238,7 @@ defineExpose({
         @mousemove="handleInteractiveElementEvent"
         @touchmove="handleInteractiveElementEvent"
       />
-      <CanvasTextarea
+      <PageTextarea
         v-else-if="sceneStore.elements[elementId].tool === ELEMENT_TYPE.TEXTBOX"
         :data-element-id="sceneStore.elements[elementId].id"
         class="interactiveElement"

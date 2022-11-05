@@ -19,13 +19,13 @@ import {
   SPECIAL_TOOL_SWATCH_KEY,
   SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
-import ColorPicker from "@/components/ColorPicker.vue";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { getColorAsCss } from "@/utils/color";
 import { ELEMENT_MAP } from "@/models/elements";
-import CanvasInteractiveLayer from "@/components/CanvasInteractiveLayer.vue";
+import ColorPicker from "@/components/PageColorPicker.vue";
+import PageInteractiveLayer from "@/components/PageInteractiveLayer.vue";
 
-console.log("Updated CanvasScene");
+console.log("Updated PageScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
 
@@ -33,7 +33,7 @@ const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 
 const activeImage = ref<HTMLImageElement | null>(null);
 const drawingCanvas = ref<HTMLCanvasElement>();
-const interactiveLayer = ref<typeof CanvasInteractiveLayer>();
+const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
 const imageBackdropCanvas = ref<HTMLCanvasElement>();
 const pasteLayer = ref<HTMLElement>();
@@ -1362,7 +1362,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
       </div>
 
       <div class="drawing-layer">
-        <CanvasInteractiveLayer
+        <PageInteractiveLayer
           ref="interactiveLayer"
           class="interactive-canvas"
           :pageId="props.pageId"

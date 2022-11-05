@@ -25,7 +25,7 @@ import type {
   TPrimaryKey,
 } from "@/types/core";
 
-export class CanvasScene {
+export default class PageScene {
   pageId: TPrimaryKey | undefined;
   canvasDiagSize = 0;
   elements: { [key: TPrimaryKey]: any } = {};

@@ -4,8 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 import { DEFAULT_COLOR_SWATCHES, DEFAULT_SWATCH_KEY, MAX_SWATCH_COLORS } from "@/constants/core";
 import type { TColor, TPrimaryKey } from "@/types/core";
 import { randomInteger } from "@/utils/math";
-import patternComponents, { defaultPatternProps } from "@/components/CanvasPatterns";
-import { CanvasScene } from "@/models/CanvasScene";
+import patternComponents, { defaultPatternProps } from "@/components/PagePatterns";
+import PageScene from "@/models/PageScene";
 
 export const useCanvasStore = defineStore("canvas", () => {
   const canvasConfig = ref({
@@ -20,13 +20,13 @@ export const useCanvasStore = defineStore("canvas", () => {
     );
   });
 
-  const scenes = reactive({} as { [key: TPrimaryKey]: UnwrapNestedRefs<CanvasScene> });
+  const scenes = reactive({} as { [key: TPrimaryKey]: UnwrapNestedRefs<PageScene> });
   function setupSceneStore(pageId: TPrimaryKey, matrix: DOMMatrix) {
-    scenes[pageId] = new CanvasScene(
+    scenes[pageId] = new PageScene(
       pageId,
       matrix,
       canvasDiagSize.value
-    ) as unknown as UnwrapNestedRefs<CanvasScene>;
+    ) as unknown as UnwrapNestedRefs<PageScene>;
   }
 
   const paperPatterns = ref(patternComponents);
