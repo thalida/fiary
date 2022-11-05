@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchPostEffect, onMounted, nextTick } from "vue";
+import { ref, computed, watch, watchPostEffect, onMounted, nextTick, watchEffect } from "vue";
 import cloneDeep from "lodash/cloneDeep";
 import Moveable from "moveable";
 import MoveableVue from "vue3-moveable";
@@ -96,7 +96,6 @@ onMounted(() => {
   ctx.scale(dpi, dpi);
 
   canvasStore.setupSceneStore(props.pageId, ctx.getTransform());
-  setRenderTransforms(sceneStore.value.transformMatrix);
 
   watch(
     () => (sceneStore.value ? sceneStore.value.debugMode : false),
@@ -104,6 +103,10 @@ onMounted(() => {
       drawElements();
     }
   );
+
+  watchEffect(() => {
+    setRenderTransforms(sceneStore.value.transformMatrix);
+  });
 
   watchPostEffect(() => {
     if (sceneStore.value?.ruler.isVisible) {
