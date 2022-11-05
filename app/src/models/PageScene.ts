@@ -151,7 +151,6 @@ export default class PageScene {
   }
   get zoomPercent() {
     const percent = Math.round(this.transformMatrix.a * 100);
-    console.log(this.transformMatrix.a, percent);
     return percent;
   }
 

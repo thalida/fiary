@@ -5,16 +5,10 @@ import { useCanvasStore } from "@/stores/canvas";
 import {
   PageHistoryEvent as HistoryEvent,
   ELEMENT_TYPE,
-  CANVAS_TOOL_CHOICES as supportedTools,
   CANVAS_POINTER_TOOL,
   CANVAS_PAPER_TOOL,
   CANVAS_LINE_TOOLS,
-  LINE_END_SIDE_CHOICES,
-  LINE_END_STYLE_CHOICES,
-  PEN_SIZES,
   TRANSPARENT_COLOR,
-  SPECIAL_TOOL_SWATCH_KEY,
-  SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";

@@ -10,7 +10,7 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
 import ColorPicker from "@/components/PageColorPicker.vue";
-import { computed, nextTick, ref } from "vue";
+import { computed, ref } from "vue";
 import type { TPrimaryKey } from "@/types/core";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -59,9 +59,10 @@ async function handleZoomOut() {
   }
 
   const percent = sceneStore.value.zoomOut();
-  zoomPercent.value = percent;
+  if (typeof percent !== "undefined") {
+    zoomPercent.value = percent;
+  }
 
-  await nextTick();
   emit("action:camera:zoomOut");
 }
 
@@ -71,9 +72,10 @@ async function handleZoomIn() {
   }
 
   const percent = sceneStore.value.zoomIn();
-  zoomPercent.value = percent;
+  if (typeof percent !== "undefined") {
+    zoomPercent.value = percent;
+  }
 
-  await nextTick();
   emit("action:camera:zoomIn");
 }
 
