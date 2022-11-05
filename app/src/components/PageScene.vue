@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, watchPostEffect, nextTick, watchEffect } from "vue";
 import cloneDeep from "lodash/cloneDeep";
-import Moveable from "moveable";
 import MoveableVue from "vue3-moveable";
 
 import { useCanvasStore } from "@/stores/canvas";
@@ -21,10 +20,12 @@ import {
 } from "@/constants/core";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
+import { clearCanvas } from "@/utils/canvas";
 import ColorPicker from "@/components/PageColorPicker.vue";
 import PageInteractiveLayer from "@/components/PageInteractiveLayer.vue";
 import PagePaperLayer from "@/components/PagePaperLayer.vue";
 import PageDrawingLayer from "@/components/PageDrawingLayer.vue";
+import PagePasteLayer from "@/components/PagePasteLayer.vue";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -35,16 +36,14 @@ const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const paperLayer = ref<typeof PagePaperLayer>();
 const drawingLayer = ref<typeof PageDrawingLayer>();
+const pasteLayer = ref<typeof PagePasteLayer>();
 const drawingCanvas = ref<HTMLCanvasElement>();
 const activeImage = ref<HTMLImageElement | null>(null);
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
 const imageBackdropCanvas = ref<HTMLCanvasElement>();
 const moveableImage = ref();
-const pasteLayer = ref<HTMLElement>();
-const pasteCanvas = ref<HTMLCanvasElement>();
 const rulerElement = ref();
 const moveableRuler = ref();
-let moveablePaste: any = null;
 const colorPickerRefs: any[] = [];
 
 const selectedFillColor = computed(() => {
@@ -119,13 +118,6 @@ function isDrawingAllowed(isDrawingOverride = false) {
   return !canvasStore.isSwatchOpen && sceneStore.value.isDrawingAllowed && activelyDrawing;
 }
 
-function clearCanvas(canvas: HTMLCanvasElement) {
-  const ctx = canvas.getContext("2d");
-  if (ctx) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-}
-
 function handleAddCheckbox(pos: IElementPoint) {
   const checkboxElement = new ELEMENT_MAP[ELEMENT_TYPE.CHECKBOX]({
     pos,
@@ -164,162 +156,6 @@ function handleClearAll() {
   sceneStore.value.createElement(clearElement);
   drawingLayer.value?.drawElements();
   sceneStore.value.selectedTool = ELEMENT_TYPE.ERASER;
-}
-
-async function handlePasteStart() {
-  sceneStore.value.pasteTransform = {
-    translate: [0, 0],
-    scale: [1, 1],
-    rotate: 0,
-  };
-  sceneStore.value.isPasteMode = true;
-  await nextTick();
-
-  if (typeof pasteLayer.value === "undefined" || typeof pasteCanvas.value === "undefined") {
-    return;
-  }
-
-  const ctx = pasteCanvas.value.getContext("2d");
-
-  if (ctx === null) {
-    return;
-  }
-
-  const cutSelectionId =
-    sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
-  const cutSelection = sceneStore.value.elementById(cutSelectionId);
-
-  if (!cutSelection.isDrawingCached) {
-    cutSelection.isCompletedCut = true;
-    cutSelection.composition = "destination-out";
-    cutSelection.cacheElement();
-  }
-
-  drawingLayer.value?.drawElements();
-
-  sceneStore.value.pasteTransform.translate = [
-    cutSelection.cache.drawing.x,
-    cutSelection.cache.drawing.y,
-  ];
-  setPasteTransform(pasteCanvas.value, sceneStore.value.pasteTransform);
-
-  const dpi = cutSelection.cache.drawing.dpi;
-  const width = cutSelection.cache.drawing.width;
-  const height = cutSelection.cache.drawing.height;
-
-  pasteCanvas.value.width = width * dpi;
-  pasteCanvas.value.height = height * dpi;
-
-  pasteCanvas.value.style.width = `${width}px`;
-  pasteCanvas.value.style.height = `${height}px`;
-  ctx.scale(dpi, dpi);
-
-  clearCanvas(pasteCanvas.value);
-  ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
-  for (let i = 0; i < sceneStore.value.activeElements.length - 1; i += 1) {
-    const elementId = sceneStore.value.activeElements[i];
-    const element = sceneStore.value.elementById(elementId);
-    element.drawElement(pasteCanvas.value);
-  }
-  const cutSelectionClip = cloneDeep(cutSelection);
-  cutSelectionClip.isDrawingCached = false;
-  cutSelectionClip.cache = {};
-  cutSelectionClip.composition = "destination-in";
-  cutSelectionClip.drawElement(pasteCanvas.value);
-
-  moveablePaste = new Moveable(pasteLayer.value, {
-    target: pasteCanvas.value as HTMLElement,
-    draggable: true,
-    rotatable: true,
-    pinchable: true,
-    scalable: true,
-    keepRatio: true,
-  });
-
-  moveablePaste.on("drag", onPasteDrag).on("rotate", onPasteRotate).on("scale", onPasteScale);
-}
-
-function cancelPaste() {
-  const cutSelectionId =
-    sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
-  sceneStore.value.deleteElement(cutSelectionId, false);
-  sceneStore.value.isPasteMode = false;
-}
-
-function handlePasteEnd() {
-  if (typeof pasteCanvas.value === "undefined") {
-    return;
-  }
-
-  const cutSelectionId =
-    sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
-  const cutSelection = sceneStore.value.elementById(cutSelectionId);
-  const moveableRect = moveablePaste.getRect();
-  const pasteElement = new ELEMENT_MAP[ELEMENT_TYPE.PASTE](moveableRect);
-
-  if (
-    sceneStore.value.pasteTransform.rotate === 0 &&
-    cutSelection.cache.drawing.x === pasteElement.dimensions.outerMinX &&
-    cutSelection.cache.drawing.y === pasteElement.dimensions.outerMinY &&
-    cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth &&
-    cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
-  ) {
-    cancelPaste();
-    drawingLayer.value?.drawElements();
-    sceneStore.value.popHistoryEvent();
-    return;
-  }
-
-  const pasteCacheCanvas = document.createElement("canvas");
-  const ctx = pasteCacheCanvas.getContext("2d");
-
-  if (ctx === null) {
-    return;
-  }
-
-  const dpi = window.devicePixelRatio;
-  const minX = pasteElement.dimensions.outerMinX;
-  const minY = pasteElement.dimensions.outerMinY;
-  const width = pasteElement.dimensions.outerWidth;
-  const height = pasteElement.dimensions.outerHeight;
-  const rotRad = (sceneStore.value.pasteTransform.rotate * Math.PI) / 180;
-
-  const imageWidth = sceneStore.value.pasteTransform.scale[0] * pasteCanvas.value.offsetWidth;
-  const imageHeight = sceneStore.value.pasteTransform.scale[1] * pasteCanvas.value.offsetHeight;
-
-  pasteCacheCanvas.width = width * dpi;
-  pasteCacheCanvas.height = height * dpi;
-  pasteCacheCanvas.style.width = `${width}px`;
-  pasteCacheCanvas.style.height = `${height}px`;
-
-  const centerX = width / 2;
-  const centerY = height / 2;
-
-  ctx.save();
-  ctx.scale(dpi, dpi);
-  ctx.translate(centerX, centerY);
-  ctx.rotate(rotRad);
-  ctx.drawImage(pasteCanvas.value, -imageWidth / 2, -imageHeight / 2, imageWidth, imageHeight);
-  ctx.restore();
-
-  pasteElement.isDrawingCached = true;
-  pasteElement.cache.drawing = {
-    x: minX,
-    y: minY,
-    width,
-    height,
-    dpi,
-    canvas: pasteCacheCanvas,
-  };
-
-  sceneStore.value.createElement(pasteElement);
-  drawingLayer.value?.drawElements();
-  sceneStore.value.isPasteMode = false;
-}
-
-function handlePasteDelete() {
-  drawingLayer.value?.drawElements();
-  sceneStore.value.isPasteMode = false;
 }
 
 async function handleAddImageStart(image: HTMLImageElement, trackHistory = true) {
@@ -766,7 +602,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
 
   if (lastElement.tool === ELEMENT_TYPE.CUT) {
-    handlePasteStart();
+    pasteLayer.value?.handlePasteStart();
   } else {
     lastElement.cacheElement();
     drawingLayer.value?.drawElements();
@@ -835,51 +671,6 @@ function onRulerRotate({
     rotate: transformRotation % 360,
     translate: drag.translate,
   });
-}
-
-function setPasteTransform(
-  target: HTMLElement,
-  transform: { translate?: number[]; scale?: number[]; rotate?: number }
-) {
-  const nextTransform = {
-    ...sceneStore.value.pasteTransform,
-    ...transform,
-  };
-
-  const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
-  const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
-  const rotate = `rotate(${nextTransform.rotate}deg)`;
-  target.style.transform = `${translate} ${scale} ${rotate}`;
-
-  sceneStore.value.pasteTransform = nextTransform;
-}
-
-function onPasteDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
-  setPasteTransform(target, { translate });
-}
-
-function onPasteRotate({
-  target,
-  rotate,
-  drag,
-}: {
-  target: HTMLElement;
-  rotate: number;
-  drag: { translate: number[] };
-}) {
-  setPasteTransform(target, { rotate, translate: drag.translate });
-}
-
-function onPasteScale({
-  target,
-  scale,
-  drag,
-}: {
-  target: HTMLElement;
-  scale: number[];
-  drag: { translate: number[] };
-}) {
-  setPasteTransform(target, { scale, translate: drag.translate });
 }
 
 function handleImageUpload(e: Event) {
@@ -989,7 +780,7 @@ function handleUndoClick() {
   let redoAddImage = false;
 
   if (sceneStore.value.isPasteMode) {
-    cancelPaste();
+    pasteLayer.value?.handleCancelPaste();
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     cancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
@@ -1007,7 +798,7 @@ function handleUndoClick() {
   sceneStore.value.historyIndex -= 1;
 
   if (redoPaste) {
-    handlePasteStart();
+    pasteLayer.value?.handlePasteStart();
   } else if (redoAddImage) {
     drawingLayer.value?.drawElements();
     handleAddImageStart(action.image, false);
@@ -1037,7 +828,7 @@ function handleRedoClick() {
   sceneStore.value.historyIndex += 1;
 
   if (redoPaste) {
-    handlePasteStart();
+    pasteLayer.value?.handlePasteStart();
   } else if (redoAddImage) {
     handleAddImageStart(action.image, false);
   } else {
@@ -1107,8 +898,10 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
       </label>
 
       <button v-if="sceneStore.isAddImageMode" @click="handleAddImageEnd">Done</button>
-      <button v-if="sceneStore.isPasteMode" @click="handlePasteEnd">Done</button>
-      <button v-if="sceneStore.isPasteMode" @click="handlePasteDelete">Delete Selection</button>
+      <button v-if="sceneStore.isPasteMode" @click="pasteLayer?.handlePasteEnd">Done</button>
+      <button v-if="sceneStore.isPasteMode" @click="pasteLayer?.handlePasteDelete">
+        Delete Selection
+      </button>
       <div v-if="sceneStore.isInteractiveEditMode">
         <button @click="interactiveLayer?.handleInteractiveElementDelete">Delete</button>
         <button @click="interactiveLayer?.handleEndInteractiveEdit">Done</button>
@@ -1285,9 +1078,12 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         />
       </div>
 
-      <div class="paste-layer" v-if="sceneStore && sceneStore.isPasteMode" ref="pasteLayer">
-        <canvas class="paste-canvas" ref="pasteCanvas"></canvas>
-      </div>
+      <PagePasteLayer
+        ref="pasteLayer"
+        class="paste-layer"
+        :pageId="props.pageId"
+        @redraw="drawingLayer?.drawElements"
+      />
 
       <div class="drawing-area">
         <PageInteractiveLayer
