@@ -139,116 +139,6 @@ function isDrawingAllowed(isDrawingOverride = false) {
   return !canvasStore.isSwatchOpen && sceneStore.value.isDrawingAllowed && activelyDrawing;
 }
 
-function getMousePos(
-  canvas: HTMLCanvasElement,
-  event: MouseEvent | TouchEvent,
-  followRuler = false
-) {
-  const rect = canvas.getBoundingClientRect(); // abs. size of element
-  const clientX = (event as TouchEvent).touches
-    ? (event as TouchEvent).touches[0].clientX
-    : (event as MouseEvent).clientX;
-  const clientY = (event as TouchEvent).touches
-    ? (event as TouchEvent).touches[0].clientY
-    : (event as MouseEvent).clientY;
-  let inputX = clientX;
-  let inputY = clientY;
-  let isRulerLine = false;
-
-  if (followRuler && sceneStore.value.ruler.isVisible && moveableRuler.value) {
-    const searchDistance = 25;
-    let foundX, foundY;
-    let searchFor = true;
-    let isFirstLoop = true;
-
-    let dx = 0;
-    while (dx <= searchDistance) {
-      const rx1 = clientX - dx;
-      const rx2 = clientX + dx;
-
-      let dy = 0;
-      while (dy <= searchDistance) {
-        const ry1 = clientY - dy;
-        const ry2 = clientY + dy;
-        const searchDirections = [
-          [rx1, ry1],
-          [rx1, ry2],
-          [rx2, ry1],
-          [rx2, ry2],
-        ];
-
-        for (let i = 0; i < searchDirections.length; i += 1) {
-          const searchDirection = searchDirections[i];
-          const isInside = moveableRuler.value.isInside(searchDirection[0], searchDirection[1]);
-
-          if (isFirstLoop) {
-            searchFor = !isInside;
-            isFirstLoop = false;
-          }
-
-          if (isInside === searchFor) {
-            foundX = searchDirection[0];
-            foundY = searchDirection[1];
-            break;
-          }
-        }
-
-        if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-          break;
-        }
-
-        dy += 1;
-      }
-
-      if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-        break;
-      }
-
-      dx += 1;
-    }
-
-    if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-      isRulerLine = true;
-      inputX = foundX;
-      inputY = foundY;
-    }
-  }
-
-  const x = inputX - rect.left;
-  const y = inputY - rect.top;
-  return { x, y, isRulerLine };
-}
-
-function getDrawPos(
-  canvas: HTMLCanvasElement,
-  event: MouseEvent | TouchEvent,
-  followRuler = false
-) {
-  const pos = getMousePos(canvas, event, followRuler);
-  let cameraX = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.e : 0;
-  let cameraY = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.f : 0;
-  const cameraZoom = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.a : 1;
-  const initMatrixA = sceneStore.value.initTransformMatrix
-    ? sceneStore.value.initTransformMatrix.a
-    : 1;
-  const relativeZoom = initMatrixA / cameraZoom;
-
-  if (sceneStore.value.isInteractiveTool) {
-    cameraX /= cameraZoom;
-    cameraY /= cameraZoom;
-  }
-
-  const transformedPos = {
-    x: pos.x * relativeZoom - cameraX,
-    y: pos.y * relativeZoom - cameraY,
-  };
-
-  return {
-    ...pos,
-    ...transformedPos,
-  };
-}
-
 function clearCanvas(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d");
   if (ctx) {
@@ -673,7 +563,7 @@ function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
     return;
   }
 
-  const pos = getMousePos(drawingCanvas.value, event);
+  const pos = sceneStore.value.getMousePos(drawingCanvas.value, event);
 
   if (isStart) {
     sceneStore.value.activePanCoords = [
@@ -802,7 +692,7 @@ function handleCanvasTouchStart(event: MouseEvent | TouchEvent) {
     fillColor,
   });
 
-  const pos = getDrawPos(drawingCanvas.value, event, true);
+  const pos = sceneStore.value.getDrawPos(drawingCanvas.value, event, true, moveableRuler.value);
   newElement.isRulerLine = pos.isRulerLine;
   newElement.size = selectedTool === ELEMENT_TYPE.CUT ? 0 : sceneStore.value.selectedToolSize;
   newElement.toolOptions = {
@@ -863,7 +753,12 @@ function handleCanvasTouchMove(event: MouseEvent | TouchEvent) {
   const lastElementId = sceneStore.value.elementOrder[sceneStore.value.elementOrder.length - 1];
   const lastElement = sceneStore.value.elementById(lastElementId);
   const followRuler = lastElement.isRulerLine || !CANVAS_LINE_TOOLS.includes(lastElement.tool);
-  const pos = getDrawPos(drawingCanvas.value, event, followRuler);
+  const pos = sceneStore.value.getDrawPos(
+    drawingCanvas.value,
+    event,
+    followRuler,
+    moveableRuler.value
+  );
   const pressure = lastElement.getPressure(event, sceneStore.value.isStylus);
 
   if (lastElement.tool === ELEMENT_TYPE.CIRCLE || lastElement.tool === ELEMENT_TYPE.RECTANGLE) {
@@ -916,13 +811,13 @@ function handleCanvasTouchEnd(event: MouseEvent | TouchEvent) {
   }
 
   if (sceneStore.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
-    const pos = getDrawPos(drawingCanvas.value, event, true);
+    const pos = sceneStore.value.getDrawPos(drawingCanvas.value, event, true, moveableRuler.value);
     handleAddCheckbox(pos);
     return;
   }
 
   if (sceneStore.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
-    const pos = getDrawPos(drawingCanvas.value, event, true);
+    const pos = sceneStore.value.getDrawPos(drawingCanvas.value, event, true, moveableRuler.value);
     handleAddTextbox(pos);
     return;
   }
