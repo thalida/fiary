@@ -12,7 +12,6 @@ import {
   CANVAS_TOOL_CHOICES as supportedTools,
   CANVAS_LINE_TOOLS,
   LINE_END_SIDE_CHOICES,
-  LineEndStyle,
   LINE_END_STYLE_CHOICES,
   PEN_SIZES,
   TRANSPARENT_COLOR,
@@ -20,10 +19,9 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
 import ColorPicker from "@/components/ColorPicker.vue";
-import type { ICanvasElement, IClearElement, IElementPoint, TPrimaryKey } from "@/types/core";
-import { isTransparent, formatColor, getColorAsCss } from "@/utils/color";
-import CheckboxElement from "@/models/CheckboxElement";
-import TextboxElement from "@/models/TextboxElement";
+import type { ICanvasElement, IElementPoint, TPrimaryKey } from "@/types/core";
+import { getColorAsCss } from "@/utils/color";
+import { ELEMENT_MAP } from "@/models/elements";
 import CanvasInteractiveLayer from "@/components/CanvasInteractiveLayer.vue";
 
 console.log("Updated CanvasScene");
@@ -233,381 +231,6 @@ function getDrawPos(canvas, event, followRuler = false) {
   };
 }
 
-function cacheElement(elementId) {
-  const element = sceneStore.value.elementById(elementId);
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
-  if (ctx === null) {
-    return;
-  }
-
-  const dpi = window.devicePixelRatio;
-
-  const minX = element.dimensions.outerMinX;
-  const minY = element.dimensions.outerMinY;
-  const width = element.dimensions.outerWidth;
-  const height = element.dimensions.outerHeight;
-
-  canvas.width = width * dpi;
-  canvas.height = height * dpi;
-
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-
-  ctx.save();
-  ctx.scale(dpi, dpi);
-  ctx.translate(-minX, -minY);
-  drawElement(canvas, element, true);
-  ctx.restore();
-
-  element.isDrawingCached = true;
-  element.cache.drawing = {
-    x: minX,
-    y: minY,
-    width,
-    height,
-    dpi,
-    canvas,
-  };
-}
-
-function drawElement(canvas, element, isCaching = false) {
-  if (
-    element.isHTMLElement ||
-    element.isDeleted ||
-    element.dimensions.outerWidth === 0 ||
-    element.dimensions.outerHeight === 0
-  ) {
-    return;
-  }
-
-  const ctx = canvas.getContext("2d");
-
-  if (element.isDrawingCached) {
-    const cachedCanvas = element.cache.drawing.canvas;
-    const dpi = element.cache.drawing.dpi;
-    ctx.save();
-    ctx.globalCompositeOperation = element.composition;
-    ctx.translate(element.cache.drawing.x, element.cache.drawing.y);
-    ctx.drawImage(cachedCanvas, 0, 0, cachedCanvas.width / dpi, cachedCanvas.height / dpi);
-    ctx.restore();
-
-    if (sceneStore.value.debugMode) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.translate(element.cache.drawing.x, element.cache.drawing.y);
-      ctx.rect(0, 0, cachedCanvas.width / dpi, cachedCanvas.height / dpi);
-      ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
-      ctx.lineWidth = 5;
-      ctx.stroke();
-      ctx.restore();
-    }
-    return;
-  }
-
-  const points = element.points.slice();
-  const { minX, minY, maxX, maxY } = element.dimensions;
-
-  ctx.save();
-
-  if (
-    isCaching &&
-    (element.tool === Tool.ERASER || element.tool === Tool.CUT || element.tool === Tool.CLEAR_ALL)
-  ) {
-    ctx.globalCompositeOperation = "source-over";
-  } else {
-    ctx.globalCompositeOperation = element.composition;
-  }
-
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = element.size;
-
-  if (Array.isArray(element.strokeColor)) {
-    let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
-
-    if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
-      gradientStartX = minX;
-      gradientEndX = maxX;
-    } else {
-      gradientStartX = maxX;
-      gradientEndX = minX;
-    }
-
-    if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
-      gradientStartY = minY;
-      gradientEndY = maxY;
-    } else {
-      gradientStartY = maxY;
-      gradientEndY = minY;
-    }
-
-    const gradient = ctx.createLinearGradient(
-      gradientStartX,
-      gradientStartY,
-      gradientEndX,
-      gradientEndY
-    );
-    for (let j = 0; j < element.strokeColor.length; j += 1) {
-      const colorStop = element.strokeColor[j];
-      const stop = colorStop.percent / 100;
-      const color = formatColor(colorStop.color, element.opacity);
-      gradient.addColorStop(stop, color);
-    }
-    ctx.strokeStyle = gradient;
-  } else {
-    ctx.strokeStyle = formatColor(element.strokeColor, element.opacity);
-  }
-
-  if (Array.isArray(element.fillColor)) {
-    let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
-    if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
-      gradientStartX = minX;
-      gradientEndX = maxX;
-    } else {
-      gradientStartX = maxX;
-      gradientEndX = minX;
-    }
-    if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
-      gradientStartY = minY;
-      gradientEndY = maxY;
-    } else {
-      gradientStartY = maxY;
-      gradientEndY = minY;
-    }
-
-    const gradient = ctx.createLinearGradient(
-      gradientStartX,
-      gradientStartY,
-      gradientEndX,
-      gradientEndY
-    );
-    for (let j = 0; j < element.fillColor.length; j += 1) {
-      const colorStop = element.fillColor[j];
-      const stop = colorStop.percent / 100;
-      const color = formatColor(colorStop.color, element.opacity);
-      gradient.addColorStop(stop, color);
-    }
-    ctx.fillStyle = gradient;
-  } else {
-    ctx.fillStyle = formatColor(element.fillColor, element.opacity);
-  }
-
-  if (CANVAS_LINE_TOOLS.includes(element.tool)) {
-    ctx.save();
-    ctx.beginPath();
-    const strokePoints = element.smoothPoints.stroke;
-    ctx.moveTo(strokePoints[0][0], strokePoints[0][1]);
-    const strokeData = sceneStore.value.getSvgPathFromStroke(strokePoints);
-    const myStroke = new Path2D(strokeData);
-    ctx.fillStyle = ctx.strokeStyle;
-    ctx.fill(myStroke);
-    ctx.restore();
-
-    ctx.save();
-    if (isTransparent(element.fillColor)) {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "#fff";
-    }
-    ctx.beginPath();
-    const pathPoints = element.smoothPoints.path;
-    ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
-    const pathData = sceneStore.value.getSvgPathFromStroke(pathPoints);
-    const myPath = new Path2D(pathData);
-    ctx.fill(myPath);
-    ctx.restore();
-  } else if (element.tool === Tool.CIRCLE) {
-    ctx.beginPath();
-    const midX = (minX + maxX) / 2;
-    const midY = (minY + maxY) / 2;
-    const radX = Math.abs(midX - minX);
-    const radY = Math.abs(midY - minY);
-
-    ctx.ellipse(midX, midY, radX, radY, 0, 0, 2 * Math.PI);
-    ctx.stroke();
-    ctx.fill();
-  } else if (element.tool === Tool.TRIANGLE) {
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    ctx.lineTo(points[1].x, points[1].y);
-    ctx.lineTo(points[2].x, points[2].y);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.fill();
-  } else if (element.tool === Tool.RECTANGLE) {
-    ctx.beginPath();
-    const rectangle = new Path2D();
-    const width = maxX - minX;
-    const height = maxY - minY;
-    rectangle.rect(minX, minY, width, height);
-    ctx.stroke(rectangle);
-    ctx.fill(rectangle);
-  } else if (element.tool === Tool.LINE) {
-    const numPoints = points.length;
-    const fromx = points[0].x;
-    const fromy = points[0].y;
-    const tox = points[points.length - 1].x;
-    const toy = points[points.length - 1].y;
-
-    ctx.save();
-    ctx.lineWidth *= 1.5;
-    ctx.fillStyle = ctx.strokeStyle;
-    ctx.beginPath();
-    ctx.moveTo(fromx, fromy);
-    ctx.lineTo(tox, toy);
-    ctx.stroke();
-
-    if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
-      ctx.beginPath();
-      for (let i = points.length - 2; i > 0; i -= 1) {
-        const targetPoint = numPoints > 4 && i <= 2 ? points[0] : points[numPoints - 1];
-        ctx.moveTo(targetPoint.x, targetPoint.y);
-        ctx.lineTo(points[i].x, points[i].y);
-      }
-      ctx.stroke();
-    } else if (element.toolOptions.lineEndStyle === LineEndStyle.SQUARE) {
-      ctx.lineWidth = element.size / 2;
-      ctx.beginPath();
-      for (let i = 1; i < points.length - 1; i += 2) {
-        const startPoint = points[i];
-        const endPoint = points[i + 1];
-        const width = endPoint.x - startPoint.x;
-        const height = endPoint.y - startPoint.y;
-        ctx.rect(startPoint.x, startPoint.y, width, height);
-      }
-      ctx.fill();
-      ctx.stroke();
-    } else if (element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE) {
-      ctx.lineWidth = element.size / 2;
-      ctx.beginPath();
-      for (let i = 1; i < points.length - 1; i += 2) {
-        const startPoint = points[i];
-        const endPoint = points[i + 1];
-        const centerX = (startPoint.x + endPoint.x) / 2;
-        const centerY = (startPoint.y + endPoint.y) / 2;
-        const radius =
-          Math.sqrt(
-            Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)
-          ) / 2;
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-      }
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = ctx.fillStyle;
-    ctx.beginPath();
-    ctx.moveTo(fromx, fromy);
-    ctx.lineTo(tox, toy);
-    ctx.stroke();
-
-    if (element.toolOptions.lineEndStyle === LineEndStyle.ARROW) {
-      ctx.beginPath();
-      for (let i = points.length - 2; i > 0; i -= 1) {
-        const targetPoint = numPoints > 4 && i <= 2 ? points[0] : points[numPoints - 1];
-        ctx.moveTo(targetPoint.x, targetPoint.y);
-        ctx.lineTo(points[i].x, points[i].y);
-      }
-      ctx.stroke();
-    } else if (element.toolOptions.lineEndStyle === LineEndStyle.SQUARE) {
-      ctx.beginPath();
-      for (let i = 1; i < points.length - 1; i += 2) {
-        const startPoint = points[i];
-        const endPoint = points[i + 1];
-        const width = endPoint.x - startPoint.x;
-        const height = endPoint.y - startPoint.y;
-        ctx.rect(startPoint.x, startPoint.y, width, height);
-      }
-      ctx.fill();
-    } else if (element.toolOptions.lineEndStyle === LineEndStyle.CIRCLE) {
-      ctx.beginPath();
-      for (let i = 1; i < points.length - 1; i += 2) {
-        const startPoint = points[i];
-        const endPoint = points[i + 1];
-        const centerX = (startPoint.x + endPoint.x) / 2;
-        const centerY = (startPoint.y + endPoint.y) / 2;
-        const radius =
-          Math.sqrt(
-            Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2)
-          ) / 2;
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-      }
-      ctx.fill();
-    }
-    ctx.restore();
-  } else if (element.tool === Tool.BLOB || element.tool === Tool.ERASER) {
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    let i = 0;
-    for (i = 0; i < points.length - 2; i += 1) {
-      const xc = (points[i].x + points[i + 1].x) / 2;
-      const yc = (points[i].y + points[i + 1].y) / 2;
-      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-    }
-
-    if (points.length >= 2) {
-      ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
-    }
-
-    if (element.tool === Tool.BLOB) {
-      ctx.closePath();
-      ctx.save();
-      if (isTransparent(element.strokeColor)) {
-        ctx.strokeStyle = ctx.fillStyle;
-      }
-      ctx.stroke();
-      ctx.fill();
-      ctx.restore();
-    } else if (element.tool === Tool.ERASER) {
-      ctx.save();
-      ctx.strokeStyle = "#ffffff";
-      ctx.stroke();
-      ctx.restore();
-    }
-  } else if (element.tool === Tool.CUT) {
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    let i = 0;
-    for (i = 0; i < points.length - 2; i += 1) {
-      const xc = (points[i].x + points[i + 1].x) / 2;
-      const yc = (points[i].y + points[i + 1].y) / 2;
-      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-    }
-
-    if (points.length >= 2) {
-      ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
-    }
-
-    if (element.isCompletedCut) {
-      ctx.closePath();
-      ctx.fillStyle = "#ffffff";
-      ctx.fill();
-    } else {
-      ctx.setLineDash([10, 10]);
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = "#ffffff";
-      ctx.stroke();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#0000ff";
-      ctx.stroke();
-    }
-  } else if (element.tool === Tool.CLEAR_ALL) {
-    ctx.beginPath();
-    const rectangle = new Path2D();
-    const width = maxX - minX;
-    const height = maxY - minY;
-    rectangle.rect(minX, minY, width, height);
-    ctx.fill(rectangle);
-  }
-
-  ctx.restore();
-}
-
 function clearCanvas(canvas) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -631,25 +254,28 @@ function drawElements() {
   for (let i = 0; i < drawElementIds.length; i += 1) {
     const elementId = drawElementIds[i];
     const element = sceneStore.value.elementById(elementId);
-    drawElement(drawingCanvas.value, element);
+    if (typeof element.drawElement === "undefined") {
+      continue;
+    }
+    element.drawElement(drawingCanvas.value);
   }
 }
 
 function handleAddCheckbox(pos: IElementPoint) {
-  const checkboxElement = new CheckboxElement(
+  const checkboxElement = new ELEMENT_MAP[Tool.CHECKBOX]({
     pos,
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix
-  );
+    initMatrix: sceneStore.value.initTransformMatrix,
+    matrix: sceneStore.value.transformMatrix,
+  });
   sceneStore.value.createElement(checkboxElement);
 }
 
-function handleAddTextbox(pos) {
-  const textboxElement = new TextboxElement(
+function handleAddTextbox(pos: IElementPoint) {
+  const textboxElement = new ELEMENT_MAP[Tool.TEXTBOX]({
     pos,
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix
-  );
+    initMatrix: sceneStore.value.initTransformMatrix,
+    matrix: sceneStore.value.transformMatrix,
+  });
   sceneStore.value.createElement(textboxElement);
 }
 
@@ -663,32 +289,14 @@ function handleClearAll() {
     return;
   }
 
-  const clearElement: IClearElement = {
-    id: uuidv4(),
-    tool: Tool.CLEAR_ALL,
-    composition: "destination-out",
-    strokeColor: TRANSPARENT_COLOR,
-    fillColor: { r: 255, g: 255, b: 255, a: 1 },
-    toolOptions: null,
-    points: [
-      {
-        x: 0,
-        y: 0,
-      },
-      {
-        x: canvasStore.canvasConfig.width,
-        y: canvasStore.canvasConfig.height,
-      },
-    ],
-    dimensions: {},
-    isDrawingCached: false,
-    isDeleted: false,
-    isHTMLElement: false,
-    cache: {},
-  };
-  clearElement.dimensions = sceneStore.value.calculateDimensions(clearElement);
+  const clearElement = new ELEMENT_MAP[Tool.CLEAR_ALL]({
+    pos: {
+      x: canvasStore.canvasConfig.width,
+      y: canvasStore.canvasConfig.height,
+    },
+  });
+  clearElement.cacheElement();
   sceneStore.value.createElement(clearElement);
-  cacheElement(clearElement.id);
   drawElements();
   sceneStore.value.selectedTool = Tool.ERASER;
 }
@@ -719,7 +327,7 @@ async function handlePasteStart() {
   if (!cutSelection.isDrawingCached) {
     cutSelection.isCompletedCut = true;
     cutSelection.composition = "destination-out";
-    cacheElement(cutSelectionId);
+    cutSelection.cacheElement();
   }
 
   drawElements();
@@ -746,13 +354,13 @@ async function handlePasteStart() {
   for (let i = 0; i < sceneStore.value.activeElements.length - 1; i += 1) {
     const elementId = sceneStore.value.activeElements[i];
     const element = sceneStore.value.elementById(elementId);
-    drawElement(pasteCanvas.value, element);
+    element.drawElement(pasteCanvas.value);
   }
   const cutSelectionClip = cloneDeep(cutSelection);
   cutSelectionClip.isDrawingCached = false;
   cutSelectionClip.cache = {};
   cutSelectionClip.composition = "destination-in";
-  drawElement(pasteCanvas.value, cutSelectionClip);
+  cutSelectionClip.drawElement(pasteCanvas.value);
 
   moveablePaste = new Moveable(pasteLayer.value, {
     target: pasteCanvas.value as HTMLElement,
@@ -782,21 +390,7 @@ function handlePasteEnd() {
     sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
   const cutSelection = sceneStore.value.elementById(cutSelectionId);
   const moveableRect = moveablePaste.getRect();
-  const pasteElement = {
-    id: uuidv4(),
-    tool: Tool.PASTE,
-    composition: sceneStore.value.getComposition(),
-    isDrawingCached: true,
-    dimensions: {
-      outerMinX: moveableRect.left,
-      outerMinY: moveableRect.top,
-      outerWidth: moveableRect.width,
-      outerHeight: moveableRect.height,
-    },
-    cache: {
-      drawing: {},
-    },
-  };
+  const pasteElement = new ELEMENT_MAP[Tool.PASTE](moveableRect);
 
   if (
     sceneStore.value.pasteTransform.rotate === 0 &&
@@ -942,24 +536,7 @@ function handleAddImageEnd() {
   }
 
   const moveableRect = moveableImage.value.getRect();
-  const imageElement = {
-    id: uuidv4(),
-    tool: Tool.IMAGE,
-    toolOptions: {
-      image: activeImage.value,
-    },
-    composition: sceneStore.value.getComposition(),
-    isDrawingCached: true,
-    dimensions: {
-      outerMinX: moveableRect.left,
-      outerMinY: moveableRect.top,
-      outerWidth: moveableRect.width,
-      outerHeight: moveableRect.height,
-    },
-    cache: {
-      drawing: {},
-    },
-  };
+  const imageElement = new ELEMENT_MAP[Tool.IMAGE](activeImage.value, moveableRect);
 
   const imageCacheCanvas = document.createElement("canvas");
   const ctx = imageCacheCanvas.getContext("2d");
@@ -1159,7 +736,11 @@ function handleCanvasTouchStart(event: Event) {
 
   if (
     sceneStore.value.selectedTool === Tool.CHECKBOX ||
-    sceneStore.value.selectedTool === Tool.TEXTBOX
+    sceneStore.value.selectedTool === Tool.TEXTBOX ||
+    sceneStore.value.selectedTool === Tool.PAPER ||
+    sceneStore.value.selectedTool === Tool.CLEAR_ALL ||
+    sceneStore.value.selectedTool === Tool.PASTE ||
+    sceneStore.value.selectedTool === Tool.IMAGE
   ) {
     return;
   }
@@ -1178,46 +759,36 @@ function handleCanvasTouchStart(event: Event) {
 
   sceneStore.value.isDrawing = true;
 
-  const pos = getDrawPos(drawingCanvas.value, event, true);
-  const isRulerLine = pos.isRulerLine;
-  const pressure = sceneStore.value.getPressure(event);
-  const opacity = sceneStore.value.getOpacity();
-  const composition = sceneStore.value.getComposition();
-  const size = sceneStore.value.selectedTool === Tool.CUT ? 0 : sceneStore.value.selectedToolSize;
   const strokeColor =
     sceneStore.value.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
   const fillColor =
     sceneStore.value.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
 
-  const newElement: ICanvasElement = {
-    id: uuidv4(),
+  const newElement = new ELEMENT_MAP[sceneStore.value.selectedTool]({
     tool: sceneStore.value.selectedTool,
-    fillColor,
     strokeColor,
-    size,
-    composition,
-    opacity,
-    isRulerLine,
-    points: [{ x: pos.x, y: pos.y, pressure }],
-    toolOptions: {
-      lineEndSide: sceneStore.value.selectedLineEndSide,
-      lineEndStyle: sceneStore.value.selectedLineEndStyle,
-    },
-    freehandOptions: {
-      size: sceneStore.value.selectedToolSize,
-      simulatePressure: sceneStore.value.selectedTool === Tool.PEN && !sceneStore.value.isStylus,
-      thinning: sceneStore.value.selectedTool === Tool.PEN ? 0.95 : 0,
-      streamline: isRulerLine ? 1 : 0.32,
-      smoothing: isRulerLine ? 1 : 0.32,
-      last: false,
-    },
-    smoothPoints: {},
-    dimensions: {},
-    cache: {},
-    isDeleted: false,
-    isHTMLElement: false,
-    isDrawingCached: false,
+    fillColor,
+  });
+
+  const pos = getDrawPos(drawingCanvas.value, event, true);
+  newElement.isRulerLine = pos.isRulerLine;
+  newElement.size =
+    sceneStore.value.selectedTool === Tool.CUT ? 0 : sceneStore.value.selectedToolSize;
+  newElement.toolOptions = {
+    lineEndSide: sceneStore.value.selectedLineEndSide,
+    lineEndStyle: sceneStore.value.selectedLineEndStyle,
   };
+  newElement.freehandOptions = {
+    size: sceneStore.value.selectedToolSize,
+    simulatePressure: sceneStore.value.selectedTool === Tool.PEN && !sceneStore.value.isStylus,
+    thinning: sceneStore.value.selectedTool === Tool.PEN ? 0.95 : 0,
+    streamline: newElement.isRulerLine ? 1 : 0.32,
+    smoothing: newElement.isRulerLine ? 1 : 0.32,
+    last: false,
+  };
+
+  const pressure = newElement.getPressure(event, sceneStore.value.isStylus);
+  newElement.points = [{ x: pos.x, y: pos.y, pressure }];
 
   if (
     newElement.tool === Tool.CIRCLE ||
@@ -1230,14 +801,14 @@ function handleCanvasTouchStart(event: Event) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
   } else if (newElement.tool === Tool.LINE) {
-    newElement.points = sceneStore.value.calculateLinePoints(newElement, pos);
+    newElement.points = newElement.calculateLinePoints(pos);
   }
 
   if (CANVAS_LINE_TOOLS.includes(newElement.tool)) {
-    newElement.smoothPoints = sceneStore.value.getSmoothPoints(newElement);
+    newElement.smoothPoints = newElement.getSmoothPoints();
   }
-  newElement.dimensions = sceneStore.value.calculateDimensions(newElement);
 
+  newElement.dimensions = newElement.calculateDimensions();
   sceneStore.value.createElement(newElement);
   drawElements();
 }
@@ -1258,7 +829,7 @@ function handleCanvasTouchMove(event: Event) {
   const lastElement = sceneStore.value.elementById(lastElementId);
   const followRuler = lastElement.isRulerLine || !CANVAS_LINE_TOOLS.includes(lastElement.tool);
   const pos = getDrawPos(drawingCanvas.value, event, followRuler);
-  const pressure = sceneStore.value.getPressure(event);
+  const pressure = lastElement.getPressure(event, sceneStore.value.isStylus);
 
   if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
@@ -1279,7 +850,7 @@ function handleCanvasTouchMove(event: Event) {
     lastElement.points[1] = p2;
     lastElement.points[2] = p3;
   } else if (lastElement.tool === Tool.LINE) {
-    lastElement.points = sceneStore.value.calculateLinePoints(lastElement, pos);
+    lastElement.points = lastElement.calculateLinePoints(pos);
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
@@ -1287,10 +858,10 @@ function handleCanvasTouchMove(event: Event) {
   lastElement.isRulerLine = pos.isRulerLine;
 
   if (CANVAS_LINE_TOOLS.includes(lastElement.tool)) {
-    lastElement.smoothPoints = sceneStore.value.getSmoothPoints(lastElement);
+    lastElement.smoothPoints = lastElement.getSmoothPoints();
   }
 
-  lastElement.dimensions = sceneStore.value.calculateDimensions(lastElement);
+  lastElement.dimensions = lastElement.calculateDimensions();
   drawElements();
 }
 
@@ -1324,7 +895,7 @@ function handleCanvasTouchEnd(event) {
   const lastElementId = sceneStore.value.elementOrder[sceneStore.value.elementOrder.length - 1];
   const lastElement = sceneStore.value.elementById(lastElementId);
   lastElement.freehandOptions.last = true;
-  lastElement.dimensions = sceneStore.value.calculateDimensions(lastElement);
+  lastElement.dimensions = lastElement.calculateDimensions();
 
   if (lastElement.dimensions.outerWidth === 0 || lastElement.dimensions.outerHeight === 0) {
     sceneStore.value.elementOrder.pop();
@@ -1335,7 +906,7 @@ function handleCanvasTouchEnd(event) {
   if (lastElement.tool === Tool.CUT) {
     handlePasteStart();
   } else {
-    cacheElement(lastElementId);
+    lastElement.cacheElement();
     drawElements();
   }
   sceneStore.value.isDrawing = false;

@@ -1,7 +1,7 @@
 import type { IElementPoint } from "@/types/core";
 import BaseElement from "./BaseElement";
 
-export default class Base extends BaseElement {
+export default class BaseInteractiveElement extends BaseElement {
   style = {
     transform: {
       translate: [] as number[],
@@ -10,11 +10,17 @@ export default class Base extends BaseElement {
     },
     transformStr: "",
   };
-  points: IElementPoint[] = [];
   isHTMLElement = true;
-  isDeleted = false;
 
-  constructor(pos: IElementPoint, initMatrix: DOMMatrix, matrix: DOMMatrix) {
+  constructor({
+    pos,
+    initMatrix,
+    matrix,
+  }: {
+    pos: IElementPoint;
+    initMatrix: DOMMatrix;
+    matrix: DOMMatrix;
+  }) {
     super();
     this.points = [pos];
     this.style.transform.translate = [pos.x, pos.y];
