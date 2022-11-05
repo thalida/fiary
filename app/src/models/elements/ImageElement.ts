@@ -1,11 +1,14 @@
-import { CanvasTool, TRANSPARENT_COLOR } from "@/constants/core";
+import { ELEMENT_TYPE, TRANSPARENT_COLOR } from "@/constants/core";
 import type { TColor } from "@/types/core";
 import BaseCanvasElement from "@/models/BaseCanvasElement";
 
 export default class ImageElement extends BaseCanvasElement {
-  imageRect: any;
-  constructor(image, imageRect: any) {
-    const tool = CanvasTool.IMAGE;
+  imageRect: { left: number; top: number; width: number; height: number };
+  constructor(
+    image: HTMLImageElement,
+    imageRect: { left: number; top: number; width: number; height: number }
+  ) {
+    const tool = ELEMENT_TYPE.IMAGE;
     const strokeColor: TColor = TRANSPARENT_COLOR;
     const fillColor: TColor = { r: 255, g: 255, b: 255, a: 1 };
 

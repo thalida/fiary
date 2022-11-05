@@ -4,7 +4,7 @@ import Selecto from "selecto";
 import Moveable from "moveable";
 import { useCanvasStore } from "@/stores/canvas";
 import type { TPrimaryKey, ICheckboxElementOptions, ITextboxElementOptions } from "@/types/core";
-import { CanvasTool, PageHistoryEvent } from "@/constants/core";
+import { ELEMENT_TYPE, PageHistoryEvent } from "@/constants/core";
 import CanvasTextarea from "@/components/CanvasTextarea.vue";
 import cloneDeep from "lodash/cloneDeep";
 
@@ -13,8 +13,9 @@ const canvasStore = useCanvasStore();
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const rootEl = ref(null as HTMLElement | null);
 
-let selectoInteractive, moveableInteractive;
-let moveableElements: any[] = [];
+let selectoInteractive: Selecto;
+let moveableInteractive: Moveable;
+let moveableElements: (HTMLElement | SVGElement)[] = [];
 
 function handleStartInteractiveEdit() {
   if (rootEl.value === null) return;
@@ -50,13 +51,13 @@ function handleStartInteractiveEdit() {
     })
     .on("drag", handleInteractiveDrag)
     .on("dragGroup", (e) => {
-      e.events.forEach(handleInteractiveDrag);
+      e.events.forEach(handleInteractiveDrag as any);
     })
     .on("rotate", handleInteractiveRotate)
     .on("rotateGroup", (e) => {
-      e.events.forEach(handleInteractiveRotate);
+      e.events.forEach(handleInteractiveRotate as any);
     })
-    .on("renderEnd", ({ target }) => {
+    .on("renderEnd", ({ target }: { target: HTMLElement }) => {
       handleInteractiveEnd(target);
     })
     .on("renderGroupEnd", (e) => {
@@ -94,8 +95,14 @@ function handleEndInteractiveEdit() {
   moveableInteractive.destroy();
 }
 
-function setInteractiveElementStyles(target, transform) {
+function setInteractiveElementStyles(
+  target: HTMLElement,
+  transform: { [key: string]: number | number[] }
+) {
   const elementId = target.getAttribute("data-element-id");
+  if (elementId === null) {
+    return;
+  }
   const element = sceneStore.value.elementById(elementId);
   element.setTransform(
     sceneStore.value.initTransformMatrix,
@@ -105,22 +112,43 @@ function setInteractiveElementStyles(target, transform) {
   target.style.transform = element.style.transformStr;
 }
 
-function handleInteractiveDrag({ target, translate }) {
+function handleInteractiveDrag({
+  target,
+  translate,
+}: {
+  target: HTMLElement;
+  translate: number[];
+}) {
   setInteractiveElementStyles(target, { translate });
 }
 
-function handleInteractiveRotate({ target, rotate, drag }) {
+function handleInteractiveRotate({
+  target,
+  rotate,
+  drag,
+}: {
+  target: HTMLElement;
+  rotate: number;
+  drag: { translate: number[] };
+}) {
   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
 }
 
-function handleInteractiveStart(target) {
+function handleInteractiveStart(target: HTMLElement | SVGElement) {
   const elementId = target.getAttribute("data-element-id");
+  if (elementId === null) {
+    return;
+  }
+
   const element = sceneStore.value.elementById(elementId);
   element.tmpFromStyle = cloneDeep(element.style);
 }
 
-function handleInteractiveEnd(target) {
+function handleInteractiveEnd(target: HTMLElement | SVGElement) {
   const elementId = target.getAttribute("data-element-id");
+  if (elementId === null) {
+    return;
+  }
   const element = sceneStore.value.elementById(elementId);
   sceneStore.value.addHistoryEvent({
     type: PageHistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
@@ -135,24 +163,33 @@ function handleInteractiveEnd(target) {
 function handleInteractiveElementDelete() {
   for (let i = 0; i < moveableElements.length; i += 1) {
     const elementId = moveableElements[i].getAttribute("data-element-id");
+    if (elementId === null) {
+      continue;
+    }
     sceneStore.value.deleteElement(elementId);
   }
   moveableElements = [];
   moveableInteractive.target = [];
 }
 
-function handleTextboxChange({ elementId, textContents }) {
+function handleTextboxChange({
+  elementId,
+  textContents,
+}: {
+  elementId: TPrimaryKey;
+  textContents: string;
+}) {
   const element = sceneStore.value.elementById(elementId);
   (element.toolOptions as ITextboxElementOptions).textContents = textContents;
 }
 
-function handleTextboxFocus({ elementId }) {
+function handleTextboxFocus({ elementId }: { elementId: TPrimaryKey }) {
   if (sceneStore.value.isDrawing) {
     return;
   }
 
   sceneStore.value.isTextboxEditMode = true;
-  sceneStore.value.selectedTool = CanvasTool.TEXTBOX;
+  sceneStore.value.selectedTool = ELEMENT_TYPE.TEXTBOX;
   sceneStore.value.activeElementId = elementId;
 }
 
@@ -185,7 +222,7 @@ defineExpose({
   >
     <template v-for="elementId in sceneStore.activeHtmlElements" :key="elementId">
       <input
-        v-if="sceneStore.elements[elementId].tool === CanvasTool.CHECKBOX"
+        v-if="sceneStore.elements[elementId].tool === ELEMENT_TYPE.CHECKBOX"
         class="interactiveElement"
         v-model="(sceneStore.elements[elementId].toolOptions as ICheckboxElementOptions).isChecked"
         :data-element-id="sceneStore.elements[elementId].id"
@@ -202,7 +239,7 @@ defineExpose({
         @touchmove="handleInteractiveElementEvent"
       />
       <CanvasTextarea
-        v-else-if="sceneStore.elements[elementId].tool === CanvasTool.TEXTBOX"
+        v-else-if="sceneStore.elements[elementId].tool === ELEMENT_TYPE.TEXTBOX"
         :data-element-id="sceneStore.elements[elementId].id"
         class="interactiveElement"
         :style="{

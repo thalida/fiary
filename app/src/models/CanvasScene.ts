@@ -1,6 +1,5 @@
-import { getStroke } from "perfect-freehand";
 import {
-  CanvasTool,
+  ELEMENT_TYPE,
   CANVAS_NONDRAWING_TOOLS,
   CANVAS_PAPER_TOOLS,
   CANVAS_INTERACTIVE_TOOLS,
@@ -15,22 +14,15 @@ import {
   DEFAULT_ELEMENT_FILLCOLOR_INDEX,
   SPECIAL_TOOL_SWATCH_KEY,
   DEFAULT_ELEMENT_STROKECOLOR_INDEX,
-  CANVAS_LINE_TOOLS,
   PageHistoryEvent,
 } from "@/constants/core";
 import type {
-  ICanvasElement,
   ICanvasSceneImageTransform,
   ICanvasScenePasteTransform,
   ICanvasSceneRuler,
-  IElementPoint,
-  IElements,
   IImageElementOptions,
-  ILineElementOptions,
-  TElement,
   TPrimaryKey,
 } from "@/types/core";
-import { isTransparent } from "@/utils/color";
 
 export class CanvasScene {
   pageId: TPrimaryKey | undefined;
@@ -53,7 +45,7 @@ export class CanvasScene {
   ruler: ICanvasSceneRuler;
   pasteTransform: ICanvasScenePasteTransform;
   imageTransform: ICanvasSceneImageTransform;
-  selectedTool = CanvasTool.PEN;
+  selectedTool: number = ELEMENT_TYPE.PEN;
   selectedToolSize = DEFAULT_PEN_SIZE;
   selectedLineEndSide = LineEndSide.NONE;
   selectedLineEndStyle = LineEndStyle.NONE;
@@ -173,7 +165,7 @@ export class CanvasScene {
       elementId: element.id,
     };
 
-    if (element.tool === CanvasTool.IMAGE) {
+    if (element.tool === ELEMENT_TYPE.IMAGE) {
       historyEvent.image = (element.toolOptions as IImageElementOptions).image;
     }
     this.addHistoryEvent(historyEvent);
@@ -197,7 +189,7 @@ export class CanvasScene {
     const element = this.elementById(elementId);
     element.isDeleted = false;
 
-    if (element.tool === CanvasTool.CLEAR_ALL) {
+    if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
       const elementIndex = this.elementOrder.indexOf(elementId);
       this.clearAllElementIndexes.push(elementIndex);
       this.clearAllElementIndexes.sort((a, b) => a - b);
@@ -210,7 +202,7 @@ export class CanvasScene {
     const element = this.elementById(elementId);
     element.isDeleted = true;
 
-    if (element.tool === CanvasTool.CLEAR_ALL) {
+    if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
       const elementIndex = this.elementOrder.indexOf(elementId);
       this.clearAllElementIndexes = this.clearAllElementIndexes.filter((i) => i !== elementIndex);
     }
@@ -218,13 +210,13 @@ export class CanvasScene {
     return element;
   }
 
-  setIsStylus(event: Event) {
-    const force = event.touches ? event.touches[0]["force"] : 0;
+  setIsStylus(event: MouseEvent | TouchEvent) {
+    const force = (event as TouchEvent).touches ? (event as TouchEvent).touches[0]["force"] : 0;
     this.isStylus = force > 0;
     this.detectedStylus = this.detectedStylus || this.isStylus;
   }
 
-  addHistoryEvent(event) {
+  addHistoryEvent(event: any) {
     this.history.splice(this.historyIndex + 1);
     this.history.push(event);
     this.historyIndex = this.history.length - 1;

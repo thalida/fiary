@@ -1,12 +1,11 @@
 import { getStroke } from "perfect-freehand";
-import { CanvasTool, CANVAS_LINE_TOOLS, LineEndSide, LineEndStyle } from "@/constants/core";
+import { ELEMENT_TYPE, CANVAS_LINE_TOOLS, LineEndSide, LineEndStyle } from "@/constants/core";
 import type { IElementPoint, ILineElementOptions, TColor } from "@/types/core";
 import { formatColor, isTransparent } from "@/utils/color";
 import BaseElement from "./BaseElement";
 
 export default class BaseCanvasElement extends BaseElement {
-  store: any;
-  tool: CanvasTool;
+  tool: ELEMENT_TYPE;
   toolOptions: { [key: string]: any } = {};
   composition: string;
   fillColor: TColor | undefined;
@@ -26,7 +25,7 @@ export default class BaseCanvasElement extends BaseElement {
     strokeColor,
     fillColor,
   }: {
-    tool: CanvasTool;
+    tool: ELEMENT_TYPE;
     strokeColor?: TColor;
     fillColor?: TColor;
   }) {
@@ -38,24 +37,24 @@ export default class BaseCanvasElement extends BaseElement {
     this.opacity = this.getOpacity();
   }
 
-  getPressure(event, isStylus = false): number {
-    if (this.tool === CanvasTool.PEN) {
-      return isStylus ? event.touches[0]["force"] : 1;
+  getPressure(event: MouseEvent | TouchEvent, isStylus = false): number {
+    if (this.tool === ELEMENT_TYPE.PEN) {
+      return isStylus ? (event as TouchEvent).touches[0]["force"] : 1;
     }
 
     return 0.5;
   }
 
   getComposition() {
-    if (this.tool === CanvasTool.ERASER || this.tool === CanvasTool.CLEAR_ALL) {
+    if (this.tool === ELEMENT_TYPE.ERASER || this.tool === ELEMENT_TYPE.CLEAR_ALL) {
       return "destination-out";
     }
 
-    if (this.tool === CanvasTool.MARKER) {
+    if (this.tool === ELEMENT_TYPE.MARKER) {
       return "hard-light";
     }
 
-    if (this.tool === CanvasTool.HIGHLIGHTER) {
+    if (this.tool === ELEMENT_TYPE.HIGHLIGHTER) {
       return "hue";
     }
 
@@ -63,11 +62,11 @@ export default class BaseCanvasElement extends BaseElement {
   }
 
   getOpacity(): number {
-    if (this.tool === CanvasTool.MARKER) {
+    if (this.tool === ELEMENT_TYPE.MARKER) {
       return 0.9;
     }
 
-    if (this.tool === CanvasTool.HIGHLIGHTER) {
+    if (this.tool === ELEMENT_TYPE.HIGHLIGHTER) {
       return 0.75;
     }
 
@@ -103,7 +102,7 @@ export default class BaseCanvasElement extends BaseElement {
       outerMinY = Math.min(...outerYPoints);
       outerMaxX = Math.max(...outerXPoints);
       outerMaxY = Math.max(...outerYPoints);
-    } else if (this.tool === CanvasTool.LINE && this.size !== null) {
+    } else if (this.tool === ELEMENT_TYPE.LINE && this.size !== null) {
       const strokeSize = !isTransparent(this.strokeColor) ? this.size * 0.75 : this.size / 2;
       outerMinX -= strokeSize;
       outerMinY -= strokeSize;
@@ -114,8 +113,8 @@ export default class BaseCanvasElement extends BaseElement {
       if (
         this.size !== null &&
         (!isTransparent(this.strokeColor) ||
-          this.tool === CanvasTool.BLOB ||
-          this.tool === CanvasTool.ERASER)
+          this.tool === ELEMENT_TYPE.BLOB ||
+          this.tool === ELEMENT_TYPE.ERASER)
       ) {
         strokeSize = this.size / 2;
       }
@@ -346,9 +345,9 @@ export default class BaseCanvasElement extends BaseElement {
 
     if (
       isCaching &&
-      (this.tool === CanvasTool.ERASER ||
-        this.tool === CanvasTool.CUT ||
-        this.tool === CanvasTool.CLEAR_ALL)
+      (this.tool === ELEMENT_TYPE.ERASER ||
+        this.tool === ELEMENT_TYPE.CUT ||
+        this.tool === ELEMENT_TYPE.CLEAR_ALL)
     ) {
       ctx.globalCompositeOperation = "source-over";
     } else {
@@ -455,7 +454,7 @@ export default class BaseCanvasElement extends BaseElement {
       const myPath = new Path2D(pathData);
       ctx.fill(myPath);
       ctx.restore();
-    } else if (this.tool === CanvasTool.CIRCLE) {
+    } else if (this.tool === ELEMENT_TYPE.CIRCLE) {
       ctx.beginPath();
       const midX = (minX + maxX) / 2;
       const midY = (minY + maxY) / 2;
@@ -465,7 +464,7 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.ellipse(midX, midY, radX, radY, 0, 0, 2 * Math.PI);
       ctx.stroke();
       ctx.fill();
-    } else if (this.tool === CanvasTool.TRIANGLE) {
+    } else if (this.tool === ELEMENT_TYPE.TRIANGLE) {
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
       ctx.lineTo(points[1].x, points[1].y);
@@ -473,7 +472,7 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.closePath();
       ctx.stroke();
       ctx.fill();
-    } else if (this.tool === CanvasTool.RECTANGLE) {
+    } else if (this.tool === ELEMENT_TYPE.RECTANGLE) {
       ctx.beginPath();
       const rectangle = new Path2D();
       const width = maxX - minX;
@@ -481,7 +480,7 @@ export default class BaseCanvasElement extends BaseElement {
       rectangle.rect(minX, minY, width, height);
       ctx.stroke(rectangle);
       ctx.fill(rectangle);
-    } else if (this.tool === CanvasTool.LINE) {
+    } else if (this.tool === ELEMENT_TYPE.LINE) {
       const numPoints = points.length;
       const fromx = points[0].x;
       const fromy = points[0].y;
@@ -576,7 +575,7 @@ export default class BaseCanvasElement extends BaseElement {
         ctx.fill();
       }
       ctx.restore();
-    } else if (this.tool === CanvasTool.BLOB || this.tool === CanvasTool.ERASER) {
+    } else if (this.tool === ELEMENT_TYPE.BLOB || this.tool === ELEMENT_TYPE.ERASER) {
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
 
@@ -591,7 +590,7 @@ export default class BaseCanvasElement extends BaseElement {
         ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
       }
 
-      if (this.tool === CanvasTool.BLOB) {
+      if (this.tool === ELEMENT_TYPE.BLOB) {
         ctx.closePath();
         ctx.save();
         if (isTransparent(this.strokeColor)) {
@@ -600,13 +599,13 @@ export default class BaseCanvasElement extends BaseElement {
         ctx.stroke();
         ctx.fill();
         ctx.restore();
-      } else if (this.tool === CanvasTool.ERASER) {
+      } else if (this.tool === ELEMENT_TYPE.ERASER) {
         ctx.save();
         ctx.strokeStyle = "#ffffff";
         ctx.stroke();
         ctx.restore();
       }
-    } else if (this.tool === CanvasTool.CUT) {
+    } else if (this.tool === ELEMENT_TYPE.CUT) {
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
 
@@ -634,7 +633,7 @@ export default class BaseCanvasElement extends BaseElement {
         ctx.strokeStyle = "#0000ff";
         ctx.stroke();
       }
-    } else if (this.tool === CanvasTool.CLEAR_ALL) {
+    } else if (this.tool === ELEMENT_TYPE.CLEAR_ALL) {
       ctx.beginPath();
       const rectangle = new Path2D();
       const width = maxX - minX;

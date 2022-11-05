@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch, watchPostEffect, onMounted, nextTick } from "vue";
-import { v4 as uuidv4 } from "uuid";
 import cloneDeep from "lodash/cloneDeep";
 import Moveable from "moveable";
 import MoveableVue from "vue3-moveable";
@@ -8,8 +7,10 @@ import MoveableVue from "vue3-moveable";
 import { useCanvasStore } from "@/stores/canvas";
 import {
   PageHistoryEvent as HistoryEvent,
-  CanvasTool as Tool,
+  ELEMENT_TYPE,
   CANVAS_TOOL_CHOICES as supportedTools,
+  CANVAS_POINTER_TOOL,
+  CANVAS_PAPER_TOOL,
   CANVAS_LINE_TOOLS,
   LINE_END_SIDE_CHOICES,
   LINE_END_STYLE_CHOICES,
@@ -19,7 +20,7 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
 import ColorPicker from "@/components/ColorPicker.vue";
-import type { ICanvasElement, IElementPoint, TPrimaryKey } from "@/types/core";
+import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { getColorAsCss } from "@/utils/color";
 import { ELEMENT_MAP } from "@/models/elements";
 import CanvasInteractiveLayer from "@/components/CanvasInteractiveLayer.vue";
@@ -30,7 +31,7 @@ const canvasStore = useCanvasStore();
 
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 
-const activeImage = ref(null);
+const activeImage = ref<HTMLImageElement | null>(null);
 const drawingCanvas = ref<HTMLCanvasElement>();
 const interactiveLayer = ref<typeof CanvasInteractiveLayer>();
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
@@ -117,15 +118,17 @@ function addColorPickerRef(ref: any) {
   }
 }
 
-function handleToolChange(event) {
-  if (sceneStore.value.selectedTool === Tool.CLEAR_ALL) {
+function handleToolChange(event: Event) {
+  if (sceneStore.value.selectedTool === ELEMENT_TYPE.CLEAR_ALL) {
     handleClearAll();
   }
 
   sceneStore.value.isTextboxEditMode = false;
   sceneStore.value.activeElementId = null;
 
-  event.target.blur();
+  if (event.target) {
+    (event.target as HTMLElement).blur();
+  }
 }
 
 function isDrawingAllowed(isDrawingOverride = false) {
@@ -133,10 +136,18 @@ function isDrawingAllowed(isDrawingOverride = false) {
   return !canvasStore.isSwatchOpen && sceneStore.value.isDrawingAllowed && activelyDrawing;
 }
 
-function getMousePos(canvas, event, followRuler = false) {
+function getMousePos(
+  canvas: HTMLCanvasElement,
+  event: MouseEvent | TouchEvent,
+  followRuler = false
+) {
   const rect = canvas.getBoundingClientRect(); // abs. size of element
-  const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-  const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+  const clientX = (event as TouchEvent).touches
+    ? (event as TouchEvent).touches[0].clientX
+    : (event as MouseEvent).clientX;
+  const clientY = (event as TouchEvent).touches
+    ? (event as TouchEvent).touches[0].clientY
+    : (event as MouseEvent).clientY;
   let inputX = clientX;
   let inputY = clientY;
   let isRulerLine = false;
@@ -205,7 +216,11 @@ function getMousePos(canvas, event, followRuler = false) {
   return { x, y, isRulerLine };
 }
 
-function getDrawPos(canvas, event, followRuler = false) {
+function getDrawPos(
+  canvas: HTMLCanvasElement,
+  event: MouseEvent | TouchEvent,
+  followRuler = false
+) {
   const pos = getMousePos(canvas, event, followRuler);
   let cameraX = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.e : 0;
   let cameraY = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.f : 0;
@@ -231,9 +246,11 @@ function getDrawPos(canvas, event, followRuler = false) {
   };
 }
 
-function clearCanvas(canvas) {
+function clearCanvas(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
 }
 
 function drawElements() {
@@ -262,7 +279,7 @@ function drawElements() {
 }
 
 function handleAddCheckbox(pos: IElementPoint) {
-  const checkboxElement = new ELEMENT_MAP[Tool.CHECKBOX]({
+  const checkboxElement = new ELEMENT_MAP[ELEMENT_TYPE.CHECKBOX]({
     pos,
     initMatrix: sceneStore.value.initTransformMatrix,
     matrix: sceneStore.value.transformMatrix,
@@ -271,7 +288,7 @@ function handleAddCheckbox(pos: IElementPoint) {
 }
 
 function handleAddTextbox(pos: IElementPoint) {
-  const textboxElement = new ELEMENT_MAP[Tool.TEXTBOX]({
+  const textboxElement = new ELEMENT_MAP[ELEMENT_TYPE.TEXTBOX]({
     pos,
     initMatrix: sceneStore.value.initTransformMatrix,
     matrix: sceneStore.value.transformMatrix,
@@ -284,12 +301,12 @@ function handleClearAll() {
   const lastElement = sceneStore.value.elementById(lastElementId);
   if (
     sceneStore.value.elementOrder.length === 0 ||
-    (sceneStore.value.elementOrder.length > 0 && lastElement.tool === Tool.CLEAR_ALL)
+    (sceneStore.value.elementOrder.length > 0 && lastElement.tool === ELEMENT_TYPE.CLEAR_ALL)
   ) {
     return;
   }
 
-  const clearElement = new ELEMENT_MAP[Tool.CLEAR_ALL]({
+  const clearElement = new ELEMENT_MAP[ELEMENT_TYPE.CLEAR_ALL]({
     pos: {
       x: canvasStore.canvasConfig.width,
       y: canvasStore.canvasConfig.height,
@@ -298,7 +315,7 @@ function handleClearAll() {
   clearElement.cacheElement();
   sceneStore.value.createElement(clearElement);
   drawElements();
-  sceneStore.value.selectedTool = Tool.ERASER;
+  sceneStore.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
 
 async function handlePasteStart() {
@@ -390,7 +407,7 @@ function handlePasteEnd() {
     sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
   const cutSelection = sceneStore.value.elementById(cutSelectionId);
   const moveableRect = moveablePaste.getRect();
-  const pasteElement = new ELEMENT_MAP[Tool.PASTE](moveableRect);
+  const pasteElement = new ELEMENT_MAP[ELEMENT_TYPE.PASTE](moveableRect);
 
   if (
     sceneStore.value.pasteTransform.rotate === 0 &&
@@ -457,7 +474,7 @@ function handlePasteDelete() {
   sceneStore.value.isPasteMode = false;
 }
 
-async function handleAddImageStart(image, trackHistory = true) {
+async function handleAddImageStart(image: HTMLImageElement, trackHistory = true) {
   let imageWidth = image.width;
   let imageHeight = image.height;
   let scale = 1;
@@ -531,12 +548,12 @@ async function handleAddImageStart(image, trackHistory = true) {
 }
 
 function handleAddImageEnd() {
-  if (typeof imagePreviewCanvas.value === "undefined") {
+  if (typeof imagePreviewCanvas.value === "undefined" || activeImage.value === null) {
     return;
   }
 
   const moveableRect = moveableImage.value.getRect();
-  const imageElement = new ELEMENT_MAP[Tool.IMAGE](activeImage.value, moveableRect);
+  const imageElement = new ELEMENT_MAP[ELEMENT_TYPE.IMAGE](activeImage.value, moveableRect);
 
   const imageCacheCanvas = document.createElement("canvas");
   const ctx = imageCacheCanvas.getContext("2d");
@@ -644,8 +661,12 @@ function setInteractiveElementTransforms(initMatrix: DOMMatrix, transformMatrix:
   }
 }
 
-function handlePanTransform(event, isStart = false) {
+function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
   if (typeof sceneStore.value.transformMatrix === "undefined") {
+    return;
+  }
+
+  if (typeof drawingCanvas.value === "undefined") {
     return;
   }
 
@@ -724,64 +745,71 @@ function closeAllColorPickers() {
   }
 }
 
-function handleCanvasTouchStart(event: Event) {
+function handleCanvasTouchStart(event: MouseEvent | TouchEvent) {
   closeAllColorPickers();
 
-  if (
-    sceneStore.value.activeElements.length === 0 &&
-    (sceneStore.value.selectedTool === Tool.ERASER || sceneStore.value.selectedTool === Tool.CUT)
-  ) {
-    return;
-  }
-
-  if (
-    sceneStore.value.selectedTool === Tool.CHECKBOX ||
-    sceneStore.value.selectedTool === Tool.TEXTBOX ||
-    sceneStore.value.selectedTool === Tool.PAPER ||
-    sceneStore.value.selectedTool === Tool.CLEAR_ALL ||
-    sceneStore.value.selectedTool === Tool.PASTE ||
-    sceneStore.value.selectedTool === Tool.IMAGE
-  ) {
-    return;
-  }
-
-  if (sceneStore.value.selectedTool === Tool.POINTER) {
+  if (sceneStore.value.selectedTool === CANVAS_POINTER_TOOL) {
     sceneStore.value.isPanning = true;
     handlePanTransform(event, true);
     return;
   }
 
+  if (sceneStore.value.selectedTool === CANVAS_PAPER_TOOL) {
+    return;
+  }
+
+  const selectedTool = sceneStore.value.selectedTool as ELEMENT_TYPE;
+
+  if (
+    sceneStore.value.activeElements.length === 0 &&
+    (selectedTool === ELEMENT_TYPE.ERASER || selectedTool === ELEMENT_TYPE.CUT)
+  ) {
+    return;
+  }
+
+  if (
+    selectedTool === ELEMENT_TYPE.CHECKBOX ||
+    selectedTool === ELEMENT_TYPE.TEXTBOX ||
+    selectedTool === ELEMENT_TYPE.CLEAR_ALL ||
+    selectedTool === ELEMENT_TYPE.PASTE ||
+    selectedTool === ELEMENT_TYPE.IMAGE
+  ) {
+    return;
+  }
+
   sceneStore.value.setIsStylus(event);
 
-  if (!isDrawingAllowed(true) || drawingCanvas.value === null) {
+  if (
+    !isDrawingAllowed(true) ||
+    typeof drawingCanvas.value === "undefined" ||
+    drawingCanvas.value === null
+  ) {
     return;
   }
 
   sceneStore.value.isDrawing = true;
 
   const strokeColor =
-    sceneStore.value.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
-  const fillColor =
-    sceneStore.value.selectedTool === Tool.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
+    selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
+  const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
 
-  const newElement = new ELEMENT_MAP[sceneStore.value.selectedTool]({
-    tool: sceneStore.value.selectedTool,
+  const newElement = new ELEMENT_MAP[selectedTool]({
+    tool: selectedTool,
     strokeColor,
     fillColor,
   });
 
   const pos = getDrawPos(drawingCanvas.value, event, true);
   newElement.isRulerLine = pos.isRulerLine;
-  newElement.size =
-    sceneStore.value.selectedTool === Tool.CUT ? 0 : sceneStore.value.selectedToolSize;
+  newElement.size = selectedTool === ELEMENT_TYPE.CUT ? 0 : sceneStore.value.selectedToolSize;
   newElement.toolOptions = {
     lineEndSide: sceneStore.value.selectedLineEndSide,
     lineEndStyle: sceneStore.value.selectedLineEndStyle,
   };
   newElement.freehandOptions = {
     size: sceneStore.value.selectedToolSize,
-    simulatePressure: sceneStore.value.selectedTool === Tool.PEN && !sceneStore.value.isStylus,
-    thinning: sceneStore.value.selectedTool === Tool.PEN ? 0.95 : 0,
+    simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !sceneStore.value.isStylus,
+    thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.95 : 0,
     streamline: newElement.isRulerLine ? 1 : 0.32,
     smoothing: newElement.isRulerLine ? 1 : 0.32,
     last: false,
@@ -791,16 +819,16 @@ function handleCanvasTouchStart(event: Event) {
   newElement.points = [{ x: pos.x, y: pos.y, pressure }];
 
   if (
-    newElement.tool === Tool.CIRCLE ||
-    newElement.tool === Tool.RECTANGLE ||
-    newElement.tool === Tool.BLOB ||
-    newElement.tool === Tool.ERASER
+    newElement.tool === ELEMENT_TYPE.CIRCLE ||
+    newElement.tool === ELEMENT_TYPE.RECTANGLE ||
+    newElement.tool === ELEMENT_TYPE.BLOB ||
+    newElement.tool === ELEMENT_TYPE.ERASER
   ) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
-  } else if (newElement.tool === Tool.TRIANGLE) {
+  } else if (newElement.tool === ELEMENT_TYPE.TRIANGLE) {
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
     newElement.points.push({ x: pos.x, y: pos.y, pressure });
-  } else if (newElement.tool === Tool.LINE) {
+  } else if (newElement.tool === ELEMENT_TYPE.LINE) {
     newElement.points = newElement.calculateLinePoints(pos);
   }
 
@@ -813,8 +841,12 @@ function handleCanvasTouchStart(event: Event) {
   drawElements();
 }
 
-function handleCanvasTouchMove(event: Event) {
-  if (!(sceneStore.value.isPanning || isDrawingAllowed()) || drawingCanvas.value === null) {
+function handleCanvasTouchMove(event: MouseEvent | TouchEvent) {
+  if (
+    !(sceneStore.value.isPanning || isDrawingAllowed()) ||
+    typeof drawingCanvas.value === "undefined" ||
+    drawingCanvas.value === null
+  ) {
     return;
   }
 
@@ -831,9 +863,9 @@ function handleCanvasTouchMove(event: Event) {
   const pos = getDrawPos(drawingCanvas.value, event, followRuler);
   const pressure = lastElement.getPressure(event, sceneStore.value.isStylus);
 
-  if (lastElement.tool === Tool.CIRCLE || lastElement.tool === Tool.RECTANGLE) {
+  if (lastElement.tool === ELEMENT_TYPE.CIRCLE || lastElement.tool === ELEMENT_TYPE.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
-  } else if (lastElement.tool === Tool.TRIANGLE) {
+  } else if (lastElement.tool === ELEMENT_TYPE.TRIANGLE) {
     const dx = lastElement.points[0].x - pos.x;
     const dy = lastElement.points[0].y - pos.y;
 
@@ -849,7 +881,7 @@ function handleCanvasTouchMove(event: Event) {
 
     lastElement.points[1] = p2;
     lastElement.points[2] = p3;
-  } else if (lastElement.tool === Tool.LINE) {
+  } else if (lastElement.tool === ELEMENT_TYPE.LINE) {
     lastElement.points = lastElement.calculateLinePoints(pos);
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
@@ -865,8 +897,12 @@ function handleCanvasTouchMove(event: Event) {
   drawElements();
 }
 
-function handleCanvasTouchEnd(event) {
-  if (sceneStore.value.isInteractiveEditMode || sceneStore.value.isTextboxEditMode) {
+function handleCanvasTouchEnd(event: MouseEvent | TouchEvent) {
+  if (
+    sceneStore.value.isInteractiveEditMode ||
+    sceneStore.value.isTextboxEditMode ||
+    typeof drawingCanvas.value === "undefined"
+  ) {
     return;
   }
 
@@ -876,13 +912,13 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
-  if (sceneStore.value.selectedTool === Tool.CHECKBOX) {
+  if (sceneStore.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
     const pos = getDrawPos(drawingCanvas.value, event, true);
     handleAddCheckbox(pos);
     return;
   }
 
-  if (sceneStore.value.selectedTool === Tool.TEXTBOX) {
+  if (sceneStore.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
     const pos = getDrawPos(drawingCanvas.value, event, true);
     handleAddTextbox(pos);
     return;
@@ -903,7 +939,7 @@ function handleCanvasTouchEnd(event) {
     return;
   }
 
-  if (lastElement.tool === Tool.CUT) {
+  if (lastElement.tool === ELEMENT_TYPE.CUT) {
     handlePasteStart();
   } else {
     lastElement.cacheElement();
@@ -912,7 +948,10 @@ function handleCanvasTouchEnd(event) {
   sceneStore.value.isDrawing = false;
 }
 
-function setRulerTransform(target, transform) {
+function setRulerTransform(
+  target: HTMLElement,
+  transform: { translate?: number[]; scale?: number[]; rotate?: number }
+) {
   const nextTransform = {
     ...sceneStore.value.ruler.transform,
     ...transform,
@@ -933,11 +972,19 @@ function onRulerMoveEnd() {
   sceneStore.value.isMovingRuler = false;
 }
 
-function onRulerDrag({ target, translate }) {
+function onRulerDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
   setRulerTransform(target, { translate });
 }
 
-function onRulerRotate({ target, drag, rotation }) {
+function onRulerRotate({
+  target,
+  drag,
+  rotation,
+}: {
+  target: HTMLElement;
+  drag: { translate: number[] };
+  rotation: number;
+}) {
   const normalizedRotation = rotation % 360;
   const absRotation = Math.abs(normalizedRotation);
   let transformRotation = normalizedRotation;
@@ -964,7 +1011,10 @@ function onRulerRotate({ target, drag, rotation }) {
   });
 }
 
-function setPasteTransform(target, transform) {
+function setPasteTransform(
+  target: HTMLElement,
+  transform: { translate?: number[]; scale?: number[]; rotate?: number }
+) {
   const nextTransform = {
     ...sceneStore.value.pasteTransform,
     ...transform,
@@ -978,20 +1028,41 @@ function setPasteTransform(target, transform) {
   sceneStore.value.pasteTransform = nextTransform;
 }
 
-function onPasteDrag({ target, translate }) {
+function onPasteDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
   setPasteTransform(target, { translate });
 }
 
-function onPasteRotate({ target, rotate, drag }) {
+function onPasteRotate({
+  target,
+  rotate,
+  drag,
+}: {
+  target: HTMLElement;
+  rotate: number;
+  drag: { translate: number[] };
+}) {
   setPasteTransform(target, { rotate, translate: drag.translate });
 }
 
-function onPasteScale({ target, scale, drag }) {
+function onPasteScale({
+  target,
+  scale,
+  drag,
+}: {
+  target: HTMLElement;
+  scale: number[];
+  drag: { translate: number[] };
+}) {
   setPasteTransform(target, { scale, translate: drag.translate });
 }
 
-function handleImageUpload(e) {
-  const file = e.target.files[0];
+function handleImageUpload(e: Event) {
+  const target = e.target as HTMLInputElement;
+
+  if (target === null || target.files === null || target.files.length === 0) {
+    return;
+  }
+  const file = target.files[0];
 
   const reader = new FileReader();
   reader.onload = function (onloadEvent) {
@@ -1005,13 +1076,23 @@ function handleImageUpload(e) {
     };
 
     img.src = onloadEvent.target.result;
-    e.target.value = null;
+
+    target.value = "";
   };
 
   reader.readAsDataURL(file);
 }
 
-function setImageStyles(target, transform) {
+function setImageStyles(
+  target: HTMLElement,
+  transform: {
+    translate?: number[];
+    scale?: number[];
+    rotate?: number;
+    clipType?: string;
+    clipStyles?: number[];
+  }
+) {
   if (typeof imagePreviewCanvas.value === "undefined") {
     return;
   }
@@ -1036,19 +1117,43 @@ function setImageStyles(target, transform) {
   sceneStore.value.imageTransform = nextTransform;
 }
 
-function onImageDrag({ target, translate }) {
+function onImageDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
   setImageStyles(target, { translate });
 }
 
-function onImageRotate({ target, rotate, drag }) {
+function onImageRotate({
+  target,
+  rotate,
+  drag,
+}: {
+  target: HTMLElement;
+  rotate: number;
+  drag: { translate: number[] };
+}) {
   setImageStyles(target, { rotate, translate: drag.translate });
 }
 
-function onImageScale({ target, scale, drag }) {
+function onImageScale({
+  target,
+  scale,
+  drag,
+}: {
+  target: HTMLElement;
+  scale: number[];
+  drag: { translate: number[] };
+}) {
   setImageStyles(target, { scale, translate: drag.translate });
 }
 
-function onImageClip({ target, clipType, clipStyles }) {
+function onImageClip({
+  target,
+  clipType,
+  clipStyles,
+}: {
+  target: HTMLElement;
+  clipType: string;
+  clipStyles: number[];
+}) {
   setImageStyles(target, { clipType, clipStyles });
 }
 
@@ -1063,8 +1168,8 @@ function handleUndoClick() {
     cancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
     const element = sceneStore.value.elementById(action.elementId);
-    redoPaste = element.tool === Tool.PASTE;
-    redoAddImage = element.tool === Tool.IMAGE;
+    redoPaste = element.tool === ELEMENT_TYPE.PASTE;
+    redoAddImage = element.tool === ELEMENT_TYPE.IMAGE;
     sceneStore.value.hideElement(action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     sceneStore.value.showElement(action.elementId);
@@ -1092,7 +1197,7 @@ function handleRedoClick() {
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
     const element = sceneStore.value.elementById(action.elementId);
-    redoPaste = element.tool === Tool.CUT;
+    redoPaste = element.tool === ELEMENT_TYPE.CUT;
     sceneStore.value.showElement(action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     sceneStore.value.hideElement(action.elementId);
@@ -1165,12 +1270,12 @@ function handleEndInteractiveEdit() {
   <div class="canvas-wrapper">
     <!-- START TOOLS -->
     <div class="tools" v-if="sceneStore">
-      <select v-model.number="sceneStore.selectedTool" @change="handleToolChange">
+      <select v-model="sceneStore.selectedTool" @change="handleToolChange">
         <option v-for="tool in supportedTools" :key="tool.key" :value="tool.key">
           {{ tool.label }}
         </option>
       </select>
-      <div v-if="sceneStore.selectedTool === Tool.LINE">
+      <div v-if="sceneStore.selectedTool === ELEMENT_TYPE.LINE">
         <select v-model="sceneStore.selectedLineEndSide">
           <option v-for="endSide in LINE_END_SIDE_CHOICES" :key="endSide.key" :value="endSide.key">
             {{ endSide.label }}
@@ -1186,12 +1291,13 @@ function handleEndInteractiveEdit() {
           </option>
         </select>
       </div>
-      <label v-else-if="sceneStore.selectedTool === Tool.IMAGE">
+      <label v-else-if="sceneStore.selectedTool === ELEMENT_TYPE.IMAGE">
         <input type="file" accept="image/*" @change="handleImageUpload" />
       </label>
       <label
         v-else-if="
-          (sceneStore.selectedTool === Tool.CHECKBOX || sceneStore.selectedTool === Tool.TEXTBOX) &&
+          (sceneStore.selectedTool === ELEMENT_TYPE.CHECKBOX ||
+            sceneStore.selectedTool === ELEMENT_TYPE.TEXTBOX) &&
           !sceneStore.isInteractiveEditMode
         "
       >

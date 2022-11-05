@@ -13,22 +13,22 @@ import PenElement from "./PenElement";
 import RectangleElement from "./RectangleElement";
 import TextboxElement from "./TextboxElement";
 import TriangleElement from "./TriangleElement";
-import { CanvasTool } from "@/constants/core";
+import { ELEMENT_TYPE } from "@/constants/core";
 
 export const ELEMENT_MAP = {
-  [CanvasTool.BLOB]: BlobElement,
-  [CanvasTool.CHECKBOX]: CheckboxElement,
-  [CanvasTool.CIRCLE]: CircleElement,
-  [CanvasTool.CLEAR_ALL]: ClearAllElement,
-  [CanvasTool.CUT]: CutElement,
-  [CanvasTool.ERASER]: EraserElement,
-  [CanvasTool.HIGHLIGHTER]: HighlighterElement,
-  [CanvasTool.IMAGE]: ImageElement,
-  [CanvasTool.LINE]: LineElement,
-  [CanvasTool.MARKER]: MarkerElement,
-  [CanvasTool.PASTE]: PasteElement,
-  [CanvasTool.PEN]: PenElement,
-  [CanvasTool.RECTANGLE]: RectangleElement,
-  [CanvasTool.TEXTBOX]: TextboxElement,
-  [CanvasTool.TRIANGLE]: TriangleElement,
+  [ELEMENT_TYPE.BLOB]: BlobElement,
+  [ELEMENT_TYPE.CHECKBOX]: CheckboxElement,
+  [ELEMENT_TYPE.CIRCLE]: CircleElement,
+  [ELEMENT_TYPE.CLEAR_ALL]: ClearAllElement,
+  [ELEMENT_TYPE.CUT]: CutElement,
+  [ELEMENT_TYPE.ERASER]: EraserElement,
+  [ELEMENT_TYPE.HIGHLIGHTER]: HighlighterElement,
+  [ELEMENT_TYPE.IMAGE]: ImageElement,
+  [ELEMENT_TYPE.LINE]: LineElement,
+  [ELEMENT_TYPE.MARKER]: MarkerElement,
+  [ELEMENT_TYPE.PASTE]: PasteElement,
+  [ELEMENT_TYPE.PEN]: PenElement,
+  [ELEMENT_TYPE.RECTANGLE]: RectangleElement,
+  [ELEMENT_TYPE.TEXTBOX]: TextboxElement,
+  [ELEMENT_TYPE.TRIANGLE]: TriangleElement,
 };

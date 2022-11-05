@@ -1,11 +1,11 @@
-import { CanvasTool, TRANSPARENT_COLOR } from "@/constants/core";
+import { ELEMENT_TYPE, TRANSPARENT_COLOR } from "@/constants/core";
 import type { TColor } from "@/types/core";
 import BaseCanvasElement from "@/models/BaseCanvasElement";
 
 export default class PasteElement extends BaseCanvasElement {
-  cutRect: any;
-  constructor(cutRect: any) {
-    const tool = CanvasTool.PASTE;
+  cutRect: { left: number; top: number; width: number; height: number };
+  constructor(cutRect: { left: number; top: number; width: number; height: number }) {
+    const tool = ELEMENT_TYPE.PASTE;
     const strokeColor: TColor = TRANSPARENT_COLOR;
     const fillColor: TColor = { r: 255, g: 255, b: 255, a: 1 };
 

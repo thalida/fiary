@@ -9,8 +9,7 @@ export enum PageHistoryEvent {
   UPDATE_IMAGE_STYLES = 11,
 }
 
-export enum CanvasTool {
-  POINTER = 0,
+export enum ELEMENT_TYPE {
   ERASER = 1,
   CLEAR_ALL = 2,
   PEN = 10,
@@ -26,32 +25,38 @@ export enum CanvasTool {
   IMAGE = 50,
   CHECKBOX = 60,
   TEXTBOX = 61,
-  PAPER = 70,
 }
 
+export const CANVAS_POINTER_TOOL = 0;
+export const CANVAS_PAPER_TOOL = 0.1;
+
 export const CANVAS_TOOL_CHOICES = [
-  { key: CanvasTool.POINTER, label: "Pointer" },
-  { key: CanvasTool.PAPER, label: "Paper" },
-  { key: CanvasTool.PEN, label: "Pen" },
-  { key: CanvasTool.MARKER, label: "Marker" },
-  { key: CanvasTool.HIGHLIGHTER, label: "Highlighter" },
-  { key: CanvasTool.BLOB, label: "Blob" },
-  { key: CanvasTool.CIRCLE, label: "Circle" },
-  { key: CanvasTool.RECTANGLE, label: "Rectangle" },
-  { key: CanvasTool.TRIANGLE, label: "Triangle" },
-  { key: CanvasTool.LINE, label: "Line" },
-  { key: CanvasTool.IMAGE, label: "Image" },
-  { key: CanvasTool.CHECKBOX, label: "Checkbox" },
-  { key: CanvasTool.TEXTBOX, label: "Textbox" },
-  { key: CanvasTool.CUT, label: "Cut" },
-  { key: CanvasTool.ERASER, label: "Eraser" },
-  { key: CanvasTool.CLEAR_ALL, label: "Clear All" },
+  { key: CANVAS_POINTER_TOOL, label: "Pointer" },
+  { key: CANVAS_PAPER_TOOL, label: "Paper" },
+  { key: ELEMENT_TYPE.PEN, label: "Pen" },
+  { key: ELEMENT_TYPE.MARKER, label: "Marker" },
+  { key: ELEMENT_TYPE.HIGHLIGHTER, label: "Highlighter" },
+  { key: ELEMENT_TYPE.BLOB, label: "Blob" },
+  { key: ELEMENT_TYPE.CIRCLE, label: "Circle" },
+  { key: ELEMENT_TYPE.RECTANGLE, label: "Rectangle" },
+  { key: ELEMENT_TYPE.TRIANGLE, label: "Triangle" },
+  { key: ELEMENT_TYPE.LINE, label: "Line" },
+  { key: ELEMENT_TYPE.IMAGE, label: "Image" },
+  { key: ELEMENT_TYPE.CHECKBOX, label: "Checkbox" },
+  { key: ELEMENT_TYPE.TEXTBOX, label: "Textbox" },
+  { key: ELEMENT_TYPE.CUT, label: "Cut" },
+  { key: ELEMENT_TYPE.ERASER, label: "Eraser" },
+  { key: ELEMENT_TYPE.CLEAR_ALL, label: "Clear All" },
 ];
 
-export const CANVAS_LINE_TOOLS = [CanvasTool.PEN, CanvasTool.MARKER, CanvasTool.HIGHLIGHTER];
-export const CANVAS_PAPER_TOOLS = [CanvasTool.PAPER];
-export const CANVAS_INTERACTIVE_TOOLS = [CanvasTool.CHECKBOX, CanvasTool.TEXTBOX];
-export const CANVAS_NONDRAWING_TOOLS = [CanvasTool.PAPER, CanvasTool.POINTER, CanvasTool.CLEAR_ALL];
+export const CANVAS_LINE_TOOLS = [ELEMENT_TYPE.PEN, ELEMENT_TYPE.MARKER, ELEMENT_TYPE.HIGHLIGHTER];
+export const CANVAS_INTERACTIVE_TOOLS = [ELEMENT_TYPE.CHECKBOX, ELEMENT_TYPE.TEXTBOX];
+export const CANVAS_NONDRAWING_TOOLS = [
+  ELEMENT_TYPE.CLEAR_ALL,
+  CANVAS_POINTER_TOOL,
+  CANVAS_PAPER_TOOL,
+];
+export const CANVAS_PAPER_TOOLS = [CANVAS_PAPER_TOOL];
 
 export enum LineEndSide {
   NONE = 0,

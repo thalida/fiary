@@ -20,13 +20,17 @@ export function getColorAsCss(color: TColor): string {
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
 }
 
-export function isTransparent(color: TColor) {
+export function isTransparent(color: TColor | undefined): boolean {
+  if (typeof color === "undefined") {
+    return true;
+  }
+
   const isGradient = Array.isArray(color);
   return !isGradient && color.a === 0;
 }
 
-export function formatColor(color: ISolidColor, opacity = 1) {
-  if (isTransparent(color)) {
+export function formatColor(color: ISolidColor | undefined, opacity = 1) {
+  if (typeof color === "undefined" || isTransparent(color)) {
     return "transparent";
   }
 
