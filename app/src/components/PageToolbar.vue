@@ -10,7 +10,7 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
 import ColorPicker from "@/components/PageColorPicker.vue";
-import { computed } from "vue";
+import { computed, nextTick, ref } from "vue";
 import type { TPrimaryKey } from "@/types/core";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -20,6 +20,7 @@ const colorPickerRefs: any[] = [];
 const selectedPatternStyles = computed(() => {
   return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
+const zoomPercent = ref();
 const emit = defineEmits<{
   (event: "update:tool", tool: number): void;
   (event: "action:history:undo"): void;
@@ -50,6 +51,30 @@ function handleToolChange(event: Event) {
   if (event.target) {
     (event.target as HTMLElement).blur();
   }
+}
+
+async function handleZoomOut() {
+  if (typeof sceneStore.value === "undefined") {
+    return;
+  }
+
+  const percent = sceneStore.value.zoomOut();
+  zoomPercent.value = percent;
+
+  await nextTick();
+  emit("action:camera:zoomOut");
+}
+
+async function handleZoomIn() {
+  if (typeof sceneStore.value === "undefined") {
+    return;
+  }
+
+  const percent = sceneStore.value.zoomIn();
+  zoomPercent.value = percent;
+
+  await nextTick();
+  emit("action:camera:zoomIn");
 }
 
 function closeAllColorPickers() {
@@ -208,8 +233,9 @@ defineExpose({
     >
     <label><input type="checkbox" v-model="sceneStore.allowFingerDrawing" /> finger?</label>
     <label><input type="checkbox" v-model="sceneStore.debugMode" /> debug?</label>
-    <button @click="emit('action:camera:zoomOut')">Zoom -</button>
-    <button @click="emit('action:camera:zoomIn')">Zoom +</button>
+    <button @click="handleZoomOut">Zoom -</button>
+    <button @click="handleZoomIn">Zoom +</button>
+    <span>{{ zoomPercent }}%</span>
     <button :disabled="!sceneStore.hasUndo" @click="emit('action:history:undo')">Undo</button>
     <button :disabled="!sceneStore.hasRedo" @click="emit('action:history:redo')">Redo</button>
   </div>

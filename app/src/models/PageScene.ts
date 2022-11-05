@@ -149,6 +149,11 @@ export default class PageScene {
   get hasRedo() {
     return this.historyIndex < this.history.length - 1;
   }
+  get zoomPercent() {
+    const percent = Math.round(this.transformMatrix.a * 100);
+    console.log(this.transformMatrix.a, percent);
+    return percent;
+  }
 
   setElement(element: any) {
     this.elements[element.id] = element;
@@ -227,6 +232,34 @@ export default class PageScene {
     if (this.historyIndex < 0) return;
     this.history.pop();
     this.historyIndex -= 1;
+  }
+
+  zoomOut() {
+    if (typeof this.transformMatrix === "undefined") {
+      return;
+    }
+
+    if (this.transformMatrix.a > 0.5) {
+      this.transformMatrix.a -= 0.1;
+      this.transformMatrix.a = Math.round((this.transformMatrix.a + Number.EPSILON) * 100) / 100;
+      this.transformMatrix.d = this.transformMatrix.a;
+    }
+
+    return this.zoomPercent;
+  }
+
+  zoomIn() {
+    if (typeof this.transformMatrix === "undefined") {
+      return;
+    }
+
+    if (this.transformMatrix.a < 6) {
+      this.transformMatrix.a += 0.1;
+      this.transformMatrix.a = Math.round((this.transformMatrix.a + Number.EPSILON) * 100) / 100;
+      this.transformMatrix.d = this.transformMatrix.a;
+    }
+
+    return this.zoomPercent;
   }
 
   getMousePos(

@@ -395,13 +395,6 @@ function handleZoomOut() {
     return;
   }
 
-  if (sceneStore.value.transformMatrix.a > 0.5) {
-    sceneStore.value.transformMatrix.a -= 0.1;
-    sceneStore.value.transformMatrix.a =
-      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
-  }
-
   paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
   interactiveLayer.value?.setInteractiveElementTransforms(
     sceneStore.value.initTransformMatrix,
@@ -413,13 +406,6 @@ function handleZoomOut() {
 function handleZoomIn() {
   if (typeof sceneStore.value.transformMatrix === "undefined") {
     return;
-  }
-
-  if (sceneStore.value.transformMatrix.a < 6) {
-    sceneStore.value.transformMatrix.a += 0.1;
-    sceneStore.value.transformMatrix.a =
-      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
   }
 
   paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
@@ -567,7 +553,7 @@ function handleRedo() {
   border: 2px solid red;
 }
 
-.tools {
+.toolbar {
   position: fixed;
   top: 0;
   left: 0;
