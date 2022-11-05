@@ -20,7 +20,7 @@ const colorPickerRefs: any[] = [];
 const selectedPatternStyles = computed(() => {
   return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
-const zoomPercent = ref();
+const zoomPercent = ref(100);
 const emit = defineEmits<{
   (event: "update:tool", tool: number): void;
   (event: "action:history:undo"): void;
