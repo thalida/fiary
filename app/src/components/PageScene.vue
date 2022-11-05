@@ -161,6 +161,7 @@ function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
   );
   drawingLayer.value?.drawElements();
 }
+
 function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   toolbar.value?.closeAllColorPickers();
 
@@ -384,20 +385,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   sceneStore.value.isDrawing = false;
 }
 
-function handleZoomOut() {
-  if (typeof sceneStore.value.transformMatrix === "undefined") {
-    return;
-  }
-
-  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
-  interactiveLayer.value?.setInteractiveElementTransforms(
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix
-  );
-  drawingLayer.value?.drawElements();
-}
-
-function handleZoomIn() {
+function handleCameraChange() {
   if (typeof sceneStore.value.transformMatrix === "undefined") {
     return;
   }
@@ -484,8 +472,8 @@ function handleRedo() {
         @update:tool="handleToolChange"
         @action:history:undo="handleUndo"
         @action:history:redo="handleRedo"
-        @action:camera:zoom-in="handleZoomIn"
-        @action:camera:zoom-out="handleZoomOut"
+        @action:camera:zoom-in="handleCameraChange"
+        @action:camera:zoom-out="handleCameraChange"
         @action:interactiveEdit:start="interactiveLayer?.handleStartInteractiveEdit"
         @action:interactiveEdit:end="interactiveLayer?.handleEndInteractiveEdit"
         @action:interactiveEdit:elementDelete="interactiveLayer?.handleInteractiveElementDelete"
