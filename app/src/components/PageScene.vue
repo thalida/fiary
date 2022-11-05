@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchPostEffect, onMounted, nextTick, watchEffect } from "vue";
+import { ref, computed, watch, watchPostEffect, nextTick, watchEffect } from "vue";
 import cloneDeep from "lodash/cloneDeep";
 import Moveable from "moveable";
 import MoveableVue from "vue3-moveable";
@@ -32,19 +32,19 @@ const canvasStore = useCanvasStore();
 
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 
-const activeImage = ref<HTMLImageElement | null>(null);
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const paperLayer = ref<typeof PagePaperLayer>();
 const drawingLayer = ref<typeof PageDrawingLayer>();
 const drawingCanvas = ref<HTMLCanvasElement>();
+const activeImage = ref<HTMLImageElement | null>(null);
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
 const imageBackdropCanvas = ref<HTMLCanvasElement>();
+const moveableImage = ref();
 const pasteLayer = ref<HTMLElement>();
 const pasteCanvas = ref<HTMLCanvasElement>();
+const rulerElement = ref();
 const moveableRuler = ref();
 let moveablePaste: any = null;
-const moveableImage = ref();
-const rulerElement = ref();
 const colorPickerRefs: any[] = [];
 
 const selectedFillColor = computed(() => {
@@ -80,7 +80,7 @@ function initScene(canvas: HTMLCanvasElement) {
   watch(
     () => (sceneStore.value ? sceneStore.value.debugMode : false),
     () => {
-      drawElements();
+      drawingLayer.value?.drawElements();
     }
   );
 
@@ -126,32 +126,6 @@ function clearCanvas(canvas: HTMLCanvasElement) {
   }
 }
 
-function drawElements() {
-  if (typeof drawingCanvas.value === "undefined") {
-    return;
-  }
-
-  const ctx = drawingCanvas.value.getContext("2d");
-
-  if (ctx === null) {
-    return;
-  }
-
-  ctx.setTransform(sceneStore.value.initTransformMatrix);
-  ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
-  ctx.setTransform(sceneStore.value.transformMatrix);
-
-  const drawElementIds = sceneStore.value.activeElements;
-  for (let i = 0; i < drawElementIds.length; i += 1) {
-    const elementId = drawElementIds[i];
-    const element = sceneStore.value.elementById(elementId);
-    if (typeof element.drawElement === "undefined") {
-      continue;
-    }
-    element.drawElement(drawingCanvas.value);
-  }
-}
-
 function handleAddCheckbox(pos: IElementPoint) {
   const checkboxElement = new ELEMENT_MAP[ELEMENT_TYPE.CHECKBOX]({
     pos,
@@ -188,7 +162,7 @@ function handleClearAll() {
   });
   clearElement.cacheElement();
   sceneStore.value.createElement(clearElement);
-  drawElements();
+  drawingLayer.value?.drawElements();
   sceneStore.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
 
@@ -221,7 +195,7 @@ async function handlePasteStart() {
     cutSelection.cacheElement();
   }
 
-  drawElements();
+  drawingLayer.value?.drawElements();
 
   sceneStore.value.pasteTransform.translate = [
     cutSelection.cache.drawing.x,
@@ -291,7 +265,7 @@ function handlePasteEnd() {
     cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
   ) {
     cancelPaste();
-    drawElements();
+    drawingLayer.value?.drawElements();
     sceneStore.value.popHistoryEvent();
     return;
   }
@@ -339,12 +313,12 @@ function handlePasteEnd() {
   };
 
   sceneStore.value.createElement(pasteElement);
-  drawElements();
+  drawingLayer.value?.drawElements();
   sceneStore.value.isPasteMode = false;
 }
 
 function handlePasteDelete() {
-  drawElements();
+  drawingLayer.value?.drawElements();
   sceneStore.value.isPasteMode = false;
 }
 
@@ -500,7 +474,7 @@ function handleAddImageEnd() {
   };
 
   sceneStore.value.createElement(imageElement);
-  drawElements();
+  drawingLayer.value?.drawElements();
   activeImage.value = null;
   sceneStore.value.isAddImageMode = false;
 }
@@ -543,7 +517,7 @@ function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
   );
-  drawElements();
+  drawingLayer.value?.drawElements();
 }
 
 function handleZoomOut() {
@@ -563,7 +537,7 @@ function handleZoomOut() {
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
   );
-  drawElements();
+  drawingLayer.value?.drawElements();
 }
 
 function handleZoomIn() {
@@ -583,7 +557,7 @@ function handleZoomIn() {
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
   );
-  drawElements();
+  drawingLayer.value?.drawElements();
 }
 
 function closeAllColorPickers() {
@@ -592,7 +566,7 @@ function closeAllColorPickers() {
   }
 }
 
-function handleCanvasTouchStart(event: MouseEvent | TouchEvent) {
+function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   closeAllColorPickers();
 
   if (sceneStore.value.selectedTool === CANVAS_POINTER_TOOL) {
@@ -685,10 +659,10 @@ function handleCanvasTouchStart(event: MouseEvent | TouchEvent) {
 
   newElement.dimensions = newElement.calculateDimensions();
   sceneStore.value.createElement(newElement);
-  drawElements();
+  drawingLayer.value?.drawElements();
 }
 
-function handleCanvasTouchMove(event: MouseEvent | TouchEvent) {
+function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   if (
     !(sceneStore.value.isPanning || isDrawingAllowed()) ||
     typeof drawingCanvas.value === "undefined" ||
@@ -746,10 +720,10 @@ function handleCanvasTouchMove(event: MouseEvent | TouchEvent) {
   }
 
   lastElement.dimensions = lastElement.calculateDimensions();
-  drawElements();
+  drawingLayer.value?.drawElements();
 }
 
-function handleCanvasTouchEnd(event: MouseEvent | TouchEvent) {
+function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   if (
     sceneStore.value.isInteractiveEditMode ||
     sceneStore.value.isTextboxEditMode ||
@@ -795,7 +769,7 @@ function handleCanvasTouchEnd(event: MouseEvent | TouchEvent) {
     handlePasteStart();
   } else {
     lastElement.cacheElement();
-    drawElements();
+    drawingLayer.value?.drawElements();
   }
   sceneStore.value.isDrawing = false;
 }
@@ -1035,10 +1009,10 @@ function handleUndoClick() {
   if (redoPaste) {
     handlePasteStart();
   } else if (redoAddImage) {
-    drawElements();
+    drawingLayer.value?.drawElements();
     handleAddImageStart(action.image, false);
   } else {
-    drawElements();
+    drawingLayer.value?.drawElements();
   }
 }
 
@@ -1069,7 +1043,7 @@ function handleRedoClick() {
   } else {
     sceneStore.value.isPasteMode = false;
     sceneStore.value.isAddImageMode = false;
-    drawElements();
+    drawingLayer.value?.drawElements();
   }
 }
 
@@ -1229,12 +1203,12 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
     <!-- END TOOLS -->
     <div
       class="surface"
-      @mousedown="handleCanvasTouchStart"
-      @touchstart="handleCanvasTouchStart"
-      @mouseup="handleCanvasTouchEnd"
-      @touchend="handleCanvasTouchEnd"
-      @mousemove="handleCanvasTouchMove"
-      @touchmove="handleCanvasTouchMove"
+      @mousedown="handleSurfaceTouchStart"
+      @touchstart="handleSurfaceTouchStart"
+      @mouseup="handleSurfaceTouchEnd"
+      @touchend="handleSurfaceTouchEnd"
+      @mousemove="handleSurfaceTouchMove"
+      @touchmove="handleSurfaceTouchMove"
     >
       <div
         v-if="sceneStore && sceneStore.ruler.isVisible"
@@ -1321,7 +1295,12 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
           class="interactive-layer"
           :pageId="props.pageId"
         />
-        <PageDrawingLayer ref="drawingLayer" class="drawing-layer" @ready="initScene" />
+        <PageDrawingLayer
+          ref="drawingLayer"
+          class="drawing-layer"
+          :pageId="props.pageId"
+          @ready="initScene"
+        />
       </div>
       <PagePaperLayer ref="paperLayer" class="paper-layer" :pageId="props.pageId" />
     </div>
