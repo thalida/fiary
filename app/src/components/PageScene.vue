@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchPostEffect, nextTick, watchEffect } from "vue";
+import { ref, computed, watch, watchPostEffect, watchEffect } from "vue";
 import cloneDeep from "lodash/cloneDeep";
 import MoveableVue from "vue3-moveable";
 
@@ -20,12 +20,12 @@ import {
 } from "@/constants/core";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
-import { clearCanvas } from "@/utils/canvas";
 import ColorPicker from "@/components/PageColorPicker.vue";
 import PageInteractiveLayer from "@/components/PageInteractiveLayer.vue";
 import PagePaperLayer from "@/components/PagePaperLayer.vue";
 import PageDrawingLayer from "@/components/PageDrawingLayer.vue";
 import PagePasteLayer from "@/components/PagePasteLayer.vue";
+import PageAddImageLayer from "@/components/PageAddImageLayer.vue";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -37,11 +37,8 @@ const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const paperLayer = ref<typeof PagePaperLayer>();
 const drawingLayer = ref<typeof PageDrawingLayer>();
 const pasteLayer = ref<typeof PagePasteLayer>();
+const addImageLayer = ref<typeof PageAddImageLayer>();
 const drawingCanvas = ref<HTMLCanvasElement>();
-const activeImage = ref<HTMLImageElement | null>(null);
-const imagePreviewCanvas = ref<HTMLCanvasElement>();
-const imageBackdropCanvas = ref<HTMLCanvasElement>();
-const moveableImage = ref();
 const rulerElement = ref();
 const moveableRuler = ref();
 const colorPickerRefs: any[] = [];
@@ -156,167 +153,6 @@ function handleClearAll() {
   sceneStore.value.createElement(clearElement);
   drawingLayer.value?.drawElements();
   sceneStore.value.selectedTool = ELEMENT_TYPE.ERASER;
-}
-
-async function handleAddImageStart(image: HTMLImageElement, trackHistory = true) {
-  let imageWidth = image.width;
-  let imageHeight = image.height;
-  let scale = 1;
-  if (
-    image.width > canvasStore.canvasConfig.width ||
-    image.height > canvasStore.canvasConfig.height
-  ) {
-    scale = Math.min(
-      canvasStore.canvasConfig.width / image.width,
-      canvasStore.canvasConfig.height / image.height
-    );
-    imageWidth *= scale;
-    imageHeight *= scale;
-  }
-
-  sceneStore.value.imageTransform = {
-    translate: [
-      canvasStore.canvasConfig.width / 2 - imageWidth / 2,
-      canvasStore.canvasConfig.height / 2 - imageHeight / 2,
-    ],
-    scale: [scale, scale],
-    rotate: 0,
-    clipType: "inset",
-    clipStyles: [0, 0, 0, 0],
-  };
-  sceneStore.value.isAddImageMode = true;
-  await nextTick();
-
-  if (
-    typeof imagePreviewCanvas.value === "undefined" ||
-    typeof imageBackdropCanvas.value === "undefined"
-  ) {
-    return;
-  }
-
-  const previewCtx = imagePreviewCanvas.value.getContext("2d");
-  const backdropCtx = imageBackdropCanvas.value.getContext("2d");
-
-  if (previewCtx === null || backdropCtx === null) {
-    return;
-  }
-
-  setImageStyles(imagePreviewCanvas.value, sceneStore.value.imageTransform);
-
-  const dpi = canvasStore.canvasConfig.dpi;
-  imagePreviewCanvas.value.width = imageWidth * dpi;
-  imagePreviewCanvas.value.height = imageHeight * dpi;
-  imagePreviewCanvas.value.style.width = `${imageWidth}px`;
-  imagePreviewCanvas.value.style.height = `${imageHeight}px`;
-  previewCtx.scale(dpi, dpi);
-
-  imageBackdropCanvas.value.width = imageWidth * dpi;
-  imageBackdropCanvas.value.height = imageHeight * dpi;
-  imageBackdropCanvas.value.style.width = `${imageWidth}px`;
-  imageBackdropCanvas.value.style.height = `${imageHeight}px`;
-  backdropCtx.scale(dpi, dpi);
-
-  clearCanvas(imagePreviewCanvas.value);
-  previewCtx.drawImage(image, 0, 0, imageWidth, imageHeight);
-
-  clearCanvas(imageBackdropCanvas.value);
-  backdropCtx.drawImage(image, 0, 0, imageWidth, imageHeight);
-
-  activeImage.value = image;
-  if (trackHistory) {
-    sceneStore.value.addHistoryEvent({
-      type: HistoryEvent.ADD_IMAGE_START,
-      image,
-    });
-  }
-}
-
-function handleAddImageEnd() {
-  if (typeof imagePreviewCanvas.value === "undefined" || activeImage.value === null) {
-    return;
-  }
-
-  const moveableRect = moveableImage.value.getRect();
-  const imageElement = new ELEMENT_MAP[ELEMENT_TYPE.IMAGE](activeImage.value, moveableRect);
-
-  const imageCacheCanvas = document.createElement("canvas");
-  const ctx = imageCacheCanvas.getContext("2d");
-
-  if (ctx === null) {
-    return;
-  }
-
-  const dpi = canvasStore.canvasConfig.dpi;
-  const minX = imageElement.dimensions.outerMinX;
-  const minY = imageElement.dimensions.outerMinY;
-  const width = imageElement.dimensions.outerWidth;
-  const height = imageElement.dimensions.outerHeight;
-  const centerX = width / 2;
-  const centerY = height / 2;
-
-  imageCacheCanvas.width = width * dpi;
-  imageCacheCanvas.height = height * dpi;
-  imageCacheCanvas.style.width = `${width}px`;
-  imageCacheCanvas.style.height = `${height}px`;
-
-  const rotRad = (sceneStore.value.imageTransform.rotate * Math.PI) / 180;
-  const imageWidth =
-    sceneStore.value.imageTransform.scale[0] * imagePreviewCanvas.value.offsetWidth;
-  const imageHeight =
-    sceneStore.value.imageTransform.scale[1] * imagePreviewCanvas.value.offsetHeight;
-  const clipValues = sceneStore.value.imageTransform.clipStyles
-    .map((value: number | string) =>
-      typeof value === "string" ? Number(value.split("px")[0]) : value
-    )
-    .map((value: number) => (value < 0 ? 0 : value));
-  clipValues[0] *= sceneStore.value.imageTransform.scale[1];
-  clipValues[1] *= sceneStore.value.imageTransform.scale[0];
-  clipValues[2] *= sceneStore.value.imageTransform.scale[1];
-  clipValues[3] *= sceneStore.value.imageTransform.scale[0];
-  const clipWidth = imageWidth - clipValues[1] - clipValues[3];
-  const clipHeight = imageHeight - clipValues[0] - clipValues[2];
-
-  ctx.save();
-  ctx.scale(dpi, dpi);
-  ctx.translate(centerX, centerY);
-  ctx.rotate(rotRad);
-  ctx.beginPath();
-  ctx.rect(
-    -imageWidth / 2 + clipValues[3],
-    -imageHeight / 2 + clipValues[0],
-    clipWidth,
-    clipHeight
-  );
-  ctx.clip();
-  ctx.fillStyle = "#ff0000";
-  ctx.fill();
-  ctx.drawImage(
-    imagePreviewCanvas.value,
-    -imageWidth / 2,
-    -imageHeight / 2,
-    imageWidth,
-    imageHeight
-  );
-  ctx.restore();
-
-  imageElement.isDrawingCached = true;
-  imageElement.cache.drawing = {
-    x: minX,
-    y: minY,
-    width,
-    height,
-    dpi,
-    canvas: imageCacheCanvas,
-  };
-
-  sceneStore.value.createElement(imageElement);
-  drawingLayer.value?.drawElements();
-  activeImage.value = null;
-  sceneStore.value.isAddImageMode = false;
-}
-
-function cancelAddImage() {
-  sceneStore.value.isAddImageMode = false;
 }
 
 function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
@@ -673,107 +509,6 @@ function onRulerRotate({
   });
 }
 
-function handleImageUpload(e: Event) {
-  const target = e.target as HTMLInputElement;
-
-  if (target === null || target.files === null || target.files.length === 0) {
-    return;
-  }
-  const file = target.files[0];
-
-  const reader = new FileReader();
-  reader.onload = function (onloadEvent) {
-    if (onloadEvent.target === null || typeof onloadEvent.target.result !== "string") {
-      return;
-    }
-
-    const img = new Image();
-    img.onload = function () {
-      handleAddImageStart(img);
-    };
-
-    img.src = onloadEvent.target.result;
-
-    target.value = "";
-  };
-
-  reader.readAsDataURL(file);
-}
-
-function setImageStyles(
-  target: HTMLElement,
-  transform: {
-    translate?: number[];
-    scale?: number[];
-    rotate?: number;
-    clipType?: string;
-    clipStyles?: number[];
-  }
-) {
-  if (typeof imagePreviewCanvas.value === "undefined") {
-    return;
-  }
-  const nextTransform = {
-    ...sceneStore.value.imageTransform,
-    ...transform,
-  };
-
-  const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
-  const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
-  const rotate = `rotate(${nextTransform.rotate}deg)`;
-
-  imagePreviewCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
-  imagePreviewCanvas.value.style.clipPath = `${
-    nextTransform.clipType
-  }(${nextTransform.clipStyles.join(" ")})`;
-
-  if (typeof imageBackdropCanvas.value !== "undefined") {
-    imageBackdropCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
-  }
-
-  sceneStore.value.imageTransform = nextTransform;
-}
-
-function onImageDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
-  setImageStyles(target, { translate });
-}
-
-function onImageRotate({
-  target,
-  rotate,
-  drag,
-}: {
-  target: HTMLElement;
-  rotate: number;
-  drag: { translate: number[] };
-}) {
-  setImageStyles(target, { rotate, translate: drag.translate });
-}
-
-function onImageScale({
-  target,
-  scale,
-  drag,
-}: {
-  target: HTMLElement;
-  scale: number[];
-  drag: { translate: number[] };
-}) {
-  setImageStyles(target, { scale, translate: drag.translate });
-}
-
-function onImageClip({
-  target,
-  clipType,
-  clipStyles,
-}: {
-  target: HTMLElement;
-  clipType: string;
-  clipStyles: number[];
-}) {
-  setImageStyles(target, { clipType, clipStyles });
-}
-
 function handleUndoClick() {
   const action = sceneStore.value.history[sceneStore.value.historyIndex];
   let redoPaste = false;
@@ -782,7 +517,7 @@ function handleUndoClick() {
   if (sceneStore.value.isPasteMode) {
     pasteLayer.value?.handleCancelPaste();
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
-    cancelAddImage();
+    addImageLayer.value?.handleCancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
     const element = sceneStore.value.elementById(action.elementId);
     redoPaste = element.tool === ELEMENT_TYPE.PASTE;
@@ -801,7 +536,7 @@ function handleUndoClick() {
     pasteLayer.value?.handlePasteStart();
   } else if (redoAddImage) {
     drawingLayer.value?.drawElements();
-    handleAddImageStart(action.image, false);
+    addImageLayer.value?.handleAddImageStart(action.image, false);
   } else {
     drawingLayer.value?.drawElements();
   }
@@ -830,7 +565,7 @@ function handleRedoClick() {
   if (redoPaste) {
     pasteLayer.value?.handlePasteStart();
   } else if (redoAddImage) {
-    handleAddImageStart(action.image, false);
+    addImageLayer.value?.handleAddImageStart(action.image, false);
   } else {
     sceneStore.value.isPasteMode = false;
     sceneStore.value.isAddImageMode = false;
@@ -885,7 +620,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         </select>
       </div>
       <label v-else-if="sceneStore.selectedTool === ELEMENT_TYPE.IMAGE">
-        <input type="file" accept="image/*" @change="handleImageUpload" />
+        <input type="file" accept="image/*" @change="addImageLayer?.handleImageUpload" />
       </label>
       <label
         v-else-if="
@@ -897,7 +632,9 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         <button @click="interactiveLayer?.handleStartInteractiveEdit">Edit</button>
       </label>
 
-      <button v-if="sceneStore.isAddImageMode" @click="handleAddImageEnd">Done</button>
+      <button v-if="sceneStore.isAddImageMode" @click="addImageLayer?.handleAddImageEnd">
+        Done
+      </button>
       <button v-if="sceneStore.isPasteMode" @click="pasteLayer?.handlePasteEnd">Done</button>
       <button v-if="sceneStore.isPasteMode" @click="pasteLayer?.handlePasteDelete">
         Delete Selection
@@ -1055,28 +792,12 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         />
       </div>
 
-      <div class="image-layer" v-if="sceneStore && sceneStore.isAddImageMode">
-        <div class="image-canvases">
-          <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
-          <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>
-        </div>
-        <MoveableVue
-          ref="moveableImage"
-          className="moveable-image"
-          :target="['.image-canvas--preview']"
-          :pinchable="true"
-          :draggable="true"
-          :rotatable="true"
-          :scalable="true"
-          :clippable="true"
-          :clipTargetBounds="true"
-          :keepRatio="true"
-          @drag="onImageDrag"
-          @rotate="onImageRotate"
-          @scale="onImageScale"
-          @clip="onImageClip"
-        />
-      </div>
+      <PageAddImageLayer
+        ref="addImageLayer"
+        class="image-layer"
+        :pageId="pageId"
+        @redraw="drawingLayer?.drawElements"
+      />
 
       <PagePasteLayer
         ref="pasteLayer"
@@ -1174,21 +895,6 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
   z-index: 1;
 }
 
-.image-layer .image-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-.image-layer .image-canvas--preview {
-  z-index: 1;
-}
-
-.image-layer .image-canvas--backdrop {
-  z-index: 0;
-  opacity: 0.5;
-}
-
 .ruler-layer .ruler {
   position: fixed;
   display: flex;
@@ -1212,26 +918,11 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
   background: rgba(0, 0, 0, 0.5);
   background: linear-gradient(to right, rgba(255, 0, 0, 0.5) 0%, rgba(0, 0, 255, 0.5) 100%);
 }
-
-.paper-layer .paper-color {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
 </style>
 
 <style>
 .hide-ruler-controls .moveable-ruler.moveable-control-box .moveable-rotation {
   display: none;
-}
-
-.moveable-image.moveable-control-box .moveable-control.moveable-direction.moveable-nw,
-.moveable-image.moveable-control-box .moveable-control.moveable-direction.moveable-ne,
-.moveable-image.moveable-control-box .moveable-control.moveable-direction.moveable-sw,
-.moveable-image.moveable-control-box .moveable-control.moveable-direction.moveable-se {
-  z-index: 20;
 }
 
 .moveable-ruler.moveable-control-box .moveable-control.moveable-rotation-control {

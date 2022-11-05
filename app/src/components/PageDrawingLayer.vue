@@ -16,8 +16,6 @@ onMounted(() => {
     return;
   }
 
-  console.log(drawingCanvas.value);
-
   const ctx = drawingCanvas.value.getContext("2d");
 
   if (ctx === null) {

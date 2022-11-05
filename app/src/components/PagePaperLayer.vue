@@ -74,4 +74,12 @@ defineExpose({
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.paper-layer .paper-color {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+</style>

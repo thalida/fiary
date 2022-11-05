@@ -19,7 +19,6 @@ export default class ImageElement extends BaseCanvasElement {
     };
     this.imageRect = imageRect;
     this.dimensions = this.calculateDimensions();
-    this.isDrawingCached = true;
   }
 
   calculateDimensions() {

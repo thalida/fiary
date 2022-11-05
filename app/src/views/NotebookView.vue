@@ -26,7 +26,6 @@ watchEffect(() => {
   if (isAuthenticated.value) {
     isLoading.value = true;
     coreStore.fetchNotebook(props.notebookId).then(() => {
-      console.log(notebook.value);
       isLoading.value = false;
     });
   }

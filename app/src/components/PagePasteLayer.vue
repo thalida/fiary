@@ -13,7 +13,7 @@ const canvasStore = useCanvasStore();
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const rootEl = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
-let moveablePaste: any = null;
+let moveableEl: any = null;
 const emit = defineEmits<{
   (event: "redraw"): void;
 }>();
@@ -80,7 +80,7 @@ async function handlePasteStart() {
   cutSelectionClip.composition = "destination-in";
   cutSelectionClip.drawElement(canvas.value);
 
-  moveablePaste = new Moveable(rootEl.value, {
+  moveableEl = new Moveable(rootEl.value, {
     target: canvas.value as HTMLElement,
     draggable: true,
     rotatable: true,
@@ -89,7 +89,7 @@ async function handlePasteStart() {
     keepRatio: true,
   });
 
-  moveablePaste.on("drag", onPasteDrag).on("rotate", onPasteRotate).on("scale", onPasteScale);
+  moveableEl.on("drag", onPasteDrag).on("rotate", onPasteRotate).on("scale", onPasteScale);
 }
 
 function handleCancelPaste() {
@@ -107,7 +107,7 @@ function handlePasteEnd() {
   const cutSelectionId =
     sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
   const cutSelection = sceneStore.value.elementById(cutSelectionId);
-  const moveableRect = moveablePaste.getRect();
+  const moveableRect = moveableEl.getRect();
   const pasteElement = new ELEMENT_MAP[ELEMENT_TYPE.PASTE](moveableRect);
 
   if (
