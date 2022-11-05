@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchPostEffect, watchEffect } from "vue";
+import { ref, computed, watch, watchEffect } from "vue";
 import cloneDeep from "lodash/cloneDeep";
-import MoveableVue from "vue3-moveable";
-
 import { useCanvasStore } from "@/stores/canvas";
 import {
   PageHistoryEvent as HistoryEvent,
@@ -26,6 +24,7 @@ import PagePaperLayer from "@/components/PagePaperLayer.vue";
 import PageDrawingLayer from "@/components/PageDrawingLayer.vue";
 import PagePasteLayer from "@/components/PagePasteLayer.vue";
 import PageAddImageLayer from "@/components/PageAddImageLayer.vue";
+import PageRulerLayer from "@/components/PageRulerLayer.vue";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -38,9 +37,8 @@ const paperLayer = ref<typeof PagePaperLayer>();
 const drawingLayer = ref<typeof PageDrawingLayer>();
 const pasteLayer = ref<typeof PagePasteLayer>();
 const addImageLayer = ref<typeof PageAddImageLayer>();
+const rulerLayer = ref<typeof PageRulerLayer>();
 const drawingCanvas = ref<HTMLCanvasElement>();
-const rulerElement = ref();
-const moveableRuler = ref();
 const colorPickerRefs: any[] = [];
 
 const selectedFillColor = computed(() => {
@@ -82,12 +80,6 @@ function initScene(canvas: HTMLCanvasElement) {
 
   watchEffect(() => {
     paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
-  });
-
-  watchPostEffect(() => {
-    if (sceneStore.value?.ruler.isVisible) {
-      setRulerTransform(rulerElement.value, {});
-    }
   });
 }
 
@@ -292,7 +284,12 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
     fillColor,
   });
 
-  const pos = sceneStore.value.getDrawPos(drawingCanvas.value, event, true, moveableRuler.value);
+  const pos = sceneStore.value.getDrawPos(
+    drawingCanvas.value,
+    event,
+    true,
+    rulerLayer.value?.moveableEl
+  );
   newElement.isRulerLine = pos.isRulerLine;
   newElement.size = selectedTool === ELEMENT_TYPE.CUT ? 0 : sceneStore.value.selectedToolSize;
   newElement.toolOptions = {
@@ -357,7 +354,7 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
     drawingCanvas.value,
     event,
     followRuler,
-    moveableRuler.value
+    rulerLayer.value?.moveableEl
   );
   const pressure = lastElement.getPressure(event, sceneStore.value.isStylus);
 
@@ -411,13 +408,23 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
 
   if (sceneStore.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
-    const pos = sceneStore.value.getDrawPos(drawingCanvas.value, event, true, moveableRuler.value);
+    const pos = sceneStore.value.getDrawPos(
+      drawingCanvas.value,
+      event,
+      true,
+      rulerLayer.value?.moveableEl
+    );
     handleAddCheckbox(pos);
     return;
   }
 
   if (sceneStore.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
-    const pos = sceneStore.value.getDrawPos(drawingCanvas.value, event, true, moveableRuler.value);
+    const pos = sceneStore.value.getDrawPos(
+      drawingCanvas.value,
+      event,
+      true,
+      rulerLayer.value?.moveableEl
+    );
     handleAddTextbox(pos);
     return;
   }
@@ -444,69 +451,6 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     drawingLayer.value?.drawElements();
   }
   sceneStore.value.isDrawing = false;
-}
-
-function setRulerTransform(
-  target: HTMLElement,
-  transform: { translate?: number[]; scale?: number[]; rotate?: number }
-) {
-  const nextTransform = {
-    ...sceneStore.value.ruler.transform,
-    ...transform,
-  };
-
-  const translate = `translate(${nextTransform.translate[0]}px, ${nextTransform.translate[1]}px)`;
-  const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
-  const rotate = `rotate(${nextTransform.rotate}deg)`;
-  target.style.transform = `${translate} ${scale} ${rotate}`;
-  sceneStore.value.ruler.transform = nextTransform;
-}
-
-function onRulerMoveStart() {
-  sceneStore.value.isMovingRuler = true;
-}
-
-function onRulerMoveEnd() {
-  sceneStore.value.isMovingRuler = false;
-}
-
-function onRulerDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
-  setRulerTransform(target, { translate });
-}
-
-function onRulerRotate({
-  target,
-  drag,
-  rotation,
-}: {
-  target: HTMLElement;
-  drag: { translate: number[] };
-  rotation: number;
-}) {
-  const normalizedRotation = rotation % 360;
-  const absRotation = Math.abs(normalizedRotation);
-  let transformRotation = normalizedRotation;
-
-  const direction = normalizedRotation > 0 ? 1 : -1;
-  const snapTargets = [0, 45, 90, 135, 180, 225, 270, 315, 360];
-  const snapThreshold = 5;
-
-  for (let i = 0; i < snapTargets.length; i += 1) {
-    const target = snapTargets[i];
-
-    if (absRotation < target && absRotation + snapThreshold >= target) {
-      transformRotation = target * direction;
-      break;
-    } else if (absRotation > target && absRotation - snapThreshold <= target) {
-      transformRotation = target * direction;
-      break;
-    }
-  }
-
-  setRulerTransform(target, {
-    rotate: transformRotation % 360,
-    translate: drag.translate,
-  });
 }
 
 function handleUndoClick() {
@@ -740,57 +684,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
       @mousemove="handleSurfaceTouchMove"
       @touchmove="handleSurfaceTouchMove"
     >
-      <div
-        v-if="sceneStore && sceneStore.ruler.isVisible"
-        class="ruler-layer"
-        :class="{ 'hide-ruler-controls': !sceneStore.showRulerControls }"
-      >
-        <div class="ruler" ref="rulerElement" :style="{ width: sceneStore.ruler.width + 'px' }">
-          <div class="ruler__label">
-            {{ Math.round(sceneStore.ruler.transform.rotate) }}&deg;
-            <span v-if="sceneStore.elementOrder.length > 0 && sceneStore.isDrawing">
-              <span
-                v-if="sceneStore.elements[sceneStore.lastActiveElementId].dimensions.lineLength"
-              >
-                {{
-                  Math.round(
-                    sceneStore.elements[sceneStore.lastActiveElementId].dimensions.lineLength
-                  )
-                }}px
-              </span>
-              <span v-else>
-                {{
-                  Math.round(
-                    sceneStore.elements[sceneStore.lastActiveElementId].dimensions.outerWidth
-                  )
-                }}
-                x
-                {{
-                  Math.round(
-                    sceneStore.elements[sceneStore.lastActiveElementId].dimensions.outerHeight
-                  )
-                }}
-              </span>
-            </span>
-          </div>
-          <div class="ruler__tool" :style="{ width: sceneStore.ruler.width + 'px' }"></div>
-        </div>
-        <MoveableVue
-          ref="moveableRuler"
-          v-if="sceneStore.ruler.isVisible"
-          className="moveable-ruler"
-          :target="['.ruler']"
-          :pinchable="['rotatable']"
-          :draggable="!sceneStore.isDrawing"
-          :rotatable="!sceneStore.isDrawing"
-          :scalable="false"
-          :throttleRotate="1"
-          @drag="onRulerDrag"
-          @rotate="onRulerRotate"
-          @renderStart="onRulerMoveStart"
-          @renderEnd="onRulerMoveEnd"
-        />
-      </div>
+      <PageRulerLayer ref="rulerLayer" class="ruler-layer" :pageId="pageId" />
 
       <PageAddImageLayer
         ref="addImageLayer"
@@ -894,44 +788,9 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
 .drawing-area .interactive-layer {
   z-index: 1;
 }
-
-.ruler-layer .ruler {
-  position: fixed;
-  display: flex;
-  flex-flow: row nowrap;
-  justify-content: center;
-  align-items: center;
-  top: 50%;
-  left: -5%;
-  transform-origin: center center;
-  transform: translate(0, 0) rotate(0deg);
-}
-
-.ruler-layer .ruler__label {
-  position: absolute;
-  z-index: 1;
-}
-
-.ruler-layer .ruler__tool {
-  height: 100px;
-  flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.5);
-  background: linear-gradient(to right, rgba(255, 0, 0, 0.5) 0%, rgba(0, 0, 255, 0.5) 100%);
-}
 </style>
 
 <style>
-.hide-ruler-controls .moveable-ruler.moveable-control-box .moveable-rotation {
-  display: none;
-}
-
-.moveable-ruler.moveable-control-box .moveable-control.moveable-rotation-control {
-  width: 30px;
-  height: 30px;
-  margin-top: -15px;
-  margin-left: -15px;
-}
-
 .moveable-control-box .moveable-control.moveable-origin {
   display: none;
 }

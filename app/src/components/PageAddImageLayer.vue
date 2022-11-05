@@ -307,7 +307,7 @@ defineExpose({
 });
 </script>
 <template>
-  <div ref="rootEl" v-if="sceneStore && sceneStore.isAddImageMode">
+  <div v-if="sceneStore && sceneStore.isAddImageMode" ref="rootEl" class="image-layer">
     <div class="image-canvases">
       <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
       <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>

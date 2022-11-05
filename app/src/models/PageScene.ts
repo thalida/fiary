@@ -246,7 +246,9 @@ export default class PageScene {
     let inputY = clientY;
     let isRulerLine = false;
 
-    if (followRuler && this.ruler.isVisible && rulerElement) {
+    console.log("followRuler", this.ruler.isVisible, followRuler, rulerElement);
+
+    if (this.ruler.isVisible && followRuler && rulerElement) {
       const searchDistance = 25;
       let foundX, foundY;
       let searchFor = true;
