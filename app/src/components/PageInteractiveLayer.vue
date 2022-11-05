@@ -203,10 +203,19 @@ function handleInteractiveElementEvent(e: Event) {
   }
 }
 
+function setInteractiveElementTransforms(initMatrix: DOMMatrix, transformMatrix: DOMMatrix) {
+  for (let i = 0; i < sceneStore.value.activeHtmlElements.length; i += 1) {
+    const elementId = sceneStore.value.activeHtmlElements[i];
+    const element = sceneStore.value.elements[elementId];
+    element.setTransform(initMatrix, transformMatrix);
+  }
+}
+
 defineExpose({
   handleStartInteractiveEdit,
   handleEndInteractiveEdit,
   handleInteractiveElementDelete,
+  setInteractiveElementTransforms,
 });
 </script>
 

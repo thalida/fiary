@@ -20,10 +20,10 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
-import { getColorAsCss } from "@/utils/color";
 import { ELEMENT_MAP } from "@/models/elements";
 import ColorPicker from "@/components/PageColorPicker.vue";
 import PageInteractiveLayer from "@/components/PageInteractiveLayer.vue";
+import PagePaperLayer from "./PagePaperLayer.vue";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -34,6 +34,7 @@ const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const activeImage = ref<HTMLImageElement | null>(null);
 const drawingCanvas = ref<HTMLCanvasElement>();
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
+const paperLayer = ref<typeof PagePaperLayer>();
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
 const imageBackdropCanvas = ref<HTMLCanvasElement>();
 const pasteLayer = ref<HTMLElement>();
@@ -44,24 +45,6 @@ const moveableImage = ref();
 const rulerElement = ref();
 const colorPickerRefs: any[] = [];
 
-const selectedPaperColor = computed(() => {
-  return canvasStore.getSwatchColor(
-    sceneStore.value.selectedPaperSwatchId,
-    sceneStore.value.selectedPaperColorIdx
-  );
-});
-const selectedPatternComponent = computed(() => {
-  return canvasStore.getPaperPatternComponentByIdx(sceneStore.value.selectedPaperPatternIdx);
-});
-const selectedPatternStyles = computed(() => {
-  return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
-});
-const selectedPatternColor = computed(() => {
-  return canvasStore.getSwatchColor(
-    sceneStore.value.selectedPatternSwatchId,
-    sceneStore.value.selectedPatternColorIdx
-  );
-});
 const selectedFillColor = computed(() => {
   return canvasStore.getSwatchColor(
     sceneStore.value.selectedFillSwatchId,
@@ -73,6 +56,9 @@ const selectedStrokeColor = computed(() => {
     sceneStore.value.selectedStrokeSwatchId,
     sceneStore.value.selectedStrokeColorIdx
   );
+});
+const selectedPatternStyles = computed(() => {
+  return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
 
 onMounted(() => {
@@ -105,7 +91,7 @@ onMounted(() => {
   );
 
   watchEffect(() => {
-    setPaperTransforms(sceneStore.value.transformMatrix);
+    paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
   });
 
   watchPostEffect(() => {
@@ -529,32 +515,6 @@ function cancelAddImage() {
   sceneStore.value.isAddImageMode = false;
 }
 
-function setPaperTransforms(matrix: DOMMatrix | null | undefined = null) {
-  let relativeZoom = 1;
-
-  if (typeof matrix !== "undefined" && matrix !== null) {
-    const initMatrixA = sceneStore.value.initTransformMatrix
-      ? sceneStore.value.initTransformMatrix.a
-      : 1;
-    relativeZoom = initMatrixA / matrix.a;
-    sceneStore.value.paperPatternTransform.x = matrix.e / initMatrixA;
-    sceneStore.value.paperPatternTransform.y = matrix.f / initMatrixA;
-  }
-
-  sceneStore.value.paperPatternTransform.lineSize =
-    selectedPatternStyles.value.lineSize / relativeZoom;
-  sceneStore.value.paperPatternTransform.spacing =
-    selectedPatternStyles.value.spacing / relativeZoom;
-}
-
-function setInteractiveElementTransforms(initMatrix: DOMMatrix, transformMatrix: DOMMatrix) {
-  for (let i = 0; i < sceneStore.value.activeHtmlElements.length; i += 1) {
-    const elementId = sceneStore.value.activeHtmlElements[i];
-    const element = sceneStore.value.elements[elementId];
-    element.setTransform(initMatrix, transformMatrix);
-  }
-}
-
 function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
   if (
     typeof sceneStore.value.transformMatrix === "undefined" ||
@@ -584,8 +544,8 @@ function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
   sceneStore.value.transformMatrix.e = transformOrigin.x;
   sceneStore.value.transformMatrix.f = transformOrigin.y;
 
-  setPaperTransforms(sceneStore.value.transformMatrix);
-  setInteractiveElementTransforms(
+  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+  interactiveLayer.value?.setInteractiveElementTransforms(
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
   );
@@ -604,8 +564,8 @@ function handleZoomOut() {
     sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
   }
 
-  setPaperTransforms(sceneStore.value.transformMatrix);
-  setInteractiveElementTransforms(
+  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+  interactiveLayer.value?.setInteractiveElementTransforms(
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
   );
@@ -624,8 +584,8 @@ function handleZoomIn() {
     sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
   }
 
-  setPaperTransforms(sceneStore.value.transformMatrix);
-  setInteractiveElementTransforms(
+  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+  interactiveLayer.value?.setInteractiveElementTransforms(
     sceneStore.value.initTransformMatrix,
     sceneStore.value.transformMatrix
   );
@@ -1375,29 +1335,7 @@ function handlePatternColorChange(swatchId: string, colorIdx: number) {
         >
         </canvas>
       </div>
-
-      <div v-if="sceneStore" class="paper-layer">
-        <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
-        <svg class="paper-pattern" width="100%" height="100%">
-          <component
-            id="paper-svg-pattern"
-            :is="selectedPatternComponent.COMPONENT"
-            :fillColor="getColorAsCss(selectedPatternColor)"
-            :lineSize="sceneStore.paperPatternTransform.lineSize"
-            :spacing="sceneStore.paperPatternTransform.spacing"
-            :x="sceneStore.paperPatternTransform.x"
-            :y="sceneStore.paperPatternTransform.y"
-          />
-          <rect
-            x="0"
-            y="0"
-            width="100%"
-            height="100%"
-            fill="url(#paper-svg-pattern)"
-            :opacity="sceneStore.selectedPatternOpacity / 100"
-          ></rect>
-        </svg>
-      </div>
+      <PagePaperLayer ref="paperLayer" class="paper-layer" :pageId="props.pageId" />
     </div>
   </div>
 </template>
