@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useCanvasStore } from "@/stores/canvas";
 import type { TPrimaryKey } from "@/types/core";
 import { getColorAsCss } from "@/utils/color";
@@ -7,6 +7,7 @@ import { getColorAsCss } from "@/utils/color";
 const props = defineProps<{ pageId: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
+const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 
 const selectedPaperColor = computed(() => {
   return canvasStore.getSwatchColor(
@@ -27,7 +28,12 @@ const selectedPatternColor = computed(() => {
   );
 });
 
-function setPaperTransforms(matrix: DOMMatrix | null | undefined = null) {
+function setPaperTransforms(
+  matrix:
+    | { a: number; b: number; c: number; d: number; e: number; f: number }
+    | null
+    | undefined = null
+) {
   let relativeZoom = 1;
 
   if (typeof matrix !== "undefined" && matrix !== null) {
@@ -35,14 +41,12 @@ function setPaperTransforms(matrix: DOMMatrix | null | undefined = null) {
       ? sceneStore.value.initTransformMatrix.a
       : 1;
     relativeZoom = initMatrixA / matrix.a;
-    sceneStore.value.paperPatternTransform.x = matrix.e / initMatrixA;
-    sceneStore.value.paperPatternTransform.y = matrix.f / initMatrixA;
+    paperPatternTransform.value.x = matrix.e / initMatrixA;
+    paperPatternTransform.value.y = matrix.f / initMatrixA;
   }
 
-  sceneStore.value.paperPatternTransform.lineSize =
-    selectedPatternStyles.value.lineSize / relativeZoom;
-  sceneStore.value.paperPatternTransform.spacing =
-    selectedPatternStyles.value.spacing / relativeZoom;
+  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
+  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / relativeZoom;
 }
 
 defineExpose({
@@ -57,10 +61,10 @@ defineExpose({
         id="paper-svg-pattern"
         :is="selectedPatternComponent.COMPONENT"
         :fillColor="getColorAsCss(selectedPatternColor)"
-        :lineSize="sceneStore.paperPatternTransform.lineSize"
-        :spacing="sceneStore.paperPatternTransform.spacing"
-        :x="sceneStore.paperPatternTransform.x"
-        :y="sceneStore.paperPatternTransform.y"
+        :lineSize="paperPatternTransform.lineSize"
+        :spacing="paperPatternTransform.spacing"
+        :x="paperPatternTransform.x"
+        :y="paperPatternTransform.y"
       />
       <rect
         x="0"

@@ -18,6 +18,9 @@ const ruler = ref({
     rotate: 35,
   },
 });
+const showRulerControls = computed(() => {
+  return !sceneStore.value.isDrawing && !sceneStore.value.isPanning;
+});
 
 watchPostEffect(() => {
   if (sceneStore.value?.isRulerMode) {
@@ -97,7 +100,7 @@ defineExpose({
     ref="rootEl"
     v-if="sceneStore && sceneStore.isRulerMode"
     class="ruler-layer"
-    :class="{ 'hide-ruler-controls': !sceneStore.showRulerControls }"
+    :class="{ 'hide-ruler-controls': !showRulerControls }"
   >
     <div class="ruler" ref="rulerEl" :style="{ width: ruler.width + 'px' }">
       <div class="ruler__label">

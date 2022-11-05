@@ -8,6 +8,8 @@ import {
   PEN_SIZES,
   SPECIAL_TOOL_SWATCH_KEY,
   SPECIAL_PAPER_SWATCH_KEY,
+  CANVAS_NONDRAWING_TOOLS,
+  CANVAS_PAPER_TOOLS,
 } from "@/constants/core";
 import ColorPicker from "@/components/PageColorPicker.vue";
 import { computed } from "vue";
@@ -20,7 +22,12 @@ const colorPickerRefs: any[] = [];
 const selectedPatternStyles = computed(() => {
   return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
-
+const isDrawingTool = computed(() => {
+  return !CANVAS_NONDRAWING_TOOLS.includes(sceneStore.value.selectedTool);
+});
+const isPaperTool = computed(() => {
+  return CANVAS_PAPER_TOOLS.includes(sceneStore.value.selectedTool);
+});
 const hasUndo = computed(() => {
   return sceneStore.value.historyIndex >= 0;
 });
@@ -35,8 +42,8 @@ const emit = defineEmits<{
   (event: "update:tool", tool: number): void;
   (event: "action:history:undo"): void;
   (event: "action:history:redo"): void;
-  (event: "action:camera:zoomOut"): void;
-  (event: "action:camera:zoomIn"): void;
+  (event: "action:camera:zoomOut", zoomStep: number): void;
+  (event: "action:camera:zoomIn", zoomStep: number): void;
   (event: "action:interactiveEdit:start"): void;
   (event: "action:interactiveEdit:end"): void;
   (event: "action:interactiveEdit:elementDelete"): void;
@@ -58,35 +65,6 @@ function handleToolChange(event: Event) {
   if (event.target) {
     (event.target as HTMLElement).blur();
   }
-}
-
-async function handleZoomOut() {
-  if (typeof sceneStore.value === "undefined") {
-    return;
-  }
-  if (sceneStore.value.transformMatrix.a > 0.5) {
-    sceneStore.value.transformMatrix.a -= 0.1;
-    sceneStore.value.transformMatrix.a =
-      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
-  }
-
-  emit("action:camera:zoomOut");
-}
-
-async function handleZoomIn() {
-  if (typeof sceneStore.value === "undefined") {
-    return;
-  }
-
-  if (sceneStore.value.transformMatrix.a < 6) {
-    sceneStore.value.transformMatrix.a += 0.1;
-    sceneStore.value.transformMatrix.a =
-      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
-  }
-
-  emit("action:camera:zoomIn");
 }
 
 function closeAllColorPickers() {
@@ -163,13 +141,13 @@ defineExpose({
     <button v-if="sceneStore.isPasteMode" @click="emit('action:paste:delete')">
       Delete Selection
     </button>
-    <select v-if="sceneStore.isDrawingTool" v-model="sceneStore.selectedToolSize">
+    <select v-if="isDrawingTool" v-model="sceneStore.selectedToolSize">
       <option v-for="size in PEN_SIZES" :key="size" :value="size">
         {{ size }}
       </option>
     </select>
     <ColorPicker
-      v-if="sceneStore.isDrawingTool"
+      v-if="isDrawingTool"
       style="display: inline"
       :ref="addColorPickerRef"
       :swatchId="sceneStore.selectedFillSwatchId"
@@ -178,7 +156,7 @@ defineExpose({
       @update="handleFillColorChange"
     />
     <ColorPicker
-      v-if="sceneStore.isDrawingTool"
+      v-if="isDrawingTool"
       style="display: inline"
       :ref="addColorPickerRef"
       :swatchId="sceneStore.selectedStrokeSwatchId"
@@ -186,13 +164,13 @@ defineExpose({
       :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
       @update="handleStrokeColorChange"
     />
-    <select v-if="sceneStore.isPaperTool" v-model="sceneStore.selectedPaperPatternIdx">
+    <select v-if="isPaperTool" v-model="sceneStore.selectedPaperPatternIdx">
       <option v-for="(pattern, index) in canvasStore.paperPatterns" :key="index" :value="index">
         {{ pattern.LABEL }}
       </option>
     </select>
     <ColorPicker
-      v-if="sceneStore.isPaperTool"
+      v-if="isPaperTool"
       style="display: inline"
       :ref="addColorPickerRef"
       :swatchId="sceneStore.selectedPaperSwatchId"
@@ -201,7 +179,7 @@ defineExpose({
       @update="handlePaperColorChange"
     />
     <ColorPicker
-      v-if="sceneStore.isPaperTool"
+      v-if="isPaperTool"
       style="display: inline"
       :ref="addColorPickerRef"
       :swatchId="sceneStore.selectedPatternSwatchId"
@@ -210,7 +188,7 @@ defineExpose({
       @update="handlePatternColorChange"
     />
     <input
-      v-if="sceneStore.isPaperTool"
+      v-if="isPaperTool"
       type="number"
       min="0"
       max="100"
@@ -218,7 +196,7 @@ defineExpose({
       v-model="sceneStore.selectedPatternOpacity"
     />
     <input
-      v-if="sceneStore.isPaperTool"
+      v-if="isPaperTool"
       type="number"
       min="0"
       max="512"
@@ -226,7 +204,7 @@ defineExpose({
       v-model="selectedPatternStyles.lineSize"
     />
     <input
-      v-if="sceneStore.isPaperTool"
+      v-if="isPaperTool"
       type="number"
       min="0"
       max="512"
@@ -235,18 +213,18 @@ defineExpose({
     />
 
     <label><input type="checkbox" v-model="sceneStore.isRulerMode" /> Show ruler?</label>
-    <label
-      ><input type="checkbox" v-model="sceneStore.detectedStylus" :disabled="true" /> Detected
-      Stylus?</label
-    >
-    <label
-      ><input type="checkbox" v-model="sceneStore.isStylus" :disabled="true" />
-      sceneStore.isStylus?</label
-    >
+    <label>
+      <input type="checkbox" v-model="sceneStore.detectedStylus" :disabled="true" /> Detected
+      Stylus?
+    </label>
+    <label>
+      <input type="checkbox" v-model="sceneStore.isStylus" :disabled="true" />
+      isStylus?
+    </label>
     <label><input type="checkbox" v-model="sceneStore.allowFingerDrawing" /> finger?</label>
-    <label><input type="checkbox" v-model="sceneStore.debugMode" /> debug?</label>
-    <button @click="handleZoomOut">Zoom -</button>
-    <button @click="handleZoomIn">Zoom +</button>
+    <label><input type="checkbox" v-model="sceneStore.isDebugMode" /> debug?</label>
+    <button @click="emit('action:camera:zoomOut', -0.1)">Zoom -</button>
+    <button @click="emit('action:camera:zoomIn', 0.1)">Zoom +</button>
     <span>{{ zoomPercent }}%</span>
     <button :disabled="!hasUndo" @click="emit('action:history:undo')">Undo</button>
     <button :disabled="!hasRedo" @click="emit('action:history:redo')">Redo</button>

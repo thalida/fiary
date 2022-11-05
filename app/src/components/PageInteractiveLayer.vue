@@ -13,6 +13,12 @@ const canvasStore = useCanvasStore();
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const rootEl = ref(null as HTMLElement | null);
 const activeElementId = ref(null as TPrimaryKey | null);
+const activeHtmlElements = computed(() => {
+  return sceneStore.value.activeElements.filter(
+    (id: TPrimaryKey) =>
+      sceneStore.value.elements[id].isHTMLElement && !sceneStore.value.elements[id].isDeleted
+  );
+});
 
 let selectoInteractive: Selecto;
 let moveableInteractive: Moveable;
@@ -204,9 +210,12 @@ function handleInteractiveElementEvent(e: Event) {
   }
 }
 
-function setInteractiveElementTransforms(initMatrix: DOMMatrix, transformMatrix: DOMMatrix) {
-  for (let i = 0; i < sceneStore.value.activeHtmlElements.length; i += 1) {
-    const elementId = sceneStore.value.activeHtmlElements[i];
+function setInteractiveElementTransforms(
+  initMatrix: { a: number; b: number; c: number; d: number; e: number; f: number },
+  transformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number }
+) {
+  for (let i = 0; i < activeHtmlElements.value.length; i += 1) {
+    const elementId = activeHtmlElements.value[i];
     const element = sceneStore.value.elements[elementId];
     element.setTransform(initMatrix, transformMatrix);
   }
@@ -237,7 +246,7 @@ defineExpose({
       transform: `matrix(1, 0, 0, 1, 0, 0)`,
     }"
   >
-    <template v-for="elementId in sceneStore.activeHtmlElements" :key="elementId">
+    <template v-for="elementId in activeHtmlElements" :key="elementId">
       <input
         v-if="sceneStore.elements[elementId].tool === ELEMENT_TYPE.CHECKBOX"
         class="interactiveElement"

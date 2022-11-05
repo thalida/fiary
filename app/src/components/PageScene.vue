@@ -63,7 +63,7 @@ function initScene(canvas: HTMLCanvasElement) {
   canvasStore.setupSceneStore(props.pageId, ctx.getTransform());
 
   watch(
-    () => (sceneStore.value ? sceneStore.value.debugMode : false),
+    () => (sceneStore.value ? sceneStore.value.isDebugMode : false),
     () => {
       drawingLayer.value?.drawElements();
     }
@@ -387,9 +387,16 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   sceneStore.value.isDrawing = false;
 }
 
-function handleCameraChange() {
+function handleCameraChange(zoomStep: number) {
   if (typeof sceneStore.value.transformMatrix === "undefined") {
     return;
+  }
+
+  if (sceneStore.value.transformMatrix.a > 0.5 && sceneStore.value.transformMatrix.a < 6) {
+    sceneStore.value.transformMatrix.a += zoomStep;
+    sceneStore.value.transformMatrix.a =
+      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
   }
 
   paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);

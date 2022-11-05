@@ -300,7 +300,7 @@ export default class BaseCanvasElement extends BaseElement {
     };
   }
 
-  drawElement(canvas: HTMLCanvasElement, isCaching = false, debugMode = false) {
+  drawElement(canvas: HTMLCanvasElement, isCaching = false, isDebugMode = false) {
     if (
       this.isHTMLElement ||
       this.isDeleted ||
@@ -325,7 +325,7 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.drawImage(cachedCanvas, 0, 0, cachedCanvas.width / dpi, cachedCanvas.height / dpi);
       ctx.restore();
 
-      if (debugMode) {
+      if (isDebugMode) {
         ctx.save();
         ctx.beginPath();
         ctx.translate(this.cache.drawing.x, this.cache.drawing.y);

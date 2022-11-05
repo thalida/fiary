@@ -2,7 +2,6 @@ import type Moveable from "moveable";
 import {
   ELEMENT_TYPE,
   CANVAS_NONDRAWING_TOOLS,
-  CANVAS_PAPER_TOOLS,
   CANVAS_INTERACTIVE_TOOLS,
   DEFAULT_PEN_SIZE,
   LineEndSide,
@@ -24,7 +23,7 @@ export default class PageScene {
   elements: { [key: TPrimaryKey]: any } = {};
   elementOrder: TPrimaryKey[] = [];
   clearAllElementIndexes: number[] = [];
-  debugMode = false;
+  isDebugMode = false;
   isPasteMode = false;
   isAddImageMode = false;
   isInteractiveEditMode = false;
@@ -59,9 +58,11 @@ export default class PageScene {
   activePanCoords: { x: number; y: number }[] = [];
   initTransformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
   transformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
-  paperPatternTransform = { x: 0, y: 0, lineSize: 0, spacing: 0 };
 
-  constructor(pageId: TPrimaryKey, matrix: DOMMatrix) {
+  constructor(
+    pageId: TPrimaryKey,
+    matrix: { a: number; b: number; c: number; d: number; e: number; f: number }
+  ) {
     this.pageId = pageId;
     this.initTransformMatrix = {
       a: matrix.a,
@@ -90,31 +91,11 @@ export default class PageScene {
     const postClear = this.elementOrder.slice(this.activeElementsStartIdx);
     return postClear.filter((id) => !this.elements[id].isDeleted);
   }
-  get activeHtmlElements() {
-    return this.activeElements.filter(
-      (id: TPrimaryKey) => this.elements[id].isHTMLElement && !this.elements[id].isDeleted
-    );
-  }
   get lastActiveElementId() {
     return this.activeElements[this.activeElements.length - 1];
   }
   get elementById() {
     return (id: TPrimaryKey) => this.elements[id];
-  }
-  get showRulerControls() {
-    return !this.isDrawing && !this.isPanning;
-  }
-  get isDrawingTool() {
-    return !CANVAS_NONDRAWING_TOOLS.includes(this.selectedTool);
-  }
-  get isNonDrawingTool() {
-    return CANVAS_NONDRAWING_TOOLS.includes(this.selectedTool);
-  }
-  get isPaperTool() {
-    return CANVAS_PAPER_TOOLS.includes(this.selectedTool);
-  }
-  get isInteractiveTool() {
-    return CANVAS_INTERACTIVE_TOOLS.includes(this.selectedTool);
   }
   get isDrawingAllowed() {
     const isOverlayMode =
@@ -123,10 +104,11 @@ export default class PageScene {
       this.isInteractiveEditMode ||
       this.isMovingRuler ||
       this.isTextboxEditMode;
+    const isNonDrawingTool = CANVAS_NONDRAWING_TOOLS.includes(this.selectedTool);
     const stylusAllowed = this.detectedStylus && this.isStylus;
     const isFingerAllowed = !this.isStylus && this.allowFingerDrawing;
 
-    return !isOverlayMode && !this.isNonDrawingTool && (stylusAllowed || isFingerAllowed);
+    return !isOverlayMode && !isNonDrawingTool && (stylusAllowed || isFingerAllowed);
   }
 
   setElement(element: any) {
@@ -302,7 +284,8 @@ export default class PageScene {
     const initMatrixA = this.initTransformMatrix ? this.initTransformMatrix.a : 1;
     const relativeZoom = initMatrixA / cameraZoom;
 
-    if (this.isInteractiveTool) {
+    const isInteractiveTool = CANVAS_INTERACTIVE_TOOLS.includes(this.selectedTool);
+    if (isInteractiveTool) {
       cameraX /= cameraZoom;
       cameraY /= cameraZoom;
     }

@@ -18,8 +18,8 @@ export default class BaseInteractiveElement extends BaseElement {
     matrix,
   }: {
     pos: IElementPoint;
-    initMatrix: DOMMatrix;
-    matrix: DOMMatrix;
+    initMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
+    matrix: { a: number; b: number; c: number; d: number; e: number; f: number };
   }) {
     super();
     this.points = [pos];
@@ -28,7 +28,11 @@ export default class BaseInteractiveElement extends BaseElement {
     this.setTransform(initMatrix, matrix);
   }
 
-  setTransform(initTransformMatrix: DOMMatrix, transformMatrix: DOMMatrix, newTransform = {}) {
+  setTransform(
+    initTransformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number },
+    transformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number },
+    newTransform = {}
+  ) {
     const transform = {
       ...this.style.transform,
       ...newTransform,
@@ -39,7 +43,10 @@ export default class BaseInteractiveElement extends BaseElement {
     return transform;
   }
 
-  getRelativeTransformStr(initTransformMatrix: DOMMatrix, transformMatrix: DOMMatrix): string {
+  getRelativeTransformStr(
+    initTransformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number },
+    transformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number }
+  ): string {
     const initMatrixA = initTransformMatrix ? initTransformMatrix.a : 1;
     const currMatrixA = transformMatrix ? transformMatrix.a : 1;
     const currMatrixE = transformMatrix ? transformMatrix.e : 0;
