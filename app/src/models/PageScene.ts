@@ -55,7 +55,6 @@ export default class PageScene {
   selectedStrokeSwatchId = SPECIAL_TOOL_SWATCH_KEY;
   selectedStrokeColorIdx = DEFAULT_ELEMENT_STROKECOLOR_INDEX;
 
-  activePanCoords: { x: number; y: number }[] = [];
   initTransformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
   transformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
 

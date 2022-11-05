@@ -34,6 +34,7 @@ const addImageLayer = ref<typeof PageAddImageLayer>();
 const rulerLayer = ref<typeof PageRulerLayer>();
 const toolbar = ref<typeof PageToolbar>();
 const drawingCanvas = ref<HTMLCanvasElement>();
+const activePanCoords = ref<{ x: number; y: number }[]>([]);
 
 const selectedFillColor = computed(() => {
   return canvasStore.getSwatchColor(
@@ -127,7 +128,27 @@ function handleClearAll() {
   sceneStore.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
 
-function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
+function handleCameraZoom(zoomStep: number) {
+  if (typeof sceneStore.value.transformMatrix === "undefined") {
+    return;
+  }
+
+  if (sceneStore.value.transformMatrix.a > 0.5 && sceneStore.value.transformMatrix.a < 6) {
+    sceneStore.value.transformMatrix.a += zoomStep;
+    sceneStore.value.transformMatrix.a =
+      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
+  }
+
+  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+  interactiveLayer.value?.setInteractiveElementTransforms(
+    sceneStore.value.initTransformMatrix,
+    sceneStore.value.transformMatrix
+  );
+  drawingLayer.value?.drawElements();
+}
+
+function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
   if (
     typeof sceneStore.value.transformMatrix === "undefined" ||
     typeof drawingCanvas.value === "undefined"
@@ -138,7 +159,7 @@ function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
   const pos = sceneStore.value.getMousePos(drawingCanvas.value, event);
 
   if (isStart) {
-    sceneStore.value.activePanCoords = [
+    activePanCoords.value = [
       {
         x: pos.x - sceneStore.value.transformMatrix.e,
         y: pos.y - sceneStore.value.transformMatrix.f,
@@ -146,11 +167,11 @@ function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
     ];
   }
 
-  sceneStore.value.activePanCoords[1] = { x: pos.x, y: pos.y };
+  activePanCoords.value[1] = { x: pos.x, y: pos.y };
 
   const transformOrigin = {
-    x: sceneStore.value.activePanCoords[1].x - sceneStore.value.activePanCoords[0].x,
-    y: sceneStore.value.activePanCoords[1].y - sceneStore.value.activePanCoords[0].y,
+    x: activePanCoords.value[1].x - activePanCoords.value[0].x,
+    y: activePanCoords.value[1].y - activePanCoords.value[0].y,
   };
 
   sceneStore.value.transformMatrix.e = transformOrigin.x;
@@ -169,7 +190,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
 
   if (sceneStore.value.selectedTool === CANVAS_POINTER_TOOL) {
     sceneStore.value.isPanning = true;
-    handlePanTransform(event, true);
+    handleCameraPan(event, true);
     return;
   }
 
@@ -277,7 +298,7 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   event.preventDefault();
 
   if (sceneStore.value.isPanning) {
-    handlePanTransform(event);
+    handleCameraPan(event);
     return;
   }
 
@@ -336,7 +357,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
 
   if (sceneStore.value.isPanning) {
-    handlePanTransform(event);
+    handleCameraPan(event);
     sceneStore.value.isPanning = false;
     return;
   }
@@ -386,27 +407,6 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
   sceneStore.value.isDrawing = false;
 }
-
-function handleCameraChange(zoomStep: number) {
-  if (typeof sceneStore.value.transformMatrix === "undefined") {
-    return;
-  }
-
-  if (sceneStore.value.transformMatrix.a > 0.5 && sceneStore.value.transformMatrix.a < 6) {
-    sceneStore.value.transformMatrix.a += zoomStep;
-    sceneStore.value.transformMatrix.a =
-      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
-  }
-
-  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
-  interactiveLayer.value?.setInteractiveElementTransforms(
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix
-  );
-  drawingLayer.value?.drawElements();
-}
-
 function handleUndo() {
   const action = sceneStore.value.history[sceneStore.value.historyIndex];
   let redoPaste = false;
@@ -481,8 +481,8 @@ function handleRedo() {
         @update:tool="handleToolChange"
         @action:history:undo="handleUndo"
         @action:history:redo="handleRedo"
-        @action:camera:zoom-in="handleCameraChange"
-        @action:camera:zoom-out="handleCameraChange"
+        @action:camera:zoom-in="handleCameraZoom"
+        @action:camera:zoom-out="handleCameraZoom"
         @action:interactiveEdit:start="interactiveLayer?.handleStartInteractiveEdit"
         @action:interactiveEdit:end="interactiveLayer?.handleEndInteractiveEdit"
         @action:interactiveEdit:elementDelete="interactiveLayer?.handleInteractiveElementDelete"
