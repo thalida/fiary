@@ -18,13 +18,13 @@ import {
 } from "@/constants/core";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
-import ColorPicker from "@/components/PageColorPicker.vue";
 import PageInteractiveLayer from "@/components/PageInteractiveLayer.vue";
 import PagePaperLayer from "@/components/PagePaperLayer.vue";
 import PageDrawingLayer from "@/components/PageDrawingLayer.vue";
 import PagePasteLayer from "@/components/PagePasteLayer.vue";
 import PageAddImageLayer from "@/components/PageAddImageLayer.vue";
 import PageRulerLayer from "@/components/PageRulerLayer.vue";
+import PageToolbar from "@/components/PageToolbar.vue";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -38,8 +38,8 @@ const drawingLayer = ref<typeof PageDrawingLayer>();
 const pasteLayer = ref<typeof PagePasteLayer>();
 const addImageLayer = ref<typeof PageAddImageLayer>();
 const rulerLayer = ref<typeof PageRulerLayer>();
+const toolbar = ref<typeof PageToolbar>();
 const drawingCanvas = ref<HTMLCanvasElement>();
-const colorPickerRefs: any[] = [];
 
 const selectedFillColor = computed(() => {
   return canvasStore.getSwatchColor(
@@ -52,9 +52,6 @@ const selectedStrokeColor = computed(() => {
     sceneStore.value.selectedStrokeSwatchId,
     sceneStore.value.selectedStrokeColorIdx
   );
-});
-const selectedPatternStyles = computed(() => {
-  return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
 
 function initScene(canvas: HTMLCanvasElement) {
@@ -83,28 +80,15 @@ function initScene(canvas: HTMLCanvasElement) {
   });
 }
 
-function addColorPickerRef(ref: any) {
-  if (ref !== null) {
-    colorPickerRefs.push(ref);
-  }
-}
-
-function handleToolChange(event: Event) {
-  if (sceneStore.value.selectedTool === ELEMENT_TYPE.CLEAR_ALL) {
-    handleClearAll();
-  }
-
-  sceneStore.value.isTextboxEditMode = false;
-  sceneStore.value.activeElementId = null;
-
-  if (event.target) {
-    (event.target as HTMLElement).blur();
-  }
-}
-
 function isDrawingAllowed(isDrawingOverride = false) {
   const activelyDrawing = sceneStore.value.isDrawing || isDrawingOverride;
   return !canvasStore.isSwatchOpen && sceneStore.value.isDrawingAllowed && activelyDrawing;
+}
+
+function handleToolChange() {
+  if (sceneStore.value.selectedTool === ELEMENT_TYPE.CLEAR_ALL) {
+    handleClearAll();
+  }
 }
 
 function handleAddCheckbox(pos: IElementPoint) {
@@ -183,55 +167,8 @@ function handlePanTransform(event: MouseEvent | TouchEvent, isStart = false) {
   );
   drawingLayer.value?.drawElements();
 }
-
-function handleZoomOut() {
-  if (typeof sceneStore.value.transformMatrix === "undefined") {
-    return;
-  }
-
-  if (sceneStore.value.transformMatrix.a > 0.5) {
-    sceneStore.value.transformMatrix.a -= 0.1;
-    sceneStore.value.transformMatrix.a =
-      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
-  }
-
-  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
-  interactiveLayer.value?.setInteractiveElementTransforms(
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix
-  );
-  drawingLayer.value?.drawElements();
-}
-
-function handleZoomIn() {
-  if (typeof sceneStore.value.transformMatrix === "undefined") {
-    return;
-  }
-
-  if (sceneStore.value.transformMatrix.a < 6) {
-    sceneStore.value.transformMatrix.a += 0.1;
-    sceneStore.value.transformMatrix.a =
-      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
-  }
-
-  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
-  interactiveLayer.value?.setInteractiveElementTransforms(
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix
-  );
-  drawingLayer.value?.drawElements();
-}
-
-function closeAllColorPickers() {
-  for (let i = 0; i < colorPickerRefs.length; i += 1) {
-    colorPickerRefs[i].closeDropdown();
-  }
-}
-
 function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
-  closeAllColorPickers();
+  toolbar.value?.closeAllColorPickers();
 
   if (sceneStore.value.selectedTool === CANVAS_POINTER_TOOL) {
     sceneStore.value.isPanning = true;
@@ -453,7 +390,47 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   sceneStore.value.isDrawing = false;
 }
 
-function handleUndoClick() {
+function handleZoomOut() {
+  if (typeof sceneStore.value.transformMatrix === "undefined") {
+    return;
+  }
+
+  if (sceneStore.value.transformMatrix.a > 0.5) {
+    sceneStore.value.transformMatrix.a -= 0.1;
+    sceneStore.value.transformMatrix.a =
+      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
+  }
+
+  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+  interactiveLayer.value?.setInteractiveElementTransforms(
+    sceneStore.value.initTransformMatrix,
+    sceneStore.value.transformMatrix
+  );
+  drawingLayer.value?.drawElements();
+}
+
+function handleZoomIn() {
+  if (typeof sceneStore.value.transformMatrix === "undefined") {
+    return;
+  }
+
+  if (sceneStore.value.transformMatrix.a < 6) {
+    sceneStore.value.transformMatrix.a += 0.1;
+    sceneStore.value.transformMatrix.a =
+      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
+  }
+
+  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+  interactiveLayer.value?.setInteractiveElementTransforms(
+    sceneStore.value.initTransformMatrix,
+    sceneStore.value.transformMatrix
+  );
+  drawingLayer.value?.drawElements();
+}
+
+function handleUndo() {
   const action = sceneStore.value.history[sceneStore.value.historyIndex];
   let redoPaste = false;
   let redoAddImage = false;
@@ -486,7 +463,7 @@ function handleUndoClick() {
   }
 }
 
-function handleRedoClick() {
+function handleRedo() {
   const action = sceneStore.value.history[sceneStore.value.historyIndex + 1];
   let redoPaste = false;
   let redoAddImage = false;
@@ -516,165 +493,28 @@ function handleRedoClick() {
     drawingLayer.value?.drawElements();
   }
 }
-
-function handleFillColorChange(swatchId: string, colorIdx: number) {
-  sceneStore.value.selectedFillSwatchId = swatchId;
-  sceneStore.value.selectedFillColorIdx = colorIdx;
-}
-
-function handleStrokeColorChange(swatchId: string, colorIdx: number) {
-  sceneStore.value.selectedStrokeSwatchId = swatchId;
-  sceneStore.value.selectedStrokeColorIdx = colorIdx;
-}
-
-function handlePaperColorChange(swatchId: string, colorIdx: number) {
-  sceneStore.value.selectedPaperSwatchId = swatchId;
-  sceneStore.value.selectedPaperColorIdx = colorIdx;
-}
-
-function handlePatternColorChange(swatchId: string, colorIdx: number) {
-  sceneStore.value.selectedPatternSwatchId = swatchId;
-  sceneStore.value.selectedPatternColorIdx = colorIdx;
-}
 </script>
 
 <template>
   <div class="canvas-wrapper">
-    <!-- START TOOLS -->
-    <div class="tools" v-if="sceneStore">
-      <select v-model="sceneStore.selectedTool" @change="handleToolChange">
-        <option v-for="tool in supportedTools" :key="tool.key" :value="tool.key">
-          {{ tool.label }}
-        </option>
-      </select>
-      <div v-if="sceneStore.selectedTool === ELEMENT_TYPE.LINE">
-        <select v-model="sceneStore.selectedLineEndSide">
-          <option v-for="endSide in LINE_END_SIDE_CHOICES" :key="endSide.key" :value="endSide.key">
-            {{ endSide.label }}
-          </option>
-        </select>
-        <select v-model="sceneStore.selectedLineEndStyle">
-          <option
-            v-for="endStyle in LINE_END_STYLE_CHOICES"
-            :key="endStyle.key"
-            :value="endStyle.key"
-          >
-            {{ endStyle.label }}
-          </option>
-        </select>
-      </div>
-      <label v-else-if="sceneStore.selectedTool === ELEMENT_TYPE.IMAGE">
-        <input type="file" accept="image/*" @change="addImageLayer?.handleImageUpload" />
-      </label>
-      <label
-        v-else-if="
-          (sceneStore.selectedTool === ELEMENT_TYPE.CHECKBOX ||
-            sceneStore.selectedTool === ELEMENT_TYPE.TEXTBOX) &&
-          !sceneStore.isInteractiveEditMode
-        "
-      >
-        <button @click="interactiveLayer?.handleStartInteractiveEdit">Edit</button>
-      </label>
-
-      <button v-if="sceneStore.isAddImageMode" @click="addImageLayer?.handleAddImageEnd">
-        Done
-      </button>
-      <button v-if="sceneStore.isPasteMode" @click="pasteLayer?.handlePasteEnd">Done</button>
-      <button v-if="sceneStore.isPasteMode" @click="pasteLayer?.handlePasteDelete">
-        Delete Selection
-      </button>
-      <div v-if="sceneStore.isInteractiveEditMode">
-        <button @click="interactiveLayer?.handleInteractiveElementDelete">Delete</button>
-        <button @click="interactiveLayer?.handleEndInteractiveEdit">Done</button>
-      </div>
-      <select v-if="sceneStore.isDrawingTool" v-model="sceneStore.selectedToolSize">
-        <option v-for="size in PEN_SIZES" :key="size" :value="size">
-          {{ size }}
-        </option>
-      </select>
-      <ColorPicker
-        v-if="sceneStore.isDrawingTool"
-        style="display: inline"
-        :ref="addColorPickerRef"
-        :swatchId="sceneStore.selectedFillSwatchId"
-        :colorIdx="sceneStore.selectedFillColorIdx"
-        :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
-        @update="handleFillColorChange"
+    <div class="toolbar">
+      <PageToolbar
+        ref="toolbar"
+        :pageId="pageId"
+        @update:tool="handleToolChange"
+        @action:history:undo="handleUndo"
+        @action:history:redo="handleRedo"
+        @action:camera:zoom-in="handleZoomIn"
+        @action:camera:zoom-out="handleZoomOut"
+        @action:interactiveEdit:start="interactiveLayer?.handleStartInteractiveEdit"
+        @action:interactiveEdit:end="interactiveLayer?.handleEndInteractiveEdit"
+        @action:interactiveEdit:elementDelete="interactiveLayer?.handleInteractiveElementDelete"
+        @action:addImage:inputChange="addImageLayer?.handleImageUpload"
+        @action:addImage:end="addImageLayer?.handleAddImageEnd"
+        @action:paste:delete="pasteLayer?.handlePasteDelete"
+        @action:paste:end="pasteLayer?.handlePasteEnd"
       />
-      <ColorPicker
-        v-if="sceneStore.isDrawingTool"
-        style="display: inline"
-        :ref="addColorPickerRef"
-        :swatchId="sceneStore.selectedStrokeSwatchId"
-        :colorIdx="sceneStore.selectedStrokeColorIdx"
-        :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
-        @update="handleStrokeColorChange"
-      />
-      <select v-if="sceneStore.isPaperTool" v-model="sceneStore.selectedPaperPatternIdx">
-        <option v-for="(pattern, index) in canvasStore.paperPatterns" :key="index" :value="index">
-          {{ pattern.LABEL }}
-        </option>
-      </select>
-      <ColorPicker
-        v-if="sceneStore.isPaperTool"
-        style="display: inline"
-        :ref="addColorPickerRef"
-        :swatchId="sceneStore.selectedPaperSwatchId"
-        :colorIdx="sceneStore.selectedPaperColorIdx"
-        :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
-        @update="handlePaperColorChange"
-      />
-      <ColorPicker
-        v-if="sceneStore.isPaperTool"
-        style="display: inline"
-        :ref="addColorPickerRef"
-        :swatchId="sceneStore.selectedPatternSwatchId"
-        :colorIdx="sceneStore.selectedPatternColorIdx"
-        :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
-        @update="handlePatternColorChange"
-      />
-      <input
-        v-if="sceneStore.isPaperTool"
-        type="number"
-        min="0"
-        max="100"
-        step="1"
-        v-model="sceneStore.selectedPatternOpacity"
-      />
-      <input
-        v-if="sceneStore.isPaperTool"
-        type="number"
-        min="0"
-        max="512"
-        step="1"
-        v-model="selectedPatternStyles.lineSize"
-      />
-      <input
-        v-if="sceneStore.isPaperTool"
-        type="number"
-        min="0"
-        max="512"
-        step="1"
-        v-model="selectedPatternStyles.spacing"
-      />
-
-      <label><input type="checkbox" v-model="sceneStore.ruler.isVisible" /> Show ruler?</label>
-      <label
-        ><input type="checkbox" v-model="sceneStore.detectedStylus" :disabled="true" /> Detected
-        Stylus?</label
-      >
-      <label
-        ><input type="checkbox" v-model="sceneStore.isStylus" :disabled="true" />
-        sceneStore.isStylus?</label
-      >
-      <label><input type="checkbox" v-model="sceneStore.allowFingerDrawing" /> finger?</label>
-      <label><input type="checkbox" v-model="sceneStore.debugMode" /> debug?</label>
-      <button @click="handleZoomOut">Zoom -</button>
-      <button @click="handleZoomIn">Zoom +</button>
-      <button :disabled="!sceneStore.hasUndo" @click="handleUndoClick">Undo</button>
-      <button :disabled="!sceneStore.hasRedo" @click="handleRedoClick">Redo</button>
     </div>
-    <!-- END TOOLS -->
     <div
       class="surface"
       @mousedown="handleSurfaceTouchStart"

@@ -1,112 +1,85 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import hljs from 'highlight.js';
-import 'highlight.js/styles/github.css';
-import Quill from 'quill'
-import { computed } from '@vue/reactivity';
+import { onMounted, ref, computed } from "vue";
+import Quill from "quill";
+import hljs from "highlight.js";
+import "highlight.js/styles/github.css";
+import { getColorAsCss } from "@/utils/color";
+import type { ISolidColor, TColor } from "@/types/core";
+import { SPECIAL_PAPER_SWATCH_KEY, SPECIAL_TOOL_SWATCH_KEY } from "@/constants/core";
+
 const props = defineProps({
   element: {
     type: Object,
-    required: true
+    required: true,
   },
   isActive: {
     type: Boolean,
-    required: true
+    required: true,
   },
   colorSwatches: {
     type: Object,
-    required: true
+    required: true,
   },
-})
-const emit = defineEmits(['change', 'focus', 'blur'])
-const toolbar = ref(null)
-const editor = ref(null)
-let quill;
+});
+const emit = defineEmits(["change", "focus", "blur"]);
+const toolbar = ref(null);
+const editor = ref(null);
+let quill: Quill;
 
 const allowedSwatches = computed(() => {
-  const { [SPECIAL_SWATCH_KEY]: omit, ...rest } = props.colorSwatches
-  const solidColors: any = {}
+  const {
+    [SPECIAL_TOOL_SWATCH_KEY]: omit1,
+    [SPECIAL_PAPER_SWATCH_KEY]: omit2,
+    ...rest
+  } = props.colorSwatches;
+  const solidColors: { [key: string]: ISolidColor[] } = {};
   for (const swatch in rest) {
-    const colors = rest[swatch].filter(color => !Array.isArray(color))
+    const colors = rest[swatch].filter((color: TColor) => !Array.isArray(color));
     if (colors.length > 0) {
-      solidColors[swatch] = colors
+      solidColors[swatch] = colors;
     }
   }
-  return solidColors
-})
-
-
-const TRANSPARENT_COLOR = { r: 0, g: 0, b: 0, a: 0 };
-const SPECIAL_SWATCH_KEY = 'special';
-function getColorAsCss(color) {
-  if (color === TRANSPARENT_COLOR) {
-    return TRANSPARENT_COLOR;
-  }
-
-  if (Array.isArray(color)) {
-    const gradientStops = []
-    for (let i = 0; i < color.length; i += 1) {
-      const colorStop = getColorAsCss(color[i].color);
-      const percent = color[i].percent;
-      gradientStops.push(`${colorStop} ${percent}%`)
-    }
-
-    return `linear-gradient(135deg, ${gradientStops.join(', ')})`
-  }
-
-  return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
-}
-
-// const Syntax = Quill.import('modules/syntax'); // get the module
-// Syntax.DEFAULTS = {
-//   // change (and reference your webpack import here)
-//   // the default implementation of this looks for window.hljs
-//   highlight: function (text) {
-//     const result = hljs.highlightAuto(text);
-//     return result.value;
-//   },
-//   interval: 500 // change interval if desired
-// };
+  return solidColors;
+});
 
 onMounted(() => {
   quill = new Quill(editor.value, {
-    placeholder: 'Compose an epic...',
+    placeholder: "Compose an epic...",
     modules: {
       syntax: {
-        highlight: function (text) {
+        highlight: function (text: string) {
           const result = hljs.highlightAuto(text);
           return result.value;
         },
       },
       toolbar: toolbar.value,
     },
-    theme: 'snow',
+    theme: "snow",
   });
 
   quill.setContents(props.element.toolOptions.textContents);
 
-  quill.on('text-change', () => {
-    emit('change', {
+  quill.on("text-change", () => {
+    emit("change", {
       elementId: props.element.id,
       textContents: quill.getContents(),
-    })
-  })
+    });
+  });
 
-  quill.on('selection-change', (range) => {
+  quill.on("selection-change", (range) => {
     if (range) {
-      emit('focus', { elementId: props.element.id })
+      emit("focus", { elementId: props.element.id });
     } else {
-      emit('blur', { elementId: props.element.id })
+      emit("blur", { elementId: props.element.id });
     }
   });
 
-  quill.focus()
-})
-
+  quill.focus();
+});
 </script>
 
 <template>
-  <teleport to=".tools">
+  <teleport to=".toolbar">
     <div v-show="isActive" class="toolbar" ref="toolbar">
       <span class="ql-formats">
         <select class="ql-font"></select>
@@ -120,13 +93,23 @@ onMounted(() => {
       </span>
       <span class="ql-formats">
         <select class="ql-color">
-          <optgroup v-for="swatch in allowedSwatches">
-            <option v-for="color in swatch" :value="getColorAsCss(color)" :label="getColorAsCss(color)"></option>
+          <optgroup v-for="(swatch, index) in allowedSwatches" :key="index">
+            <option
+              v-for="(color, colorIdx) in swatch"
+              :key="colorIdx"
+              :value="getColorAsCss(color)"
+              :label="getColorAsCss(color)"
+            ></option>
           </optgroup>
         </select>
         <select class="ql-background">
-          <optgroup v-for="swatch in allowedSwatches">
-            <option v-for="color in swatch" :value="getColorAsCss(color)" :label="getColorAsCss(color)"></option>
+          <optgroup v-for="(swatch, index) in allowedSwatches" :key="index">
+            <option
+              v-for="(color, colorIdx) in swatch"
+              :key="colorIdx"
+              :value="getColorAsCss(color)"
+              :label="getColorAsCss(color)"
+            ></option>
           </optgroup>
         </select>
       </span>
