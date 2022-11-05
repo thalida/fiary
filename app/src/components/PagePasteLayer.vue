@@ -13,13 +13,18 @@ const canvasStore = useCanvasStore();
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const rootEl = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
+const pasteTransform = ref({
+  translate: [0, 0],
+  scale: [1, 1],
+  rotate: 0,
+});
 let moveableEl: any = null;
 const emit = defineEmits<{
   (event: "redraw"): void;
 }>();
 
 async function handlePasteStart() {
-  sceneStore.value.pasteTransform = {
+  pasteTransform.value = {
     translate: [0, 0],
     scale: [1, 1],
     rotate: 0,
@@ -50,11 +55,8 @@ async function handlePasteStart() {
 
   emit("redraw");
 
-  sceneStore.value.pasteTransform.translate = [
-    cutSelection.cache.drawing.x,
-    cutSelection.cache.drawing.y,
-  ];
-  setPasteTransform(canvas.value, sceneStore.value.pasteTransform);
+  pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
+  setPasteTransform(canvas.value, pasteTransform.value);
 
   const dpi = cutSelection.cache.drawing.dpi;
   const width = cutSelection.cache.drawing.width;
@@ -111,7 +113,7 @@ function handlePasteEnd() {
   const pasteElement = new ELEMENT_MAP[ELEMENT_TYPE.PASTE](moveableRect);
 
   if (
-    sceneStore.value.pasteTransform.rotate === 0 &&
+    pasteTransform.value.rotate === 0 &&
     cutSelection.cache.drawing.x === pasteElement.dimensions.outerMinX &&
     cutSelection.cache.drawing.y === pasteElement.dimensions.outerMinY &&
     cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth &&
@@ -135,10 +137,10 @@ function handlePasteEnd() {
   const minY = pasteElement.dimensions.outerMinY;
   const width = pasteElement.dimensions.outerWidth;
   const height = pasteElement.dimensions.outerHeight;
-  const rotRad = (sceneStore.value.pasteTransform.rotate * Math.PI) / 180;
+  const rotRad = (pasteTransform.value.rotate * Math.PI) / 180;
 
-  const imageWidth = sceneStore.value.pasteTransform.scale[0] * canvas.value.offsetWidth;
-  const imageHeight = sceneStore.value.pasteTransform.scale[1] * canvas.value.offsetHeight;
+  const imageWidth = pasteTransform.value.scale[0] * canvas.value.offsetWidth;
+  const imageHeight = pasteTransform.value.scale[1] * canvas.value.offsetHeight;
 
   pasteCacheCanvas.width = width * dpi;
   pasteCacheCanvas.height = height * dpi;
@@ -180,7 +182,7 @@ function setPasteTransform(
   transform: { translate?: number[]; scale?: number[]; rotate?: number }
 ) {
   const nextTransform = {
-    ...sceneStore.value.pasteTransform,
+    ...pasteTransform.value,
     ...transform,
   };
 
@@ -189,7 +191,7 @@ function setPasteTransform(
   const rotate = `rotate(${nextTransform.rotate}deg)`;
   target.style.transform = `${translate} ${scale} ${rotate}`;
 
-  sceneStore.value.pasteTransform = nextTransform;
+  pasteTransform.value = nextTransform;
 }
 
 function onPasteDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {

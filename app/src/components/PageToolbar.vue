@@ -43,9 +43,6 @@ function addColorPickerRef(ref: any) {
 }
 
 function handleToolChange(event: Event) {
-  sceneStore.value.isTextboxEditMode = false;
-  sceneStore.value.activeElementId = null;
-
   emit("update:tool", sceneStore.value.selectedTool);
 
   if (event.target) {
@@ -224,7 +221,7 @@ defineExpose({
       v-model="selectedPatternStyles.spacing"
     />
 
-    <label><input type="checkbox" v-model="sceneStore.ruler.isVisible" /> Show ruler?</label>
+    <label><input type="checkbox" v-model="sceneStore.isRulerMode" /> Show ruler?</label>
     <label
       ><input type="checkbox" v-model="sceneStore.detectedStylus" :disabled="true" /> Detected
       Stylus?</label

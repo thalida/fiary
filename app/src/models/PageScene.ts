@@ -17,41 +17,34 @@ import {
   DEFAULT_ELEMENT_STROKECOLOR_INDEX,
   PageHistoryEvent,
 } from "@/constants/core";
-import type {
-  ICanvasSceneImageTransform,
-  ICanvasScenePasteTransform,
-  ICanvasSceneRuler,
-  IImageElementOptions,
-  TPrimaryKey,
-} from "@/types/core";
+import type { IImageElementOptions, TPrimaryKey } from "@/types/core";
 
 export default class PageScene {
   pageId: TPrimaryKey | undefined;
-  canvasDiagSize = 0;
   elements: { [key: TPrimaryKey]: any } = {};
   elementOrder: TPrimaryKey[] = [];
   clearAllElementIndexes: number[] = [];
-  activeElementId: TPrimaryKey | null = null;
   debugMode = false;
   isPasteMode = false;
   isAddImageMode = false;
   isInteractiveEditMode = false;
   isTextboxEditMode = false;
+  isRulerMode = false;
   isPanning = false;
   isMovingRuler = false;
   isDrawing = false;
   isStylus = false;
   detectedStylus = false;
   allowFingerDrawing = true;
-  ruler: ICanvasSceneRuler;
-  pasteTransform: ICanvasScenePasteTransform;
-  imageTransform: ICanvasSceneImageTransform;
+
   selectedTool: number = ELEMENT_TYPE.PEN;
   selectedToolSize = DEFAULT_PEN_SIZE;
   selectedLineEndSide = LineEndSide.NONE;
   selectedLineEndStyle = LineEndStyle.NONE;
+
   history: any[] = [];
   historyIndex = -1;
+
   selectedPaperPatternIdx = 0;
   selectedPaperSwatchId = SPECIAL_PAPER_SWATCH_KEY;
   selectedPaperColorIdx = DEFAULT_PAPER_COLOR_INDEX;
@@ -68,32 +61,10 @@ export default class PageScene {
   transformMatrix: DOMMatrix;
   paperPatternTransform = { x: 0, y: 0, lineSize: 0, spacing: 0 };
 
-  constructor(pageId: TPrimaryKey, matrix: DOMMatrix, canvasDiagSize: number) {
+  constructor(pageId: TPrimaryKey, matrix: DOMMatrix) {
     this.pageId = pageId;
-    this.canvasDiagSize = canvasDiagSize;
     this.initTransformMatrix = DOMMatrix.fromMatrix(matrix);
     this.transformMatrix = matrix;
-    this.ruler = {
-      isVisible: false,
-      width: this.canvasDiagSize,
-      transform: {
-        translate: [0, 0],
-        scale: [1, 1],
-        rotate: 35,
-      },
-    };
-    this.pasteTransform = {
-      translate: [0, 0],
-      scale: [1, 1],
-      rotate: 0,
-    };
-    this.imageTransform = {
-      translate: [0, 0],
-      scale: [1, 1],
-      rotate: 0,
-      clipType: "inset",
-      clipStyles: [0, 0, 0, 0],
-    };
   }
 
   get activeElementsStartIdx() {
@@ -278,7 +249,7 @@ export default class PageScene {
     let inputY = clientY;
     let isRulerLine = false;
 
-    if (this.ruler.isVisible && followRuler && rulerElement) {
+    if (this.isRulerMode && followRuler && rulerElement) {
       const searchDistance = 25;
       let foundX, foundY;
       let searchFor = true;

@@ -80,6 +80,8 @@ function isDrawingAllowed(isDrawingOverride = false) {
 }
 
 function handleToolChange() {
+  interactiveLayer.value?.reset();
+
   if (sceneStore.value.selectedTool === ELEMENT_TYPE.CLEAR_ALL) {
     handleClearAll();
   }

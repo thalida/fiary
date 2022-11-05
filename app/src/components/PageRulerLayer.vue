@@ -10,9 +10,17 @@ const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const rootEl = ref<HTMLElement>();
 const rulerEl = ref();
 const moveableEl = ref();
+const ruler = ref({
+  width: canvasStore.canvasDiagSize,
+  transform: {
+    translate: [0, 0],
+    scale: [1, 1],
+    rotate: 35,
+  },
+});
 
 watchPostEffect(() => {
-  if (sceneStore.value?.ruler.isVisible) {
+  if (sceneStore.value?.isRulerMode) {
     setRulerTransform(rulerEl.value, {});
   }
 });
@@ -22,7 +30,7 @@ function setRulerTransform(
   transform: { translate?: number[]; scale?: number[]; rotate?: number }
 ) {
   const nextTransform = {
-    ...sceneStore.value.ruler.transform,
+    ...ruler.value.transform,
     ...transform,
   };
 
@@ -30,7 +38,7 @@ function setRulerTransform(
   const scale = `scale(${nextTransform.scale[0]}, ${nextTransform.scale[1]})`;
   const rotate = `rotate(${nextTransform.rotate}deg)`;
   target.style.transform = `${translate} ${scale} ${rotate}`;
-  sceneStore.value.ruler.transform = nextTransform;
+  ruler.value.transform = nextTransform;
 }
 
 function onRulerMoveStart() {
@@ -87,13 +95,13 @@ defineExpose({
 <template>
   <div
     ref="rootEl"
-    v-if="sceneStore && sceneStore.ruler.isVisible"
+    v-if="sceneStore && sceneStore.isRulerMode"
     class="ruler-layer"
     :class="{ 'hide-ruler-controls': !sceneStore.showRulerControls }"
   >
-    <div class="ruler" ref="rulerEl" :style="{ width: sceneStore.ruler.width + 'px' }">
+    <div class="ruler" ref="rulerEl" :style="{ width: ruler.width + 'px' }">
       <div class="ruler__label">
-        {{ Math.round(sceneStore.ruler.transform.rotate) }}&deg;
+        {{ Math.round(ruler.transform.rotate) }}&deg;
         <span v-if="sceneStore.elementOrder.length > 0 && sceneStore.isDrawing">
           <span v-if="sceneStore.elements[sceneStore.lastActiveElementId].dimensions.lineLength">
             {{
@@ -111,10 +119,10 @@ defineExpose({
           </span>
         </span>
       </div>
-      <div class="ruler__tool" :style="{ width: sceneStore.ruler.width + 'px' }"></div>
+      <div class="ruler__tool" :style="{ width: ruler.width + 'px' }"></div>
     </div>
     <MoveableVue
-      v-if="sceneStore.ruler.isVisible"
+      v-if="sceneStore.isRulerMode"
       ref="moveableEl"
       className="moveable-ruler"
       :target="['.ruler']"

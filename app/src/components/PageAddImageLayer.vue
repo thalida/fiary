@@ -19,6 +19,14 @@ const emit = defineEmits<{
   (event: "redraw"): void;
 }>();
 
+const imageTransform = ref({
+  translate: [0, 0],
+  scale: [1, 1],
+  rotate: 0,
+  clipType: "inset",
+  clipStyles: [0, 0, 0, 0],
+});
+
 async function handleAddImageStart(image: HTMLImageElement, trackHistory = true) {
   let imageWidth = image.width;
   let imageHeight = image.height;
@@ -35,7 +43,7 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
     imageHeight *= scale;
   }
 
-  sceneStore.value.imageTransform = {
+  imageTransform.value = {
     translate: [
       canvasStore.canvasConfig.width / 2 - imageWidth / 2,
       canvasStore.canvasConfig.height / 2 - imageHeight / 2,
@@ -63,7 +71,7 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
     return;
   }
 
-  setImageStyles(imagePreviewCanvas.value, sceneStore.value.imageTransform);
+  setImageStyles(imagePreviewCanvas.value, imageTransform.value);
 
   const dpi = canvasStore.canvasConfig.dpi;
   imagePreviewCanvas.value.width = imageWidth * dpi;
@@ -138,20 +146,18 @@ function handleAddImageEnd() {
   imageCacheCanvas.style.width = `${width}px`;
   imageCacheCanvas.style.height = `${height}px`;
 
-  const rotRad = (sceneStore.value.imageTransform.rotate * Math.PI) / 180;
-  const imageWidth =
-    sceneStore.value.imageTransform.scale[0] * imagePreviewCanvas.value.offsetWidth;
-  const imageHeight =
-    sceneStore.value.imageTransform.scale[1] * imagePreviewCanvas.value.offsetHeight;
-  const clipValues = sceneStore.value.imageTransform.clipStyles
+  const rotRad = (imageTransform.value.rotate * Math.PI) / 180;
+  const imageWidth = imageTransform.value.scale[0] * imagePreviewCanvas.value.offsetWidth;
+  const imageHeight = imageTransform.value.scale[1] * imagePreviewCanvas.value.offsetHeight;
+  const clipValues = imageTransform.value.clipStyles
     .map((value: number | string) =>
       typeof value === "string" ? Number(value.split("px")[0]) : value
     )
     .map((value: number) => (value < 0 ? 0 : value));
-  clipValues[0] *= sceneStore.value.imageTransform.scale[1];
-  clipValues[1] *= sceneStore.value.imageTransform.scale[0];
-  clipValues[2] *= sceneStore.value.imageTransform.scale[1];
-  clipValues[3] *= sceneStore.value.imageTransform.scale[0];
+  clipValues[0] *= imageTransform.value.scale[1];
+  clipValues[1] *= imageTransform.value.scale[0];
+  clipValues[2] *= imageTransform.value.scale[1];
+  clipValues[3] *= imageTransform.value.scale[0];
   const clipWidth = imageWidth - clipValues[1] - clipValues[3];
   const clipHeight = imageHeight - clipValues[0] - clipValues[2];
 
@@ -239,7 +245,7 @@ function setImageStyles(
     return;
   }
   const nextTransform = {
-    ...sceneStore.value.imageTransform,
+    ...imageTransform.value,
     ...transform,
   };
 
@@ -256,7 +262,7 @@ function setImageStyles(
     imageBackdropCanvas.value.style.transform = `${translate} ${scale} ${rotate}`;
   }
 
-  sceneStore.value.imageTransform = nextTransform;
+  imageTransform.value = nextTransform;
 }
 
 function onImageDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {

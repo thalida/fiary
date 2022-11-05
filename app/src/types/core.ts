@@ -150,19 +150,3 @@ export interface IGradientStop {
 
 export type TGradient = IGradientStop[];
 export type TColor = ISolidColor | TGradient;
-
-export interface ICanvasSceneRuler {
-  isVisible: boolean;
-  width: number;
-  transform: ICanvasSceneTransform;
-}
-export interface ICanvasSceneTransform {
-  translate: number[];
-  scale: number[];
-  rotate: number;
-}
-export type ICanvasScenePasteTransform = ICanvasSceneTransform;
-export interface ICanvasSceneImageTransform extends ICanvasSceneTransform {
-  clipType: string;
-  clipStyles: number[];
-}

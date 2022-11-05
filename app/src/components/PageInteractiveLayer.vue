@@ -12,6 +12,7 @@ const props = defineProps<{ pageId: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const rootEl = ref(null as HTMLElement | null);
+const activeElementId = ref(null as TPrimaryKey | null);
 
 let selectoInteractive: Selecto;
 let moveableInteractive: Moveable;
@@ -21,7 +22,7 @@ function handleStartInteractiveEdit() {
   if (rootEl.value === null) return;
 
   sceneStore.value.isInteractiveEditMode = true;
-  sceneStore.value.activeElementId = null;
+  activeElementId.value = null;
   moveableElements = [];
   selectoInteractive = new Selecto({
     container: rootEl.value,
@@ -190,7 +191,7 @@ function handleTextboxFocus({ elementId }: { elementId: TPrimaryKey }) {
 
   sceneStore.value.isTextboxEditMode = true;
   sceneStore.value.selectedTool = ELEMENT_TYPE.TEXTBOX;
-  sceneStore.value.activeElementId = elementId;
+  activeElementId.value = elementId;
 }
 
 function handleTextboxBlur() {
@@ -211,7 +212,14 @@ function setInteractiveElementTransforms(initMatrix: DOMMatrix, transformMatrix:
   }
 }
 
+function reset() {
+  sceneStore.value.isTextboxEditMode = false;
+  sceneStore.value.isInteractiveEditMode = false;
+  activeElementId.value = null;
+}
+
 defineExpose({
+  reset,
   handleStartInteractiveEdit,
   handleEndInteractiveEdit,
   handleInteractiveElementDelete,
@@ -256,7 +264,7 @@ defineExpose({
           transform: sceneStore.elements[elementId].style.transformStr,
         }"
         :element="sceneStore.elements[elementId]"
-        :is-active="sceneStore.elements[elementId].id === sceneStore.activeElementId"
+        :is-active="sceneStore.elements[elementId].id === activeElementId"
         :colorSwatches="canvasStore.swatches"
         @change="handleTextboxChange"
         @focus="handleTextboxFocus"
