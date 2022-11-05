@@ -10,7 +10,7 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
 } from "@/constants/core";
 import ColorPicker from "@/components/PageColorPicker.vue";
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import type { TPrimaryKey } from "@/types/core";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
@@ -20,7 +20,17 @@ const colorPickerRefs: any[] = [];
 const selectedPatternStyles = computed(() => {
   return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
 });
-const zoomPercent = ref(100);
+
+const hasUndo = computed(() => {
+  return sceneStore.value.historyIndex >= 0;
+});
+const hasRedo = computed(() => {
+  return sceneStore.value.historyIndex < sceneStore.value.history.length - 1;
+});
+const zoomPercent = computed(() => {
+  const percent = Math.round(sceneStore.value.transformMatrix.a * 100);
+  return percent;
+});
 const emit = defineEmits<{
   (event: "update:tool", tool: number): void;
   (event: "action:history:undo"): void;
@@ -54,10 +64,11 @@ async function handleZoomOut() {
   if (typeof sceneStore.value === "undefined") {
     return;
   }
-
-  const percent = sceneStore.value.zoomOut();
-  if (typeof percent !== "undefined") {
-    zoomPercent.value = percent;
+  if (sceneStore.value.transformMatrix.a > 0.5) {
+    sceneStore.value.transformMatrix.a -= 0.1;
+    sceneStore.value.transformMatrix.a =
+      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
   }
 
   emit("action:camera:zoomOut");
@@ -68,9 +79,11 @@ async function handleZoomIn() {
     return;
   }
 
-  const percent = sceneStore.value.zoomIn();
-  if (typeof percent !== "undefined") {
-    zoomPercent.value = percent;
+  if (sceneStore.value.transformMatrix.a < 6) {
+    sceneStore.value.transformMatrix.a += 0.1;
+    sceneStore.value.transformMatrix.a =
+      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
   }
 
   emit("action:camera:zoomIn");
@@ -235,8 +248,8 @@ defineExpose({
     <button @click="handleZoomOut">Zoom -</button>
     <button @click="handleZoomIn">Zoom +</button>
     <span>{{ zoomPercent }}%</span>
-    <button :disabled="!sceneStore.hasUndo" @click="emit('action:history:undo')">Undo</button>
-    <button :disabled="!sceneStore.hasRedo" @click="emit('action:history:redo')">Redo</button>
+    <button :disabled="!hasUndo" @click="emit('action:history:undo')">Undo</button>
+    <button :disabled="!hasRedo" @click="emit('action:history:redo')">Redo</button>
   </div>
 </template>
 

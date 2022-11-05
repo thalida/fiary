@@ -57,14 +57,28 @@ export default class PageScene {
   selectedStrokeColorIdx = DEFAULT_ELEMENT_STROKECOLOR_INDEX;
 
   activePanCoords: { x: number; y: number }[] = [];
-  initTransformMatrix: DOMMatrix;
-  transformMatrix: DOMMatrix;
+  initTransformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
+  transformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
   paperPatternTransform = { x: 0, y: 0, lineSize: 0, spacing: 0 };
 
   constructor(pageId: TPrimaryKey, matrix: DOMMatrix) {
     this.pageId = pageId;
-    this.initTransformMatrix = DOMMatrix.fromMatrix(matrix);
-    this.transformMatrix = matrix;
+    this.initTransformMatrix = {
+      a: matrix.a,
+      b: matrix.b,
+      c: matrix.c,
+      d: matrix.d,
+      e: matrix.e,
+      f: matrix.f,
+    };
+    this.transformMatrix = {
+      a: matrix.a,
+      b: matrix.b,
+      c: matrix.c,
+      d: matrix.d,
+      e: matrix.e,
+      f: matrix.f,
+    };
   }
 
   get activeElementsStartIdx() {
@@ -113,16 +127,6 @@ export default class PageScene {
     const isFingerAllowed = !this.isStylus && this.allowFingerDrawing;
 
     return !isOverlayMode && !this.isNonDrawingTool && (stylusAllowed || isFingerAllowed);
-  }
-  get hasUndo() {
-    return this.historyIndex >= 0;
-  }
-  get hasRedo() {
-    return this.historyIndex < this.history.length - 1;
-  }
-  get zoomPercent() {
-    const percent = Math.round(this.transformMatrix.a * 100);
-    return percent;
   }
 
   setElement(element: any) {
@@ -202,34 +206,6 @@ export default class PageScene {
     if (this.historyIndex < 0) return;
     this.history.pop();
     this.historyIndex -= 1;
-  }
-
-  zoomOut() {
-    if (typeof this.transformMatrix === "undefined") {
-      return;
-    }
-
-    if (this.transformMatrix.a > 0.5) {
-      this.transformMatrix.a -= 0.1;
-      this.transformMatrix.a = Math.round((this.transformMatrix.a + Number.EPSILON) * 100) / 100;
-      this.transformMatrix.d = this.transformMatrix.a;
-    }
-
-    return this.zoomPercent;
-  }
-
-  zoomIn() {
-    if (typeof this.transformMatrix === "undefined") {
-      return;
-    }
-
-    if (this.transformMatrix.a < 6) {
-      this.transformMatrix.a += 0.1;
-      this.transformMatrix.a = Math.round((this.transformMatrix.a + Number.EPSILON) * 100) / 100;
-      this.transformMatrix.d = this.transformMatrix.a;
-    }
-
-    return this.zoomPercent;
   }
 
   getMousePos(
