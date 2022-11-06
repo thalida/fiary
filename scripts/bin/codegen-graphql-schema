@@ -33,11 +33,11 @@ echo -e "${txBold}${fgCyan}====================================${txReset}"
 echo -e "${txBold}${fgCyan}       Codegen GraphQL Schema       ${txReset}"
 echo -e "${txBold}${fgCyan}====================================${txReset}"
 
-echo -e "\n${txUnderline}Step 1/2: Generating GraphQL Schema${txReset}"
+echo -e "\n${txUnderline}Step 1/3: Generating GraphQL Schema${txReset}"
 cd /workspace/api
 python manage.py graphql_schema --schema api.schema.schema --out graphql-schema.json
 
-echo -e "\n${txUnderline}Step 2/2: Generating JS Operations${txReset}"
+echo -e "\n${txUnderline}Step 2/3: Generating JS Operations${txReset}"
 cd /workspace/app
 npx graphql-codegen &
 PID=$!
@@ -49,6 +49,24 @@ do
   printf "${fgYellow}\b${sp:i++%${#sp}:1}${txReset}"
   sleep 0.3
 done
+
+printf "\b "
+echo -e "${txBold}${fgGreen}Sucessfully saved GraphQL operations to graphql-operations.ts${txReset}"
+
+echo -e "\n${txUnderline}Step 3/3: Linting and Formatting Generated File${txReset}"
+cd /workspace/app
+npx eslint ./src/api/graphql-operations.ts --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --quiet --ignore-path .gitignore &
+PID=$!
+i=1
+sp="/-\|"
+echo -n ' '
+while [ -d /proc/$PID ]
+do
+  printf "${fgYellow}\b${sp:i++%${#sp}:1}${txReset}"
+  sleep 0.3
+done
+
+sed -i 's/import { TypedDocumentNode as DocumentNode }/import type { TypedDocumentNode as DocumentNode }/' ./src/api/graphql-operations.ts
 
 printf "\b "
 echo -e "\n${txBold}${fgGreen}Done${txReset}"

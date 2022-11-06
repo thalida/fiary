@@ -1,3 +1,3 @@
 #!/bin/bash
 
-chmod +x /workspace/scripts/bin/*
+chmod -R +x /workspace/scripts
