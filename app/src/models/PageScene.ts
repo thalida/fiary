@@ -1,8 +1,6 @@
-import type Moveable from "moveable";
 import {
   ELEMENT_TYPE,
   CANVAS_NONDRAWING_TOOLS,
-  CANVAS_INTERACTIVE_TOOLS,
   DEFAULT_PEN_SIZE,
   LineEndSide,
   LineEndStyle,
@@ -43,17 +41,6 @@ export default class PageScene {
 
   history: any[] = [];
   historyIndex = -1;
-
-  selectedPaperPatternIdx = 0;
-  selectedPaperSwatchId = SPECIAL_PAPER_SWATCH_KEY;
-  selectedPaperColorIdx = DEFAULT_PAPER_COLOR_INDEX;
-  selectedPatternSwatchId = SPECIAL_PAPER_SWATCH_KEY;
-  selectedPatternColorIdx = DEFAULT_PATTERN_COLOR_INDEX;
-  selectedPatternOpacity = DEFAULT_PATTERN_OPACITY;
-  selectedFillSwatchId = DEFAULT_SWATCH_KEY;
-  selectedFillColorIdx = DEFAULT_ELEMENT_FILLCOLOR_INDEX;
-  selectedStrokeSwatchId = SPECIAL_TOOL_SWATCH_KEY;
-  selectedStrokeColorIdx = DEFAULT_ELEMENT_STROKECOLOR_INDEX;
 
   initTransformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
   transformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
@@ -187,116 +174,5 @@ export default class PageScene {
     if (this.historyIndex < 0) return;
     this.history.pop();
     this.historyIndex -= 1;
-  }
-
-  getMousePos(
-    canvas: HTMLCanvasElement,
-    event: MouseEvent | TouchEvent,
-    followRuler = false,
-    rulerElement?: Moveable
-  ) {
-    const rect = canvas.getBoundingClientRect(); // abs. size of element
-    const clientX = (event as TouchEvent).touches
-      ? (event as TouchEvent).touches[0].clientX
-      : (event as MouseEvent).clientX;
-    const clientY = (event as TouchEvent).touches
-      ? (event as TouchEvent).touches[0].clientY
-      : (event as MouseEvent).clientY;
-    let inputX = clientX;
-    let inputY = clientY;
-    let isRulerLine = false;
-
-    if (this.isRulerMode && followRuler && rulerElement) {
-      const searchDistance = 25;
-      let foundX, foundY;
-      let searchFor = true;
-      let isFirstLoop = true;
-
-      let dx = 0;
-      while (dx <= searchDistance) {
-        const rx1 = clientX - dx;
-        const rx2 = clientX + dx;
-
-        let dy = 0;
-        while (dy <= searchDistance) {
-          const ry1 = clientY - dy;
-          const ry2 = clientY + dy;
-          const searchDirections = [
-            [rx1, ry1],
-            [rx1, ry2],
-            [rx2, ry1],
-            [rx2, ry2],
-          ];
-
-          for (let i = 0; i < searchDirections.length; i += 1) {
-            const searchDirection = searchDirections[i];
-            const isInside = rulerElement.isInside(searchDirection[0], searchDirection[1]);
-
-            if (isFirstLoop) {
-              searchFor = !isInside;
-              isFirstLoop = false;
-            }
-
-            if (isInside === searchFor) {
-              foundX = searchDirection[0];
-              foundY = searchDirection[1];
-              break;
-            }
-          }
-
-          if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-            break;
-          }
-
-          dy += 1;
-        }
-
-        if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-          break;
-        }
-
-        dx += 1;
-      }
-
-      if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-        isRulerLine = true;
-        inputX = foundX;
-        inputY = foundY;
-      }
-    }
-
-    const x = inputX - rect.left;
-    const y = inputY - rect.top;
-    return { x, y, isRulerLine };
-  }
-
-  getDrawPos(
-    canvas: HTMLCanvasElement,
-    event: MouseEvent | TouchEvent,
-    followRuler = false,
-    rulerElement?: Moveable
-  ) {
-    const pos = this.getMousePos(canvas, event, followRuler, rulerElement);
-    let cameraX = this.transformMatrix ? this.transformMatrix.e : 0;
-    let cameraY = this.transformMatrix ? this.transformMatrix.f : 0;
-    const cameraZoom = this.transformMatrix ? this.transformMatrix.a : 1;
-    const initMatrixA = this.initTransformMatrix ? this.initTransformMatrix.a : 1;
-    const relativeZoom = initMatrixA / cameraZoom;
-
-    const isInteractiveTool = CANVAS_INTERACTIVE_TOOLS.includes(this.selectedTool);
-    if (isInteractiveTool) {
-      cameraX /= cameraZoom;
-      cameraY /= cameraZoom;
-    }
-
-    const transformedPos = {
-      x: pos.x * relativeZoom - cameraX,
-      y: pos.y * relativeZoom - cameraY,
-    };
-
-    return {
-      ...pos,
-      ...transformedPos,
-    };
   }
 }

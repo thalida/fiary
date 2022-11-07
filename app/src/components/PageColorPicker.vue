@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect } from "vue";
+import { ref, watchEffect } from "vue";
 import ColorPicker from "@mcistudio/vue-colorpicker";
 import "@mcistudio/vue-colorpicker/dist/style.css";
 import { getColorAsCss } from "@/utils/color";
 import { useCanvasStore } from "@/stores/canvas";
 import type { TColor } from "@/types/core";
+import { useCoreStore } from "@/stores/core";
 
-const canvasStore = useCanvasStore();
 const props = defineProps<{
-  swatchId: string;
-  colorIdx: number;
+  color?: TColor | null;
+  swatchId?: string | null;
+  colorIdx?: number | null;
   specialSwatchKey?: string;
 }>();
 const emits = defineEmits<{
   (e: "update", swatchId: string, colorIdx: number): void;
 }>();
+const coreStore = useCoreStore();
+const canvasStore = useCanvasStore();
 
-const selectedColor = computed(() => {
-  return canvasStore.swatches[props.swatchId][props.colorIdx];
-});
 const showModal = ref(false);
 const isDropdownOpen = ref(false);
 watchEffect(() => {
@@ -26,7 +26,7 @@ watchEffect(() => {
 });
 
 function handleAddSwatchClick() {
-  canvasStore.createSwatch();
+  coreStore.createSwatch();
 }
 
 async function handleSwatchClick(colorIdx: number, swatchId: string) {
@@ -43,7 +43,15 @@ async function handleSwatchClick(colorIdx: number, swatchId: string) {
 function handleColorChange({ color }: { color: TColor }) {
   const swatchId = props.swatchId;
   const colorIdx = props.colorIdx;
-  canvasStore.updateSwatchColor(swatchId, colorIdx, color);
+  if (
+    typeof swatchId === "undefined" ||
+    swatchId === null ||
+    typeof colorIdx === "undefined" ||
+    colorIdx === null
+  ) {
+    return;
+  }
+  coreStore.updateSwatchColor(swatchId, colorIdx, color);
 }
 
 function closeDropdown() {
@@ -70,7 +78,10 @@ defineExpose({
 <template>
   <div>
     <button @click="toggleDropdown">
-      <div class="swatch__color" :style="{ background: getColorAsCss(selectedColor) }"></div>
+      <div
+        class="swatch__color"
+        :style="{ background: color ? getColorAsCss(color) : 'transparent' }"
+      ></div>
     </button>
     <ColorPicker
       v-if="showModal"
@@ -80,9 +91,9 @@ defineExpose({
       :supportedModes="['solid', 'linear']"
       :showOpacityPicker="false"
       :showDegreePicker="false"
-      :mode="Array.isArray(selectedColor) ? 'linear' : 'solid'"
-      :color="Array.isArray(selectedColor) ? {} : selectedColor"
-      :gradients="Array.isArray(selectedColor) ? selectedColor : []"
+      :mode="Array.isArray(color) ? 'linear' : 'solid'"
+      :color="Array.isArray(color) ? {} : color"
+      :gradients="Array.isArray(color) ? color : []"
       @colorChanged="handleColorChange"
     >
     </ColorPicker>
@@ -90,12 +101,12 @@ defineExpose({
       <div
         class="swatch"
         :class="{ selected: props.swatchId === swatchId }"
-        v-for="swatchId in canvasStore.swatchOrder"
+        v-for="swatchId in coreStore.swatchOrder"
         :key="swatchId"
       >
         <div
           class="swatch__color"
-          v-for="(color, i) in canvasStore.swatches[swatchId]"
+          v-for="(color, i) in coreStore.swatches[swatchId]"
           :key="i"
           :style="{ background: getColorAsCss(color) }"
           :class="{
@@ -107,7 +118,7 @@ defineExpose({
       <div class="swatch" v-if="typeof props.specialSwatchKey !== 'undefined'">
         <div
           class="swatch__color"
-          v-for="(color, i) in canvasStore.swatches[props.specialSwatchKey]"
+          v-for="(color, i) in coreStore.swatches[props.specialSwatchKey]"
           :key="i"
           :style="{ background: getColorAsCss(color) }"
           :class="{

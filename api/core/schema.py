@@ -1,9 +1,10 @@
+import json
 import graphene
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
 from api.permissions import IsOwner, login_required
-from .models import Room, Bookshelf, Notebook, Page, Element
+from .models import Palette, PaletteCollection, PaletteSwatch, Room, Bookshelf, Notebook, Page, Element
 
 
 class RoomNode(IsOwner, DjangoObjectType):
@@ -40,6 +41,7 @@ class PageNode(IsOwner, DjangoObjectType):
         model = Page
         filter_fields = ['id', 'owner', 'notebook']
         interfaces = (graphene.relay.Node, )
+        convert_choices_to_enum = False
 
 
 class ElementNode(IsOwner, DjangoObjectType):
@@ -48,6 +50,33 @@ class ElementNode(IsOwner, DjangoObjectType):
     class Meta:
         model = Element
         filter_fields = ['id', 'owner', 'page']
+        interfaces = (graphene.relay.Node, )
+
+
+class PaletteCollectionNode(IsOwner, DjangoObjectType):
+    pk = graphene.UUID(source='id', required=True)
+
+    class Meta:
+        model = PaletteCollection
+        filter_fields = ['id', 'owner']
+        interfaces = (graphene.relay.Node, )
+
+
+class PaletteNode(IsOwner, DjangoObjectType):
+    pk = graphene.UUID(source='id', required=True)
+
+    class Meta:
+        model = Palette
+        filter_fields = ['id', 'owner']
+        interfaces = (graphene.relay.Node, )
+
+
+class PaletteSwatchNode(IsOwner, DjangoObjectType):
+    pk = graphene.UUID(source='id', required=True)
+
+    class Meta:
+        model = PaletteSwatch
+        filter_fields = ['id', 'owner']
         interfaces = (graphene.relay.Node, )
 
 
@@ -177,11 +206,12 @@ class DeleteNotebook(graphene.relay.ClientIDMutation):
 class CreatePage(graphene.relay.ClientIDMutation):
     class Input:
         notebook_pk = graphene.UUID(required=True)
-        bg_color = graphene.String(required=False)
-        pattern_style = graphene.String(required=False)
-        pattern_color = graphene.String(required=False)
+        paper_color = graphene.JSONString(required=False)
+        pattern_color = graphene.JSONString(required=False)
+        pattern_type = graphene.Int(required=False)
         pattern_size = graphene.Float(required=False)
         pattern_spacing = graphene.Float(required=False)
+        pattern_opacity = graphene.Int(required=False)
 
     page = graphene.Field(PageNode)
 
@@ -192,12 +222,14 @@ class CreatePage(graphene.relay.ClientIDMutation):
         page = Page.objects.create(
             owner=info.context.user,
             notebook=notebook,
-            bg_color=input.get('bg_color', None),
-            pattern_style=input.get('pattern_style', None),
-            pattern_color=input.get('pattern_color', None),
-            pattern_size=input.get('pattern_size', None),
-            pattern_spacing=input.get('pattern_spacing', None)
         )
+
+        for k, v in input.items():
+            if k == 'notebook_pk':
+                continue
+            setattr(page, k, v)
+
+        page.save()
 
         return CreatePage(page=page)
 
@@ -206,11 +238,12 @@ class UpdatePage(graphene.relay.ClientIDMutation):
     class Input:
         pk = graphene.UUID(required=True)
         notebook_pk = graphene.UUID(required=False)
-        bg_color = graphene.String(required=False)
-        pattern_style = graphene.String(required=False)
-        pattern_color = graphene.String(required=False)
+        paper_color = graphene.JSONString(required=False)
+        pattern_color = graphene.JSONString(required=False)
+        pattern_type = graphene.Int(required=False)
         pattern_size = graphene.Float(required=False)
         pattern_spacing = graphene.Float(required=False)
+        pattern_opacity = graphene.Int(required=False)
 
     page = graphene.Field(PageNode)
 
@@ -332,6 +365,122 @@ class DeleteElement(graphene.relay.ClientIDMutation):
         return DeleteElement(element=element)
 
 
+class CreatePalette(graphene.relay.ClientIDMutation):
+    class Input:
+        title = graphene.String(required=True)
+
+    palette = graphene.Field(PaletteNode)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        collection = PaletteCollection.objects.get(owner=info.context.user)
+        palette = Palette.objects.create(
+            owner=info.context.user,
+            title=input['title'],
+            collection=collection,
+        )
+
+        return CreatePalette(palette=palette)
+
+
+class UpdatePalette(graphene.relay.ClientIDMutation):
+    class Input:
+        pk = graphene.UUID(required=True)
+        title = graphene.String(required=False)
+
+    palette = graphene.Field(PaletteNode)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        palette = Palette.objects.get(id=input['pk'])
+
+        for k, v in input.items():
+            if k == 'pk':
+                continue
+            setattr(palette, k, v)
+
+        palette.save()
+
+        return UpdatePalette(palette=palette)
+
+
+class DeletePalette(graphene.relay.ClientIDMutation):
+    class Input:
+        pk = graphene.UUID(required=True)
+
+    palette = graphene.Field(PaletteNode)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        palette = Palette.objects.get(id=input['pk'])
+        palette.delete()
+
+        return DeletePalette(palette=palette)
+
+
+class CreatePaletteSwatch(graphene.relay.ClientIDMutation):
+    class Input:
+        palette_pk = graphene.UUID(required=True)
+        swatch_type = graphene.Int(required=True)
+        swatch = graphene.JSONString(required=True)
+
+    swatch = graphene.Field(PaletteSwatchNode)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        palette = Palette.objects.get(id=input['palette_pk'])
+        swatch = PaletteSwatch.objects.create(
+            owner=info.context.user,
+            palette=palette,
+            swatch_type=input['swatch_type'],
+            swatch=input['swatch'],
+        )
+
+        return CreatePaletteSwatch(swatch=swatch)
+
+
+class UpdatePaletteSwatch(graphene.relay.ClientIDMutation):
+    class Input:
+        pk = graphene.UUID(required=True)
+        swatch_type = graphene.Int(required=False)
+        swatch = graphene.JSONString(required=False)
+
+    swatch = graphene.Field(PaletteSwatchNode)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        swatch = PaletteSwatch.objects.get(id=input['pk'])
+
+        for k, v in input.items():
+            if k == 'pk':
+                continue
+            setattr(swatch, k, v)
+
+        swatch.save()
+
+        return UpdatePaletteSwatch(swatch=swatch)
+
+
+class DeletePaletteSwatch(graphene.relay.ClientIDMutation):
+    class Input:
+        pk = graphene.UUID(required=True)
+
+    swatch = graphene.Field(PaletteSwatchNode)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        swatch = PaletteSwatch.objects.get(id=input['pk'])
+        swatch.delete()
+
+        return DeletePaletteSwatch(swatch=swatch)
+
+
 class CoreQuery(graphene.ObjectType):
     room = graphene.relay.Node.Field(RoomNode)
     my_rooms = DjangoFilterConnectionField(RoomNode)
@@ -348,12 +497,21 @@ class CoreQuery(graphene.ObjectType):
     element = graphene.relay.Node.Field(ElementNode)
     my_elements = DjangoFilterConnectionField(ElementNode)
 
+    palette_collection = graphene.relay.Node.Field(PaletteCollectionNode)
+    my_palette_collections = DjangoFilterConnectionField(PaletteCollectionNode)
+
+    palette = graphene.relay.Node.Field(PaletteNode)
+    my_palettes = DjangoFilterConnectionField(PaletteNode)
+
+    palette_swatch = graphene.relay.Node.Field(PaletteSwatchNode)
+    my_palette_swatchs = DjangoFilterConnectionField(PaletteSwatchNode)
+
 
 class CoreMutation(graphene.ObjectType):
     # create_room = CreateRoom.Field()
 
-    # create_bookshelf = CreateBookshelf.Field()
-    # update_bookshelf = UpdateBookshelf.Field()
+    create_bookshelf = CreateBookshelf.Field()
+    update_bookshelf = UpdateBookshelf.Field()
 
     create_notebook = CreateNotebook.Field()
     update_notebook = UpdateNotebook.Field()
@@ -366,3 +524,11 @@ class CoreMutation(graphene.ObjectType):
     create_element = CreateElement.Field()
     update_element = UpdateElement.Field()
     delete_element = DeleteElement.Field()
+
+    create_palette = CreatePalette.Field()
+    update_palette = UpdatePalette.Field()
+    delete_palette = DeletePalette.Field()
+
+    create_palette_swatch = CreatePaletteSwatch.Field()
+    update_palette_swatch = UpdatePaletteSwatch.Field()
+    delete_palette_swatch = DeletePaletteSwatch.Field()

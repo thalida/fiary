@@ -134,10 +134,12 @@ export const DEFAULT_PAPER_COLOR_INDEX = 0;
 export const DEFAULT_PATTERN_COLOR_INDEX = 3;
 export const DEFAULT_PATTERN_OPACITY = 50;
 
-export enum PatternStyles {
+export enum PATTERN_TYPES {
   SOLID = 1,
   DOTS = 2,
   SQUARES = 3,
   LINES = 4,
   ISOMETRIC = 5,
 }
+
+export const DEFAULT_PATTERN_TYPE = PATTERN_TYPES.SOLID;

@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.dispatch import receiver
 
-from core.models import Bookshelf, Notebook, Page, Room
+from core.models import Bookshelf, Notebook, Page, PaletteCollection, Room
 
 
 class User(AbstractUser):
@@ -24,19 +24,7 @@ def save_from_user(sender, instance, created, **kwargs):
         return
 
     room = Room.objects.create(owner=instance)
-    bookshelf = Bookshelf.objects.create(owner=instance, room=room)
-    notebook = Notebook.objects.create(
-        owner=instance,
-        bookshelf=bookshelf,
-        title='Default'
-    )
-    page = Page.objects.create(owner=instance, notebook=notebook)
-
-    room.bookshelf_order = [bookshelf.id]
     room.save()
 
-    bookshelf.notebook_order = [notebook.id]
-    bookshelf.save()
-
-    notebook.page_order = [page.id]
-    notebook.save()
+    paletteCollection = PaletteCollection.objects.create(owner=instance)
+    paletteCollection.save()

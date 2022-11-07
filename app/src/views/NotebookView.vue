@@ -22,12 +22,12 @@ const numPages = computed(() => {
   return notebook.value.pageOrder.length;
 });
 
-watchEffect(() => {
+watchEffect(async () => {
   if (isAuthenticated.value) {
     isLoading.value = true;
-    coreStore.fetchNotebook(props.notebookId).then(() => {
-      isLoading.value = false;
-    });
+    await coreStore.fetchNotebook(props.notebookId);
+    await coreStore.fetchMyPalettes();
+    isLoading.value = false;
   }
 });
 

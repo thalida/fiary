@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from "vue";
 
 const props = defineProps({
   lineSize: {
@@ -12,7 +12,7 @@ const props = defineProps({
   },
   fillColor: {
     type: String,
-    default: 'black',
+    default: "black",
   },
 });
 
@@ -20,7 +20,7 @@ const patternWidth = computed(() => props.spacing + props.lineSize);
 const patternHeight = computed(() => props.spacing / 2);
 const edgeLineWidth = computed(() => props.lineSize / 2);
 const rightLineXPos = computed(() => patternWidth.value - edgeLineWidth.value);
-const centerLineXPos = computed(() => (patternWidth.value / 2) - (props.lineSize / 2));
+const centerLineXPos = computed(() => patternWidth.value / 2 - props.lineSize / 2);
 const leftDiag = computed(() => `M0 0L${patternWidth.value} ${patternHeight.value}`);
 const rightDiag = computed(() => `M${patternWidth.value} 0L0 ${patternHeight.value}`);
 </script>

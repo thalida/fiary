@@ -10,18 +10,26 @@ import {
   SPECIAL_PAPER_SWATCH_KEY,
   CANVAS_NONDRAWING_TOOLS,
   CANVAS_PAPER_TOOLS,
+  DEFAULT_PATTERN_COLOR_INDEX,
+  PATTERN_TYPES,
+  DEFAULT_PATTERN_TYPE,
+  DEFAULT_ELEMENT_FILLCOLOR_INDEX,
+  DEFAULT_ELEMENT_STROKECOLOR_INDEX,
+  DEFAULT_SWATCH_KEY,
 } from "@/constants/core";
 import ColorPicker from "@/components/PageColorPicker.vue";
-import { computed } from "vue";
-import type { TPrimaryKey } from "@/types/core";
+import { computed, reactive, ref } from "vue";
+import type { TColor, TPrimaryKey } from "@/types/core";
+import { useCoreStore } from "@/stores/core";
+import patterns, { patternOrder } from "@/components/PagePatterns";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
+const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
+const page = computed(() => coreStore.pages[props.pageId]);
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const colorPickerRefs: any[] = [];
-const selectedPatternStyles = computed(() => {
-  return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
-});
+
 const isDrawingTool = computed(() => {
   return !CANVAS_NONDRAWING_TOOLS.includes(sceneStore.value.selectedTool);
 });
@@ -52,6 +60,16 @@ const emit = defineEmits<{
   (event: "action:paste:end"): void;
   (event: "action:paste:delete"): void;
 }>();
+const options = reactive({
+  selectedFillSwatchId: DEFAULT_SWATCH_KEY,
+  selectedFillColorIdx: DEFAULT_ELEMENT_FILLCOLOR_INDEX,
+  selectedStrokeSwatchId: SPECIAL_TOOL_SWATCH_KEY,
+  selectedStrokeColorIdx: DEFAULT_ELEMENT_STROKECOLOR_INDEX,
+  selectedPaperSwatchId: null as string | null,
+  selectedPaperColorIdx: null as number | null,
+  selectedPatternSwatchId: null as string | null,
+  selectedPatternColorIdx: null as number | null,
+});
 
 function addColorPickerRef(ref: any) {
   if (ref !== null) {
@@ -74,23 +92,63 @@ function closeAllColorPickers() {
 }
 
 function handleFillColorChange(swatchId: string, colorIdx: number) {
-  sceneStore.value.selectedFillSwatchId = swatchId;
-  sceneStore.value.selectedFillColorIdx = colorIdx;
+  options.selectedFillSwatchId = swatchId;
+  options.selectedFillColorIdx = colorIdx;
+  page.value.fillColor = coreStore.getSwatchColor(swatchId, colorIdx);
 }
 
 function handleStrokeColorChange(swatchId: string, colorIdx: number) {
-  sceneStore.value.selectedStrokeSwatchId = swatchId;
-  sceneStore.value.selectedStrokeColorIdx = colorIdx;
+  options.selectedStrokeSwatchId = swatchId;
+  options.selectedStrokeColorIdx = colorIdx;
+  page.value.strokeColor = coreStore.getSwatchColor(swatchId, colorIdx);
 }
 
 function handlePaperColorChange(swatchId: string, colorIdx: number) {
-  sceneStore.value.selectedPaperSwatchId = swatchId;
-  sceneStore.value.selectedPaperColorIdx = colorIdx;
+  options.selectedPaperSwatchId = swatchId;
+  options.selectedPaperColorIdx = colorIdx;
+  page.value.paperColor = coreStore.getSwatchColor(swatchId, colorIdx);
 }
 
 function handlePatternColorChange(swatchId: string, colorIdx: number) {
-  sceneStore.value.selectedPatternSwatchId = swatchId;
-  sceneStore.value.selectedPatternColorIdx = colorIdx;
+  options.selectedPatternSwatchId = swatchId;
+  options.selectedPatternColorIdx = colorIdx;
+  page.value.patternColor = coreStore.getSwatchColor(swatchId, colorIdx);
+}
+
+function handlePatternTypeChange() {
+  if (typeof page.value.patternType === "undefined" || page.value.patternType === null) {
+    page.value.patternType = DEFAULT_PATTERN_TYPE;
+  }
+
+  options.selectedPatternSwatchId = SPECIAL_PAPER_SWATCH_KEY;
+  options.selectedPatternColorIdx = DEFAULT_PATTERN_COLOR_INDEX;
+  page.value.patternColor = coreStore.getSwatchColor(
+    options.selectedPatternSwatchId,
+    options.selectedPatternColorIdx
+  );
+
+  page.value.patternSize = patterns[page.value.patternType]
+    ? patterns[page.value.patternType].DEFAULT_PROPS.lineSize
+    : null;
+  page.value.patternSpacing = patterns[page.value.patternType]
+    ? patterns[page.value.patternType].DEFAULT_PROPS.spacing
+    : null;
+}
+
+function handlePatternOpacityChange() {
+  // TODO: implement
+}
+
+function handlePatternSizeChange() {
+  // const target = e.target as HTMLInputElement;
+  // const value = parseInt(target.value, 10);
+  // page.value.patternSize = value;
+}
+
+function handlePatternSpacingChange() {
+  // const target = e.target as HTMLInputElement;
+  // const value = parseInt(target.value, 10);
+  // page.value.patternSpacing = value;
 }
 
 defineExpose({
@@ -150,8 +208,9 @@ defineExpose({
       v-if="isDrawingTool"
       style="display: inline"
       :ref="addColorPickerRef"
-      :swatchId="sceneStore.selectedFillSwatchId"
-      :colorIdx="sceneStore.selectedFillColorIdx"
+      :color="page.fillColor"
+      :swatchId="options.selectedFillSwatchId"
+      :colorIdx="options.selectedFillColorIdx"
       :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
       @update="handleFillColorChange"
     />
@@ -159,57 +218,64 @@ defineExpose({
       v-if="isDrawingTool"
       style="display: inline"
       :ref="addColorPickerRef"
-      :swatchId="sceneStore.selectedStrokeSwatchId"
-      :colorIdx="sceneStore.selectedStrokeColorIdx"
+      :color="page.strokeColor"
+      :swatchId="options.selectedStrokeSwatchId"
+      :colorIdx="options.selectedStrokeColorIdx"
       :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
       @update="handleStrokeColorChange"
     />
-    <select v-if="isPaperTool" v-model="sceneStore.selectedPaperPatternIdx">
-      <option v-for="(pattern, index) in canvasStore.paperPatterns" :key="index" :value="index">
-        {{ pattern.LABEL }}
+    <select v-if="isPaperTool" v-model="page.patternType" @change="handlePatternTypeChange">
+      <option :value="PATTERN_TYPES.SOLID">Solid</option>
+      <option v-for="patternKey in patternOrder" :key="patternKey" :value="patternKey">
+        {{ patterns[patternKey].LABEL }}
       </option>
     </select>
     <ColorPicker
-      v-if="isPaperTool"
+      v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       style="display: inline"
       :ref="addColorPickerRef"
-      :swatchId="sceneStore.selectedPaperSwatchId"
-      :colorIdx="sceneStore.selectedPaperColorIdx"
+      :color="page.paperColor"
+      :swatchId="options.selectedPaperSwatchId"
+      :colorIdx="options.selectedPaperColorIdx"
       :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
       @update="handlePaperColorChange"
     />
     <ColorPicker
-      v-if="isPaperTool"
+      v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       style="display: inline"
       :ref="addColorPickerRef"
-      :swatchId="sceneStore.selectedPatternSwatchId"
-      :colorIdx="sceneStore.selectedPatternColorIdx"
+      :color="page.patternColor as TColor"
+      :swatchId="options.selectedPatternSwatchId"
+      :colorIdx="options.selectedPatternColorIdx"
       :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
       @update="handlePatternColorChange"
     />
     <input
-      v-if="isPaperTool"
+      v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       type="number"
       min="0"
       max="100"
       step="1"
-      v-model="sceneStore.selectedPatternOpacity"
+      v-model="page.patternOpacity"
+      @change="handlePatternOpacityChange"
     />
     <input
-      v-if="isPaperTool"
+      v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       type="number"
       min="0"
       max="512"
       step="1"
-      v-model="selectedPatternStyles.lineSize"
+      v-model="page.patternSize"
+      @change="handlePatternSizeChange"
     />
     <input
-      v-if="isPaperTool"
+      v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       type="number"
       min="0"
       max="512"
       step="1"
-      v-model="selectedPatternStyles.spacing"
+      v-model="page.patternSpacing"
+      @change="handlePatternSpacingChange"
     />
 
     <label><input type="checkbox" v-model="sceneStore.isRulerMode" /> Show ruler?</label>

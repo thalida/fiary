@@ -1,5 +1,23 @@
-mutation CreatePage($notebookPk: UUID!) {
-  createPage(input: { notebookPk: $notebookPk }) {
+mutation CreatePage(
+  $notebookPk: UUID!
+  $paperColor: JSONString
+  $patternColor: JSONString
+  $patternType: Int
+  $patternSize: Float
+  $patternSpacing: Float
+  $patternOpacity: Int
+) {
+  createPage(
+    input: {
+      notebookPk: $notebookPk
+      paperColor: $paperColor
+      patternColor: $patternColor
+      patternType: $patternType
+      patternSize: $patternSize
+      patternSpacing: $patternSpacing
+      patternOpacity: $patternOpacity
+    }
+  ) {
     page {
       notebook {
         pk
@@ -8,11 +26,12 @@ mutation CreatePage($notebookPk: UUID!) {
       pk
       updatedAt
       createdAt
-      bgColor
-      patternStyle
+      paperColor
+      patternType
       patternColor
       patternSize
       patternSpacing
+      patternOpacity
     }
   }
 }

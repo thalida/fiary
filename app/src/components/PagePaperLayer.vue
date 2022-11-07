@@ -1,31 +1,22 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useCanvasStore } from "@/stores/canvas";
 import type { TPrimaryKey } from "@/types/core";
 import { getColorAsCss } from "@/utils/color";
+import { useCanvasStore } from "@/stores/canvas";
+import { useCoreStore } from "@/stores/core";
+import { PATTERN_TYPES } from "@/constants/core";
+import patterns from "@/components/PagePatterns";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
+const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
+
+const page = computed(() => coreStore.pages[props.pageId]);
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 
-const selectedPaperColor = computed(() => {
-  return canvasStore.getSwatchColor(
-    sceneStore.value.selectedPaperSwatchId,
-    sceneStore.value.selectedPaperColorIdx
-  );
-});
 const selectedPatternComponent = computed(() => {
-  return canvasStore.getPaperPatternComponentByIdx(sceneStore.value.selectedPaperPatternIdx);
-});
-const selectedPatternStyles = computed(() => {
-  return canvasStore.getPaperPatternPropsByIdx(sceneStore.value.selectedPaperPatternIdx);
-});
-const selectedPatternColor = computed(() => {
-  return canvasStore.getSwatchColor(
-    sceneStore.value.selectedPatternSwatchId,
-    sceneStore.value.selectedPatternColorIdx
-  );
+  return page.value.patternType !== PATTERN_TYPES.SOLID ? patterns[page.value.patternType] : null;
 });
 
 function setPaperTransforms(
@@ -45,8 +36,12 @@ function setPaperTransforms(
     paperPatternTransform.value.y = matrix.f / initMatrixA;
   }
 
-  paperPatternTransform.value.lineSize = selectedPatternStyles.value.lineSize / relativeZoom;
-  paperPatternTransform.value.spacing = selectedPatternStyles.value.spacing / relativeZoom;
+  paperPatternTransform.value.lineSize = page.value.patternSize
+    ? page.value.patternSize / relativeZoom
+    : 0;
+  paperPatternTransform.value.spacing = page.value.patternSpacing
+    ? page.value.patternSpacing / relativeZoom
+    : 0;
 }
 
 defineExpose({
@@ -55,12 +50,12 @@ defineExpose({
 </script>
 <template>
   <div v-if="sceneStore" class="paper-layer">
-    <div class="paper-color" :style="{ background: getColorAsCss(selectedPaperColor) }"></div>
-    <svg class="paper-pattern" width="100%" height="100%">
+    <div class="paper-color" :style="{ background: getColorAsCss(page.paperColor) }"></div>
+    <svg class="paper-pattern" width="100%" height="100%" v-if="selectedPatternComponent !== null">
       <component
         id="paper-svg-pattern"
         :is="selectedPatternComponent.COMPONENT"
-        :fillColor="getColorAsCss(selectedPatternColor)"
+        :fillColor="getColorAsCss(page.patternColor)"
         :lineSize="paperPatternTransform.lineSize"
         :spacing="paperPatternTransform.spacing"
         :x="paperPatternTransform.x"
@@ -72,7 +67,7 @@ defineExpose({
         width="100%"
         height="100%"
         fill="url(#paper-svg-pattern)"
-        :opacity="sceneStore.selectedPatternOpacity / 100"
+        :opacity="page.patternOpacity / 100"
       ></rect>
     </svg>
   </div>

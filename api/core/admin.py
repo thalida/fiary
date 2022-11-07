@@ -1,11 +1,14 @@
 from django.contrib import admin
 
-from .models import Room, Bookshelf, Notebook, Page, Element
+from .models import Palette, PaletteCollection, PaletteSwatch, Room, Bookshelf, Notebook, Page, Element
 
 admin.site.register(Room)
 admin.site.register(Bookshelf)
 admin.site.register(Page)
 admin.site.register(Element)
+admin.site.register(PaletteCollection)
+admin.site.register(Palette)
+admin.site.register(PaletteSwatch)
 
 
 @admin.register(Notebook)

@@ -95,18 +95,23 @@ export enum CoreElementToolChoices {
 }
 
 /** An enumeration. */
-export enum CorePagePatternStyleChoices {
-  /** Solid */
+export enum CorePaletteSwatchSwatchTypeChoices {
+  /** Solid Color */
   A_1 = "A_1",
-  /** Dots */
-  A_2 = "A_2",
-  /** Squares */
-  A_3 = "A_3",
-  /** Lines */
-  A_4 = "A_4",
-  /** Isometric */
-  A_5 = "A_5",
+  /** Linear Gradient Color */
+  A_10 = "A_10",
 }
+
+export type CreateBookshelfInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  roomPk: Scalars["UUID"];
+};
+
+export type CreateBookshelfPayload = {
+  __typename?: "CreateBookshelfPayload";
+  bookshelf?: Maybe<BookshelfNode>;
+  clientMutationId?: Maybe<Scalars["String"]>;
+};
 
 export type CreateElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
@@ -139,19 +144,44 @@ export type CreateNotebookPayload = {
 };
 
 export type CreatePageInput = {
-  bgColor?: InputMaybe<Scalars["String"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookPk: Scalars["UUID"];
-  patternColor?: InputMaybe<Scalars["String"]>;
+  paperColor?: InputMaybe<Scalars["JSONString"]>;
+  patternColor?: InputMaybe<Scalars["JSONString"]>;
+  patternOpacity?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
-  patternStyle?: InputMaybe<Scalars["String"]>;
+  patternType?: InputMaybe<Scalars["Int"]>;
 };
 
 export type CreatePagePayload = {
   __typename?: "CreatePagePayload";
   clientMutationId?: Maybe<Scalars["String"]>;
   page?: Maybe<PageNode>;
+};
+
+export type CreatePaletteInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  title: Scalars["String"];
+};
+
+export type CreatePalettePayload = {
+  __typename?: "CreatePalettePayload";
+  clientMutationId?: Maybe<Scalars["String"]>;
+  palette?: Maybe<PaletteNode>;
+};
+
+export type CreatePaletteSwatchInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  palettePk: Scalars["UUID"];
+  swatch: Scalars["JSONString"];
+  swatchType: Scalars["Int"];
+};
+
+export type CreatePaletteSwatchPayload = {
+  __typename?: "CreatePaletteSwatchPayload";
+  clientMutationId?: Maybe<Scalars["String"]>;
+  swatch?: Maybe<PaletteSwatchNode>;
 };
 
 export type DeleteElementInput = {
@@ -185,6 +215,28 @@ export type DeletePagePayload = {
   __typename?: "DeletePagePayload";
   clientMutationId?: Maybe<Scalars["String"]>;
   page?: Maybe<PageNode>;
+};
+
+export type DeletePaletteInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  pk: Scalars["UUID"];
+};
+
+export type DeletePalettePayload = {
+  __typename?: "DeletePalettePayload";
+  clientMutationId?: Maybe<Scalars["String"]>;
+  palette?: Maybe<PaletteNode>;
+};
+
+export type DeletePaletteSwatchInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  pk: Scalars["UUID"];
+};
+
+export type DeletePaletteSwatchPayload = {
+  __typename?: "DeletePaletteSwatchPayload";
+  clientMutationId?: Maybe<Scalars["String"]>;
+  swatch?: Maybe<PaletteSwatchNode>;
 };
 
 export type ElementNode = Node & {
@@ -224,22 +276,34 @@ export type ElementNodeEdge = {
 
 export type Mutation = {
   __typename?: "Mutation";
+  createBookshelf?: Maybe<CreateBookshelfPayload>;
   createElement?: Maybe<CreateElementPayload>;
   createNotebook?: Maybe<CreateNotebookPayload>;
   createPage?: Maybe<CreatePagePayload>;
+  createPalette?: Maybe<CreatePalettePayload>;
+  createPaletteSwatch?: Maybe<CreatePaletteSwatchPayload>;
   deleteElement?: Maybe<DeleteElementPayload>;
   deleteNotebook?: Maybe<DeleteNotebookPayload>;
   deletePage?: Maybe<DeletePagePayload>;
+  deletePalette?: Maybe<DeletePalettePayload>;
+  deletePaletteSwatch?: Maybe<DeletePaletteSwatchPayload>;
   refreshToken?: Maybe<RefreshPayload>;
   register?: Maybe<RegisterPayload>;
   registerSocial?: Maybe<RegisterFromSocialPayload>;
   revokeToken?: Maybe<RevokePayload>;
   /** Obtain JSON Web Token mutation */
   tokenAuth?: Maybe<ObtainJsonWebTokenPayload>;
+  updateBookshelf?: Maybe<UpdateBookshelfPayload>;
   updateElement?: Maybe<UpdateElementPayload>;
   updateNotebook?: Maybe<UpdateNotebookPayload>;
   updatePage?: Maybe<UpdatePagePayload>;
+  updatePalette?: Maybe<UpdatePalettePayload>;
+  updatePaletteSwatch?: Maybe<UpdatePaletteSwatchPayload>;
   verifyToken?: Maybe<VerifyPayload>;
+};
+
+export type MutationCreateBookshelfArgs = {
+  input: CreateBookshelfInput;
 };
 
 export type MutationCreateElementArgs = {
@@ -254,6 +318,14 @@ export type MutationCreatePageArgs = {
   input: CreatePageInput;
 };
 
+export type MutationCreatePaletteArgs = {
+  input: CreatePaletteInput;
+};
+
+export type MutationCreatePaletteSwatchArgs = {
+  input: CreatePaletteSwatchInput;
+};
+
 export type MutationDeleteElementArgs = {
   input: DeleteElementInput;
 };
@@ -264,6 +336,14 @@ export type MutationDeleteNotebookArgs = {
 
 export type MutationDeletePageArgs = {
   input: DeletePageInput;
+};
+
+export type MutationDeletePaletteArgs = {
+  input: DeletePaletteInput;
+};
+
+export type MutationDeletePaletteSwatchArgs = {
+  input: DeletePaletteSwatchInput;
 };
 
 export type MutationRefreshTokenArgs = {
@@ -286,6 +366,10 @@ export type MutationTokenAuthArgs = {
   input: ObtainJsonWebTokenInput;
 };
 
+export type MutationUpdateBookshelfArgs = {
+  input: UpdateBookshelfInput;
+};
+
 export type MutationUpdateElementArgs = {
   input: UpdateElementInput;
 };
@@ -296,6 +380,14 @@ export type MutationUpdateNotebookArgs = {
 
 export type MutationUpdatePageArgs = {
   input: UpdatePageInput;
+};
+
+export type MutationUpdatePaletteArgs = {
+  input: UpdatePaletteInput;
+};
+
+export type MutationUpdatePaletteSwatchArgs = {
+  input: UpdatePaletteSwatchInput;
 };
 
 export type MutationVerifyTokenArgs = {
@@ -380,17 +472,18 @@ export type PageInfo = {
 
 export type PageNode = Node & {
   __typename?: "PageNode";
-  bgColor?: Maybe<Scalars["String"]>;
   createdAt: Scalars["DateTime"];
   elements: ElementNodeConnection;
   /** The ID of the object */
   id: Scalars["ID"];
   notebook: NotebookNode;
   owner: UserNode;
-  patternColor?: Maybe<Scalars["String"]>;
+  paperColor: Scalars["JSONString"];
+  patternColor?: Maybe<Scalars["JSONString"]>;
+  patternOpacity?: Maybe<Scalars["Int"]>;
   patternSize?: Maybe<Scalars["Float"]>;
   patternSpacing?: Maybe<Scalars["Float"]>;
-  patternStyle: CorePagePatternStyleChoices;
+  patternType: Scalars["Int"];
   pk: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
@@ -423,6 +516,115 @@ export type PageNodeEdge = {
   node?: Maybe<PageNode>;
 };
 
+export type PaletteCollectionNode = Node & {
+  __typename?: "PaletteCollectionNode";
+  createdAt: Scalars["DateTime"];
+  /** The ID of the object */
+  id: Scalars["ID"];
+  owner: UserNode;
+  paletteOrder: Array<Scalars["UUID"]>;
+  palettes: PaletteNodeConnection;
+  pk: Scalars["UUID"];
+  updatedAt: Scalars["DateTime"];
+};
+
+export type PaletteCollectionNodePalettesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
+};
+
+export type PaletteCollectionNodeConnection = {
+  __typename?: "PaletteCollectionNodeConnection";
+  /** Contains the nodes in this connection. */
+  edges: Array<Maybe<PaletteCollectionNodeEdge>>;
+  /** Pagination data for this connection. */
+  pageInfo: PageInfo;
+};
+
+/** A Relay edge containing a `PaletteCollectionNode` and its cursor. */
+export type PaletteCollectionNodeEdge = {
+  __typename?: "PaletteCollectionNodeEdge";
+  /** A cursor for use in pagination */
+  cursor: Scalars["String"];
+  /** The item at the end of the edge */
+  node?: Maybe<PaletteCollectionNode>;
+};
+
+export type PaletteNode = Node & {
+  __typename?: "PaletteNode";
+  collection: PaletteCollectionNode;
+  createdAt: Scalars["DateTime"];
+  /** The ID of the object */
+  id: Scalars["ID"];
+  owner: UserNode;
+  pk: Scalars["UUID"];
+  swatches: PaletteSwatchNodeConnection;
+  title?: Maybe<Scalars["String"]>;
+  updatedAt: Scalars["DateTime"];
+};
+
+export type PaletteNodeSwatchesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
+};
+
+export type PaletteNodeConnection = {
+  __typename?: "PaletteNodeConnection";
+  /** Contains the nodes in this connection. */
+  edges: Array<Maybe<PaletteNodeEdge>>;
+  /** Pagination data for this connection. */
+  pageInfo: PageInfo;
+};
+
+/** A Relay edge containing a `PaletteNode` and its cursor. */
+export type PaletteNodeEdge = {
+  __typename?: "PaletteNodeEdge";
+  /** A cursor for use in pagination */
+  cursor: Scalars["String"];
+  /** The item at the end of the edge */
+  node?: Maybe<PaletteNode>;
+};
+
+export type PaletteSwatchNode = Node & {
+  __typename?: "PaletteSwatchNode";
+  createdAt: Scalars["DateTime"];
+  /** The ID of the object */
+  id: Scalars["ID"];
+  owner: UserNode;
+  palette: PaletteNode;
+  pk: Scalars["UUID"];
+  swatch: Scalars["JSONString"];
+  swatchType: CorePaletteSwatchSwatchTypeChoices;
+  updatedAt: Scalars["DateTime"];
+};
+
+export type PaletteSwatchNodeConnection = {
+  __typename?: "PaletteSwatchNodeConnection";
+  /** Contains the nodes in this connection. */
+  edges: Array<Maybe<PaletteSwatchNodeEdge>>;
+  /** Pagination data for this connection. */
+  pageInfo: PageInfo;
+};
+
+/** A Relay edge containing a `PaletteSwatchNode` and its cursor. */
+export type PaletteSwatchNodeEdge = {
+  __typename?: "PaletteSwatchNodeEdge";
+  /** A cursor for use in pagination */
+  cursor: Scalars["String"];
+  /** The item at the end of the edge */
+  node?: Maybe<PaletteSwatchNode>;
+};
+
 export type Query = {
   __typename?: "Query";
   bookshelf?: Maybe<BookshelfNode>;
@@ -432,9 +634,15 @@ export type Query = {
   myElements?: Maybe<ElementNodeConnection>;
   myNotebooks?: Maybe<NotebookNodeConnection>;
   myPages?: Maybe<PageNodeConnection>;
+  myPaletteCollections?: Maybe<PaletteCollectionNodeConnection>;
+  myPaletteSwatchs?: Maybe<PaletteSwatchNodeConnection>;
+  myPalettes?: Maybe<PaletteNodeConnection>;
   myRooms?: Maybe<RoomNodeConnection>;
   notebook?: Maybe<NotebookNode>;
   page?: Maybe<PageNode>;
+  palette?: Maybe<PaletteNode>;
+  paletteCollection?: Maybe<PaletteCollectionNode>;
+  paletteSwatch?: Maybe<PaletteSwatchNode>;
   room?: Maybe<RoomNode>;
   user?: Maybe<UserNode>;
 };
@@ -491,6 +699,36 @@ export type QueryMyPagesArgs = {
   owner?: InputMaybe<Scalars["ID"]>;
 };
 
+export type QueryMyPaletteCollectionsArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
+};
+
+export type QueryMyPaletteSwatchsArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
+};
+
+export type QueryMyPalettesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
+};
+
 export type QueryMyRoomsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
@@ -506,6 +744,18 @@ export type QueryNotebookArgs = {
 };
 
 export type QueryPageArgs = {
+  id: Scalars["ID"];
+};
+
+export type QueryPaletteArgs = {
+  id: Scalars["ID"];
+};
+
+export type QueryPaletteCollectionArgs = {
+  id: Scalars["ID"];
+};
+
+export type QueryPaletteSwatchArgs = {
   id: Scalars["ID"];
 };
 
@@ -608,6 +858,18 @@ export type RoomNodeEdge = {
   node?: Maybe<RoomNode>;
 };
 
+export type UpdateBookshelfInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  notebookOrder?: InputMaybe<Array<InputMaybe<Scalars["UUID"]>>>;
+  pk: Scalars["UUID"];
+};
+
+export type UpdateBookshelfPayload = {
+  __typename?: "UpdateBookshelfPayload";
+  bookshelf?: Maybe<BookshelfNode>;
+  clientMutationId?: Maybe<Scalars["String"]>;
+};
+
 export type UpdateElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   fillColor?: InputMaybe<Scalars["String"]>;
@@ -641,13 +903,14 @@ export type UpdateNotebookPayload = {
 };
 
 export type UpdatePageInput = {
-  bgColor?: InputMaybe<Scalars["String"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookPk?: InputMaybe<Scalars["UUID"]>;
-  patternColor?: InputMaybe<Scalars["String"]>;
+  paperColor?: InputMaybe<Scalars["JSONString"]>;
+  patternColor?: InputMaybe<Scalars["JSONString"]>;
+  patternOpacity?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
-  patternStyle?: InputMaybe<Scalars["String"]>;
+  patternType?: InputMaybe<Scalars["Int"]>;
   pk: Scalars["UUID"];
 };
 
@@ -655,6 +918,31 @@ export type UpdatePagePayload = {
   __typename?: "UpdatePagePayload";
   clientMutationId?: Maybe<Scalars["String"]>;
   page?: Maybe<PageNode>;
+};
+
+export type UpdatePaletteInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  pk: Scalars["UUID"];
+  title?: InputMaybe<Scalars["String"]>;
+};
+
+export type UpdatePalettePayload = {
+  __typename?: "UpdatePalettePayload";
+  clientMutationId?: Maybe<Scalars["String"]>;
+  palette?: Maybe<PaletteNode>;
+};
+
+export type UpdatePaletteSwatchInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  pk: Scalars["UUID"];
+  swatch?: InputMaybe<Scalars["JSONString"]>;
+  swatchType?: InputMaybe<Scalars["Int"]>;
+};
+
+export type UpdatePaletteSwatchPayload = {
+  __typename?: "UpdatePaletteSwatchPayload";
+  clientMutationId?: Maybe<Scalars["String"]>;
+  swatch?: Maybe<PaletteSwatchNode>;
 };
 
 export type UserNode = Node & {
@@ -675,6 +963,9 @@ export type UserNode = Node & {
   lastName: Scalars["String"];
   notebooks: NotebookNodeConnection;
   pages: PageNodeConnection;
+  paletteCollection?: Maybe<PaletteCollectionNode>;
+  paletteSwatches: PaletteSwatchNodeConnection;
+  palettes: PaletteNodeConnection;
   pk: Scalars["UUID"];
   rooms: RoomNodeConnection;
   /** Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -721,6 +1012,26 @@ export type UserNodePagesArgs = {
   id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   notebook?: InputMaybe<Scalars["ID"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
+};
+
+export type UserNodePaletteSwatchesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
+};
+
+export type UserNodePalettesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
   owner?: InputMaybe<Scalars["ID"]>;
 };
@@ -801,6 +1112,12 @@ export type CreateNotebookMutation = {
 
 export type CreatePageMutationVariables = Exact<{
   notebookPk: Scalars["UUID"];
+  paperColor?: InputMaybe<Scalars["JSONString"]>;
+  patternColor?: InputMaybe<Scalars["JSONString"]>;
+  patternType?: InputMaybe<Scalars["Int"]>;
+  patternSize?: InputMaybe<Scalars["Float"]>;
+  patternSpacing?: InputMaybe<Scalars["Float"]>;
+  patternOpacity?: InputMaybe<Scalars["Int"]>;
 }>;
 
 export type CreatePageMutation = {
@@ -812,11 +1129,12 @@ export type CreatePageMutation = {
       pk: any;
       updatedAt: any;
       createdAt: any;
-      bgColor?: string | null;
-      patternStyle: CorePagePatternStyleChoices;
-      patternColor?: string | null;
+      paperColor: any;
+      patternType: number;
+      patternColor?: any | null;
       patternSize?: number | null;
       patternSpacing?: number | null;
+      patternOpacity?: number | null;
       notebook: { __typename?: "NotebookNode"; pk: any; pageOrder: Array<any> };
     } | null;
   } | null;
@@ -873,12 +1191,47 @@ export type MyPagesQuery = {
         pk: any;
         updatedAt: any;
         createdAt: any;
-        bgColor?: string | null;
-        patternStyle: CorePagePatternStyleChoices;
-        patternColor?: string | null;
+        paperColor: any;
+        patternColor?: any | null;
+        patternType: number;
         patternSize?: number | null;
         patternSpacing?: number | null;
+        patternOpacity?: number | null;
         notebook: { __typename?: "NotebookNode"; pk: any };
+      } | null;
+    } | null>;
+  } | null;
+};
+
+export type MyPalettesQueryVariables = Exact<{
+  pk?: InputMaybe<Scalars["ID"]>;
+}>;
+
+export type MyPalettesQuery = {
+  __typename?: "Query";
+  myPalettes?: {
+    __typename?: "PaletteNodeConnection";
+    edges: Array<{
+      __typename?: "PaletteNodeEdge";
+      node?: {
+        __typename?: "PaletteNode";
+        pk: any;
+        updatedAt: any;
+        createdAt: any;
+        title?: string | null;
+        collection: { __typename?: "PaletteCollectionNode"; paletteOrder: Array<any> };
+        swatches: {
+          __typename?: "PaletteSwatchNodeConnection";
+          edges: Array<{
+            __typename?: "PaletteSwatchNodeEdge";
+            node?: {
+              __typename?: "PaletteSwatchNode";
+              pk: any;
+              swatchType: CorePaletteSwatchSwatchTypeChoices;
+              swatch: any;
+            } | null;
+          } | null>;
+        };
       } | null;
     } | null>;
   } | null;
@@ -1248,6 +1601,36 @@ export const CreatePageDocument = {
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
           },
         },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "paperColor" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternColor" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternType" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSize" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSpacing" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -1266,6 +1649,36 @@ export const CreatePageDocument = {
                       kind: "ObjectField",
                       name: { kind: "Name", value: "notebookPk" },
                       value: { kind: "Variable", name: { kind: "Name", value: "notebookPk" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "paperColor" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "paperColor" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternColor" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternColor" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternType" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternType" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternSize" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternSize" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternSpacing" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternSpacing" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternOpacity" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
                     },
                   ],
                 },
@@ -1294,11 +1707,12 @@ export const CreatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "pk" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                      { kind: "Field", name: { kind: "Name", value: "bgColor" } },
-                      { kind: "Field", name: { kind: "Name", value: "patternStyle" } },
+                      { kind: "Field", name: { kind: "Name", value: "paperColor" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternType" } },
                       { kind: "Field", name: { kind: "Name", value: "patternColor" } },
                       { kind: "Field", name: { kind: "Name", value: "patternSize" } },
                       { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
                     ],
                   },
                 },
@@ -1488,11 +1902,12 @@ export const MyPagesDocument = {
                             { kind: "Field", name: { kind: "Name", value: "pk" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                            { kind: "Field", name: { kind: "Name", value: "bgColor" } },
-                            { kind: "Field", name: { kind: "Name", value: "patternStyle" } },
+                            { kind: "Field", name: { kind: "Name", value: "paperColor" } },
                             { kind: "Field", name: { kind: "Name", value: "patternColor" } },
+                            { kind: "Field", name: { kind: "Name", value: "patternType" } },
                             { kind: "Field", name: { kind: "Name", value: "patternSize" } },
                             { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
+                            { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
                           ],
                         },
                       },
@@ -1507,6 +1922,115 @@ export const MyPagesDocument = {
     },
   ],
 } as unknown as DocumentNode<MyPagesQuery, MyPagesQueryVariables>;
+export const MyPalettesDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "MyPalettes" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "myPalettes" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "collection" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "paletteOrder" } },
+                                ],
+                              },
+                            },
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                            { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                            { kind: "Field", name: { kind: "Name", value: "title" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "swatches" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "pk" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "swatchType" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "swatch" },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<MyPalettesQuery, MyPalettesQueryVariables>;
 export const MyRoomsDocument = {
   kind: "Document",
   definitions: [

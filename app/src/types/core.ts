@@ -1,4 +1,4 @@
-import type { PatternStyles } from "@/constants/core";
+import type { PATTERN_TYPES } from "@/constants/core";
 
 export type TPrimaryKey = string;
 
@@ -47,11 +47,14 @@ export interface IPage {
   updatedAt: string;
   createdAt: string;
   notebook: TPrimaryKey;
-  bgColor: string | null | undefined;
-  patternStyle: PatternStyles | null | undefined;
-  patternColor: string | null | undefined;
-  patternSize: number | null | undefined;
-  patternSpacing: number | null | undefined;
+  paperColor: TColor;
+  patternType: PATTERN_TYPES;
+  patternColor: TColor;
+  patternOpacity: number;
+  patternSize: number | null;
+  patternSpacing: number | null;
+  fillColor: TColor;
+  strokeColor: TColor;
 }
 
 export interface IElements {

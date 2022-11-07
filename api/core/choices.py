@@ -21,9 +21,14 @@ class Tools(models.IntegerChoices):
     PAPER = 70,
 
 
-class PatternStyles(models.IntegerChoices):
-    SOLID = 1,
-    DOTS = 2,
-    SQUARES = 3,
-    LINES = 4,
-    ISOMETRIC = 5,
+class PatternTypes(models.IntegerChoices):
+    SOLID = 1, _('Solid'),
+    DOTS = 2, _('Dots'),
+    SQUARES = 3, _('Squares'),
+    LINES = 4, _('Lines'),
+    ISOMETRIC = 5, _('Isometric'),
+
+
+class SwatchTypes(models.IntegerChoices):
+    SOLID_COLOR = 1,
+    LINEAR_GRADIENT_COLOR = 10,

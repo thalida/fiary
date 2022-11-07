@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from "vue";
 
 const props = defineProps({
   lineSize: {
@@ -12,11 +12,10 @@ const props = defineProps({
   },
   fillColor: {
     type: String,
-    default: 'black',
+    default: "black",
   },
 });
 const lineYPos = computed(() => props.spacing - props.lineSize);
-
 </script>
 <template>
   <pattern x="0" y="0" :width="spacing" :height="spacing" patternUnits="userSpaceOnUse">

@@ -2,7 +2,7 @@ import uuid
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.dispatch import receiver
-from .choices import PatternStyles, Tools
+from .choices import PatternTypes, SwatchTypes, Tools
 
 
 class Room(models.Model):
@@ -70,15 +70,6 @@ def setup_bookshelf(sender, instance, created, **kwargs):
     room.bookshelf_order.append(bookshelf.id)
     room.save()
 
-    num_bookshelves = len(room.bookshelf_order)
-    if (num_bookshelves == 1):
-        notebook = Notebook.objects.create(
-            owner=bookshelf.owner,
-            bookshelf=bookshelf,
-            title='Untitled'
-        )
-        notebook.save()
-
 
 class Notebook(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -122,12 +113,6 @@ def setup_notebook(sender, instance, created, **kwargs):
     bookshelf.notebook_order.append(notebook.id)
     bookshelf.save()
 
-    page = Page.objects.create(
-        owner=notebook.owner,
-        notebook=notebook,
-    )
-    page.save()
-
 
 class Page(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -145,18 +130,12 @@ class Page(models.Model):
         on_delete=models.CASCADE
     )
 
-    bg_color = models.CharField(
-        max_length=255,
-        default=None,
-        blank=True,
-        null=True
+    paper_color = models.JSONField()
+    pattern_type = models.IntegerField(
+        choices=PatternTypes.choices,
+        default=PatternTypes.SOLID
     )
-    pattern_style = models.IntegerField(
-        choices=PatternStyles.choices,
-        default=PatternStyles.SOLID
-    )
-    pattern_color = models.CharField(
-        max_length=255,
+    pattern_color = models.JSONField(
         default=None,
         blank=True,
         null=True
@@ -167,6 +146,11 @@ class Page(models.Model):
         null=True
     )
     pattern_spacing = models.FloatField(
+        default=None,
+        blank=True,
+        null=True
+    )
+    pattern_opacity = models.IntegerField(
         default=None,
         blank=True,
         null=True
@@ -243,3 +227,92 @@ class Element(models.Model):
 
     def __unicode__(self):
         return f'{self.id}-tool:{self.tool}'
+
+
+class PaletteCollection(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    owner = models.OneToOneField(
+        'users.User',
+        related_name='palette_collection',
+        on_delete=models.CASCADE
+    )
+    palette_order = ArrayField(
+        models.UUIDField(),
+        default=list,
+        blank=True
+    )
+
+    def __unicode__(self):
+        return self.id
+
+
+class Palette(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    owner = models.ForeignKey(
+        'users.User',
+        related_name='palettes',
+        on_delete=models.CASCADE
+    )
+
+    collection = models.ForeignKey(
+        PaletteCollection,
+        related_name='palettes',
+        on_delete=models.CASCADE
+    )
+
+    title = models.CharField(
+        max_length=255,
+        default=None,
+        blank=True,
+        null=True
+    )
+
+    def __unicode__(self):
+        return self.title
+
+
+@receiver(models.signals.post_save, sender=Palette)
+def setup_palette(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    palette = instance
+    collection = palette.collection
+    collection.palette_order.append(palette.id)
+    collection.save()
+
+
+class PaletteSwatch(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    owner = models.ForeignKey(
+        'users.User',
+        related_name='palette_swatches',
+        on_delete=models.CASCADE
+    )
+
+    palette = models.ForeignKey(
+        Palette,
+        related_name='swatches',
+        on_delete=models.CASCADE
+    )
+
+    swatch_type = models.IntegerField(
+        choices=SwatchTypes.choices,
+        default=None,
+    )
+
+    swatch = models.JSONField(
+        default=None,
+    )
+
+    def __unicode__(self):
+        return f'{self.palette}-{self.swatch_type}'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from "vue";
 
 const props = defineProps({
   lineSize: {
@@ -12,17 +12,16 @@ const props = defineProps({
   },
   fillColor: {
     type: String,
-    default: 'black',
+    default: "black",
   },
 });
 
 defineExpose({
-  label: 'Dotted',
+  label: "Dotted",
 });
 
-const patternSize = computed(() => props.lineSize + (props.spacing * 2));
+const patternSize = computed(() => props.lineSize + props.spacing * 2);
 const dotRadius = computed(() => props.lineSize / 2);
-
 </script>
 <template>
   <pattern x="0" y="0" :width="patternSize" :height="patternSize" patternUnits="userSpaceOnUse">

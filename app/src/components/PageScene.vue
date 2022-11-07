@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, watchEffect } from "vue";
+import type Moveable from "moveable";
 import cloneDeep from "lodash/cloneDeep";
 import { useCanvasStore } from "@/stores/canvas";
 import {
@@ -9,6 +10,11 @@ import {
   CANVAS_PAPER_TOOL,
   CANVAS_LINE_TOOLS,
   TRANSPARENT_COLOR,
+  CANVAS_INTERACTIVE_TOOLS,
+  DEFAULT_SWATCH_KEY,
+  DEFAULT_ELEMENT_FILLCOLOR_INDEX,
+  DEFAULT_ELEMENT_STROKECOLOR_INDEX,
+  SPECIAL_TOOL_SWATCH_KEY,
 } from "@/constants/core";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
@@ -19,11 +25,14 @@ import PagePasteLayer from "@/components/PagePasteLayer.vue";
 import PageAddImageLayer from "@/components/PageAddImageLayer.vue";
 import PageRulerLayer from "@/components/PageRulerLayer.vue";
 import PageToolbar from "@/components/PageToolbar.vue";
+import { useCoreStore } from "@/stores/core";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageId: TPrimaryKey }>();
+const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 
+const page = computed(() => coreStore.pages[props.pageId]);
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
@@ -35,19 +44,6 @@ const rulerLayer = ref<typeof PageRulerLayer>();
 const toolbar = ref<typeof PageToolbar>();
 const drawingCanvas = ref<HTMLCanvasElement>();
 const activePanCoords = ref<{ x: number; y: number }[]>([]);
-
-const selectedFillColor = computed(() => {
-  return canvasStore.getSwatchColor(
-    sceneStore.value.selectedFillSwatchId,
-    sceneStore.value.selectedFillColorIdx
-  );
-});
-const selectedStrokeColor = computed(() => {
-  return canvasStore.getSwatchColor(
-    sceneStore.value.selectedStrokeSwatchId,
-    sceneStore.value.selectedStrokeColorIdx
-  );
-});
 
 function initScene(canvas: HTMLCanvasElement) {
   if (typeof canvas === "undefined") {
@@ -106,6 +102,119 @@ function handleAddTextbox(pos: IElementPoint) {
   sceneStore.value.createElement(textboxElement);
 }
 
+function getMousePos(
+  canvas: HTMLCanvasElement,
+  event: MouseEvent | TouchEvent,
+  followRuler = false,
+  rulerElement?: Moveable
+) {
+  const rect = canvas.getBoundingClientRect(); // abs. size of element
+  const clientX = (event as TouchEvent).touches
+    ? (event as TouchEvent).touches[0].clientX
+    : (event as MouseEvent).clientX;
+  const clientY = (event as TouchEvent).touches
+    ? (event as TouchEvent).touches[0].clientY
+    : (event as MouseEvent).clientY;
+  let inputX = clientX;
+  let inputY = clientY;
+  let isRulerLine = false;
+
+  if (sceneStore.value.isRulerMode && followRuler && rulerElement) {
+    const searchDistance = 25;
+    let foundX, foundY;
+    let searchFor = true;
+    let isFirstLoop = true;
+
+    let dx = 0;
+    while (dx <= searchDistance) {
+      const rx1 = clientX - dx;
+      const rx2 = clientX + dx;
+
+      let dy = 0;
+      while (dy <= searchDistance) {
+        const ry1 = clientY - dy;
+        const ry2 = clientY + dy;
+        const searchDirections = [
+          [rx1, ry1],
+          [rx1, ry2],
+          [rx2, ry1],
+          [rx2, ry2],
+        ];
+
+        for (let i = 0; i < searchDirections.length; i += 1) {
+          const searchDirection = searchDirections[i];
+          const isInside = rulerElement.isInside(searchDirection[0], searchDirection[1]);
+
+          if (isFirstLoop) {
+            searchFor = !isInside;
+            isFirstLoop = false;
+          }
+
+          if (isInside === searchFor) {
+            foundX = searchDirection[0];
+            foundY = searchDirection[1];
+            break;
+          }
+        }
+
+        if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
+          break;
+        }
+
+        dy += 1;
+      }
+
+      if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
+        break;
+      }
+
+      dx += 1;
+    }
+
+    if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
+      isRulerLine = true;
+      inputX = foundX;
+      inputY = foundY;
+    }
+  }
+
+  const x = inputX - rect.left;
+  const y = inputY - rect.top;
+  return { x, y, isRulerLine };
+}
+
+function getDrawPos(
+  canvas: HTMLCanvasElement,
+  event: MouseEvent | TouchEvent,
+  followRuler = false,
+  rulerElement?: Moveable
+) {
+  const pos = getMousePos(canvas, event, followRuler, rulerElement);
+  let cameraX = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.e : 0;
+  let cameraY = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.f : 0;
+  const cameraZoom = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.a : 1;
+  const initMatrixA = sceneStore.value.initTransformMatrix
+    ? sceneStore.value.initTransformMatrix.a
+    : 1;
+  const relativeZoom = initMatrixA / cameraZoom;
+
+  const isInteractiveTool = CANVAS_INTERACTIVE_TOOLS.includes(sceneStore.value.selectedTool);
+  if (isInteractiveTool) {
+    cameraX /= cameraZoom;
+    cameraY /= cameraZoom;
+  }
+
+  const transformedPos = {
+    x: pos.x * relativeZoom - cameraX,
+    y: pos.y * relativeZoom - cameraY,
+  };
+
+  return {
+    ...pos,
+    ...transformedPos,
+  };
+}
+
 function handleClearAll() {
   const lastElementId = sceneStore.value.lastActiveElementId;
   const lastElement = sceneStore.value.elementById(lastElementId);
@@ -156,7 +265,7 @@ function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
     return;
   }
 
-  const pos = sceneStore.value.getMousePos(drawingCanvas.value, event);
+  const pos = getMousePos(drawingCanvas.value, event);
 
   if (isStart) {
     activePanCoords.value = [
@@ -230,8 +339,8 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   sceneStore.value.isDrawing = true;
 
   const strokeColor =
-    selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
-  const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
+    selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : page.value.strokeColor;
+  const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : page.value.fillColor;
 
   const newElement = new ELEMENT_MAP[selectedTool]({
     tool: selectedTool,
@@ -239,12 +348,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
     fillColor,
   });
 
-  const pos = sceneStore.value.getDrawPos(
-    drawingCanvas.value,
-    event,
-    true,
-    rulerLayer.value?.moveableEl
-  );
+  const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
   newElement.isRulerLine = pos.isRulerLine;
   newElement.size = selectedTool === ELEMENT_TYPE.CUT ? 0 : sceneStore.value.selectedToolSize;
   newElement.toolOptions = {
@@ -305,12 +409,7 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   const lastElementId = sceneStore.value.elementOrder[sceneStore.value.elementOrder.length - 1];
   const lastElement = sceneStore.value.elementById(lastElementId);
   const followRuler = lastElement.isRulerLine || !CANVAS_LINE_TOOLS.includes(lastElement.tool);
-  const pos = sceneStore.value.getDrawPos(
-    drawingCanvas.value,
-    event,
-    followRuler,
-    rulerLayer.value?.moveableEl
-  );
+  const pos = getDrawPos(drawingCanvas.value, event, followRuler, rulerLayer.value?.moveableEl);
   const pressure = lastElement.getPressure(event, sceneStore.value.isStylus);
 
   if (lastElement.tool === ELEMENT_TYPE.CIRCLE || lastElement.tool === ELEMENT_TYPE.RECTANGLE) {
@@ -363,23 +462,13 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
 
   if (sceneStore.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
-    const pos = sceneStore.value.getDrawPos(
-      drawingCanvas.value,
-      event,
-      true,
-      rulerLayer.value?.moveableEl
-    );
+    const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
     handleAddCheckbox(pos);
     return;
   }
 
   if (sceneStore.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
-    const pos = sceneStore.value.getDrawPos(
-      drawingCanvas.value,
-      event,
-      true,
-      rulerLayer.value?.moveableEl
-    );
+    const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
     handleAddTextbox(pos);
     return;
   }
