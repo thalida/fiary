@@ -28,7 +28,14 @@ class PatternTypes(models.IntegerChoices):
     LINES = 4, _('Lines'),
     ISOMETRIC = 5, _('Isometric'),
 
+class PaletteTypes(models.IntegerChoices):
+    GENERAL = 1, _('General'),
+    PAPER = 10, _('Paper'),
+    PATTERN = 20, _('Pattern'),
+    TOOL_FILL = 31, _('Tool - Fill'),
+    TOOL_STROKE = 32, _('Tool - Stroke'),
 
-class SwatchTypes(models.IntegerChoices):
-    SOLID_COLOR = 1,
-    LINEAR_GRADIENT_COLOR = 10,
+class SwatchDefaultUsages(models.IntegerChoices):
+    PAPER = 1, _('Paper'),
+    PATTERN = 10, _('Pattern'),
+    TOOL = 20, _('Tool'),

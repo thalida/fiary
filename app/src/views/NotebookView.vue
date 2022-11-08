@@ -26,7 +26,6 @@ watchEffect(async () => {
   if (isAuthenticated.value) {
     isLoading.value = true;
     await coreStore.fetchNotebook(props.notebookId);
-    await coreStore.fetchMyPalettes();
     isLoading.value = false;
   }
 });

@@ -8,8 +8,18 @@ query MyPages($pk: ID) {
         pk
         updatedAt
         createdAt
-        paperColor
-        patternColor
+        paperSwatch {
+          pk
+          palette {
+            pk
+          }
+        }
+        patternSwatch {
+          pk
+          palette {
+            pk
+          }
+        }
         patternType
         patternSize
         patternSpacing

@@ -1,7 +1,7 @@
 mutation CreatePage(
   $notebookPk: UUID!
-  $paperColor: JSONString
-  $patternColor: JSONString
+  $paperSwatchPk: UUID!
+  $patternSwatchPk: UUID
   $patternType: Int
   $patternSize: Float
   $patternSpacing: Float
@@ -10,8 +10,8 @@ mutation CreatePage(
   createPage(
     input: {
       notebookPk: $notebookPk
-      paperColor: $paperColor
-      patternColor: $patternColor
+      paperSwatchPk: $paperSwatchPk
+      patternSwatchPk: $patternSwatchPk
       patternType: $patternType
       patternSize: $patternSize
       patternSpacing: $patternSpacing
@@ -26,9 +26,19 @@ mutation CreatePage(
       pk
       updatedAt
       createdAt
-      paperColor
+      paperSwatch {
+        pk
+        palette {
+          pk
+        }
+      }
+      patternSwatch {
+        pk
+        palette {
+          pk
+        }
+      }
       patternType
-      patternColor
       patternSize
       patternSpacing
       patternOpacity

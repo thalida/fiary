@@ -1,5 +1,5 @@
-import json
 import graphene
+from django.db.models import Q
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
@@ -14,6 +14,7 @@ class RoomNode(IsOwner, DjangoObjectType):
         model = Room
         filter_fields = ['id', 'owner']
         interfaces = (graphene.relay.Node, )
+        convert_choices_to_enum = False
 
 
 class BookshelfNode(IsOwner, DjangoObjectType):
@@ -23,6 +24,7 @@ class BookshelfNode(IsOwner, DjangoObjectType):
         model = Bookshelf
         filter_fields = ['id', 'owner', 'room']
         interfaces = (graphene.relay.Node, )
+        convert_choices_to_enum = False
 
 
 class NotebookNode(IsOwner, DjangoObjectType):
@@ -32,6 +34,7 @@ class NotebookNode(IsOwner, DjangoObjectType):
         model = Notebook
         filter_fields = ['id', 'owner', 'bookshelf']
         interfaces = (graphene.relay.Node, )
+        convert_choices_to_enum = False
 
 
 class PageNode(IsOwner, DjangoObjectType):
@@ -51,6 +54,7 @@ class ElementNode(IsOwner, DjangoObjectType):
         model = Element
         filter_fields = ['id', 'owner', 'page']
         interfaces = (graphene.relay.Node, )
+        convert_choices_to_enum = False
 
 
 class PaletteCollectionNode(IsOwner, DjangoObjectType):
@@ -60,25 +64,35 @@ class PaletteCollectionNode(IsOwner, DjangoObjectType):
         model = PaletteCollection
         filter_fields = ['id', 'owner']
         interfaces = (graphene.relay.Node, )
+        convert_choices_to_enum = False
 
 
-class PaletteNode(IsOwner, DjangoObjectType):
+class PaletteNode(DjangoObjectType):
     pk = graphene.UUID(source='id', required=True)
 
     class Meta:
         model = Palette
         filter_fields = ['id', 'owner']
         interfaces = (graphene.relay.Node, )
+        convert_choices_to_enum = False
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return queryset.filter(Q(owner=info.context.user) | Q(is_public=True))
 
 
-class PaletteSwatchNode(IsOwner, DjangoObjectType):
+class PaletteSwatchNode(DjangoObjectType):
     pk = graphene.UUID(source='id', required=True)
 
     class Meta:
         model = PaletteSwatch
         filter_fields = ['id', 'owner']
         interfaces = (graphene.relay.Node, )
+        convert_choices_to_enum = False
 
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return queryset.filter(Q(owner=info.context.user) | Q(palette__is_public=True))
 
 class CreateRoom(graphene.relay.ClientIDMutation):
     room = graphene.Field(RoomNode)
@@ -206,8 +220,8 @@ class DeleteNotebook(graphene.relay.ClientIDMutation):
 class CreatePage(graphene.relay.ClientIDMutation):
     class Input:
         notebook_pk = graphene.UUID(required=True)
-        paper_color = graphene.JSONString(required=False)
-        pattern_color = graphene.JSONString(required=False)
+        paper_swatch_pk = graphene.UUID(required=False)
+        pattern_swatch_pk = graphene.UUID(required=False)
         pattern_type = graphene.Int(required=False)
         pattern_size = graphene.Float(required=False)
         pattern_spacing = graphene.Float(required=False)
@@ -227,6 +241,15 @@ class CreatePage(graphene.relay.ClientIDMutation):
         for k, v in input.items():
             if k == 'notebook_pk':
                 continue
+
+            if k == 'paper_swatch_pk':
+                page.paper_swatch = PaletteSwatch.objects.get(id=v)
+                continue
+
+            if k == 'pattern_swatch_pk':
+                page.pattern_swatch = PaletteSwatch.objects.get(id=v)
+                continue
+
             setattr(page, k, v)
 
         page.save()
@@ -238,8 +261,8 @@ class UpdatePage(graphene.relay.ClientIDMutation):
     class Input:
         pk = graphene.UUID(required=True)
         notebook_pk = graphene.UUID(required=False)
-        paper_color = graphene.JSONString(required=False)
-        pattern_color = graphene.JSONString(required=False)
+        paper_swatch_pk = graphene.UUID(required=False)
+        pattern_swatch_pk = graphene.UUID(required=False)
         pattern_type = graphene.Int(required=False)
         pattern_size = graphene.Float(required=False)
         pattern_spacing = graphene.Float(required=False)
@@ -266,6 +289,14 @@ class UpdatePage(graphene.relay.ClientIDMutation):
                 new_notebook.save()
 
                 page.notebook = new_notebook
+                continue
+
+            if k == 'paper_swatch_pk':
+                page.paper_swatch = PaletteSwatch.objects.get(id=v)
+                continue
+
+            if k == 'pattern_swatch_pk':
+                page.pattern_swatch = PaletteSwatch.objects.get(id=v)
                 continue
 
             setattr(page, k, v)
@@ -367,7 +398,8 @@ class DeleteElement(graphene.relay.ClientIDMutation):
 
 class CreatePalette(graphene.relay.ClientIDMutation):
     class Input:
-        title = graphene.String(required=True)
+        title = graphene.String(required=False)
+        swatches = graphene.List(graphene.JSONString, required=False)
 
     palette = graphene.Field(PaletteNode)
 
@@ -376,10 +408,24 @@ class CreatePalette(graphene.relay.ClientIDMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         collection = PaletteCollection.objects.get(owner=info.context.user)
         palette = Palette.objects.create(
-            owner=info.context.user,
-            title=input['title'],
-            collection=collection,
+            owner=info.context.user
         )
+        palette.collections.add(collection)
+
+        for k, v in input.items():
+            if k == 'swatches':
+                for swatch_json in v:
+                    swatch = PaletteSwatch.objects.create(
+                        owner=info.context.user,
+                        palette=palette,
+                        swatch=swatch_json,
+                    )
+                    swatch.save()
+                continue
+
+            setattr(palette, k, v)
+
+        palette.save()
 
         return CreatePalette(palette=palette)
 
@@ -395,6 +441,9 @@ class UpdatePalette(graphene.relay.ClientIDMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         palette = Palette.objects.get(id=input['pk'])
+
+        if palette.owner != info.context.user:
+            raise Exception('You do not have permission to update this palette.')
 
         for k, v in input.items():
             if k == 'pk':
@@ -416,6 +465,10 @@ class DeletePalette(graphene.relay.ClientIDMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         palette = Palette.objects.get(id=input['pk'])
+
+        if palette.owner != info.context.user:
+            raise Exception('You do not have permission to update this palette.')
+
         palette.delete()
 
         return DeletePalette(palette=palette)
@@ -424,7 +477,6 @@ class DeletePalette(graphene.relay.ClientIDMutation):
 class CreatePaletteSwatch(graphene.relay.ClientIDMutation):
     class Input:
         palette_pk = graphene.UUID(required=True)
-        swatch_type = graphene.Int(required=True)
         swatch = graphene.JSONString(required=True)
 
     swatch = graphene.Field(PaletteSwatchNode)
@@ -436,7 +488,6 @@ class CreatePaletteSwatch(graphene.relay.ClientIDMutation):
         swatch = PaletteSwatch.objects.create(
             owner=info.context.user,
             palette=palette,
-            swatch_type=input['swatch_type'],
             swatch=input['swatch'],
         )
 
@@ -446,7 +497,6 @@ class CreatePaletteSwatch(graphene.relay.ClientIDMutation):
 class UpdatePaletteSwatch(graphene.relay.ClientIDMutation):
     class Input:
         pk = graphene.UUID(required=True)
-        swatch_type = graphene.Int(required=False)
         swatch = graphene.JSONString(required=False)
 
     swatch = graphene.Field(PaletteSwatchNode)
@@ -455,6 +505,9 @@ class UpdatePaletteSwatch(graphene.relay.ClientIDMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         swatch = PaletteSwatch.objects.get(id=input['pk'])
+
+        if swatch.owner != info.context.user:
+            raise Exception('You do not have permission to update this palette.')
 
         for k, v in input.items():
             if k == 'pk':
@@ -476,6 +529,10 @@ class DeletePaletteSwatch(graphene.relay.ClientIDMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         swatch = PaletteSwatch.objects.get(id=input['pk'])
+
+        if swatch.owner != info.context.user:
+            raise Exception('You do not have permission to update this palette.')
+
         swatch.delete()
 
         return DeletePaletteSwatch(swatch=swatch)
@@ -498,7 +555,7 @@ class CoreQuery(graphene.ObjectType):
     my_elements = DjangoFilterConnectionField(ElementNode)
 
     palette_collection = graphene.relay.Node.Field(PaletteCollectionNode)
-    my_palette_collections = DjangoFilterConnectionField(PaletteCollectionNode)
+    my_palette_collection = DjangoFilterConnectionField(PaletteCollectionNode)
 
     palette = graphene.relay.Node.Field(PaletteNode)
     my_palettes = DjangoFilterConnectionField(PaletteNode)

@@ -18,6 +18,12 @@ const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 const selectedPatternComponent = computed(() => {
   return page.value.patternType !== PATTERN_TYPES.SOLID ? patterns[page.value.patternType] : null;
 });
+const paperColor = computed(() =>
+  coreStore.getSwatchColor(page.value.paperPalette, page.value.paperSwatch)
+);
+const patternColor = computed(() =>
+  coreStore.getSwatchColor(page.value.patternPalette, page.value.patternSwatch)
+);
 
 function setPaperTransforms(
   matrix:
@@ -50,12 +56,12 @@ defineExpose({
 </script>
 <template>
   <div v-if="sceneStore" class="paper-layer">
-    <div class="paper-color" :style="{ background: getColorAsCss(page.paperColor) }"></div>
+    <div class="paper-color" :style="{ background: getColorAsCss(paperColor) }"></div>
     <svg class="paper-pattern" width="100%" height="100%" v-if="selectedPatternComponent !== null">
       <component
         id="paper-svg-pattern"
         :is="selectedPatternComponent.COMPONENT"
-        :fillColor="getColorAsCss(page.patternColor)"
+        :fillColor="getColorAsCss(patternColor)"
         :lineSize="paperPatternTransform.lineSize"
         :spacing="paperPatternTransform.spacing"
         :x="paperPatternTransform.x"

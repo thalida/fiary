@@ -274,7 +274,6 @@ defineExpose({
         }"
         :element="sceneStore.elements[elementId]"
         :is-active="sceneStore.elements[elementId].id === activeElementId"
-        :colorSwatches="canvasStore.swatches"
         @change="handleTextboxChange"
         @focus="handleTextboxFocus"
         @blur="handleTextboxBlur"

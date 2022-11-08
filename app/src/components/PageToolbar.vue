@@ -6,27 +6,23 @@ import {
   LINE_END_SIDE_CHOICES,
   LINE_END_STYLE_CHOICES,
   PEN_SIZES,
-  SPECIAL_TOOL_SWATCH_KEY,
-  SPECIAL_PAPER_SWATCH_KEY,
   CANVAS_NONDRAWING_TOOLS,
   CANVAS_PAPER_TOOLS,
-  DEFAULT_PATTERN_COLOR_INDEX,
   PATTERN_TYPES,
   DEFAULT_PATTERN_TYPE,
-  DEFAULT_ELEMENT_FILLCOLOR_INDEX,
-  DEFAULT_ELEMENT_STROKECOLOR_INDEX,
-  DEFAULT_SWATCH_KEY,
+  PALETTE_TYPES,
 } from "@/constants/core";
 import ColorPicker from "@/components/PageColorPicker.vue";
-import { computed, reactive, ref } from "vue";
-import type { TColor, TPrimaryKey } from "@/types/core";
+import { computed } from "vue";
 import { useCoreStore } from "@/stores/core";
 import patterns, { patternOrder } from "@/components/PagePatterns";
+import type { TPrimaryKey } from "@/types/core";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 const page = computed(() => coreStore.pages[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const colorPickerRefs: any[] = [];
 
@@ -60,16 +56,6 @@ const emit = defineEmits<{
   (event: "action:paste:end"): void;
   (event: "action:paste:delete"): void;
 }>();
-const options = reactive({
-  selectedFillSwatchId: DEFAULT_SWATCH_KEY,
-  selectedFillColorIdx: DEFAULT_ELEMENT_FILLCOLOR_INDEX,
-  selectedStrokeSwatchId: SPECIAL_TOOL_SWATCH_KEY,
-  selectedStrokeColorIdx: DEFAULT_ELEMENT_STROKECOLOR_INDEX,
-  selectedPaperSwatchId: null as string | null,
-  selectedPaperColorIdx: null as number | null,
-  selectedPatternSwatchId: null as string | null,
-  selectedPatternColorIdx: null as number | null,
-});
 
 function addColorPickerRef(ref: any) {
   if (ref !== null) {
@@ -91,41 +77,30 @@ function closeAllColorPickers() {
   }
 }
 
-function handleFillColorChange(swatchId: string, colorIdx: number) {
-  options.selectedFillSwatchId = swatchId;
-  options.selectedFillColorIdx = colorIdx;
-  page.value.fillColor = coreStore.getSwatchColor(swatchId, colorIdx);
+function handleFillColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
+  pageOptions.value.fillPaletteId = paletteId;
+  pageOptions.value.fillSwatchId = swatchId;
 }
 
-function handleStrokeColorChange(swatchId: string, colorIdx: number) {
-  options.selectedStrokeSwatchId = swatchId;
-  options.selectedStrokeColorIdx = colorIdx;
-  page.value.strokeColor = coreStore.getSwatchColor(swatchId, colorIdx);
+function handleStrokeColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
+  pageOptions.value.strokePaletteId = paletteId;
+  pageOptions.value.strokeSwatchId = swatchId;
 }
 
-function handlePaperColorChange(swatchId: string, colorIdx: number) {
-  options.selectedPaperSwatchId = swatchId;
-  options.selectedPaperColorIdx = colorIdx;
-  page.value.paperColor = coreStore.getSwatchColor(swatchId, colorIdx);
+function handlePaperColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
+  page.value.paperPalette = paletteId;
+  page.value.paperSwatch = swatchId;
 }
 
-function handlePatternColorChange(swatchId: string, colorIdx: number) {
-  options.selectedPatternSwatchId = swatchId;
-  options.selectedPatternColorIdx = colorIdx;
-  page.value.patternColor = coreStore.getSwatchColor(swatchId, colorIdx);
+function handlePatternColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
+  page.value.patternPalette = paletteId;
+  page.value.patternSwatch = swatchId;
 }
 
 function handlePatternTypeChange() {
   if (typeof page.value.patternType === "undefined" || page.value.patternType === null) {
     page.value.patternType = DEFAULT_PATTERN_TYPE;
   }
-
-  options.selectedPatternSwatchId = SPECIAL_PAPER_SWATCH_KEY;
-  options.selectedPatternColorIdx = DEFAULT_PATTERN_COLOR_INDEX;
-  page.value.patternColor = coreStore.getSwatchColor(
-    options.selectedPatternSwatchId,
-    options.selectedPatternColorIdx
-  );
 
   page.value.patternSize = patterns[page.value.patternType]
     ? patterns[page.value.patternType].DEFAULT_PROPS.lineSize
@@ -208,20 +183,18 @@ defineExpose({
       v-if="isDrawingTool"
       style="display: inline"
       :ref="addColorPickerRef"
-      :color="page.fillColor"
-      :swatchId="options.selectedFillSwatchId"
-      :colorIdx="options.selectedFillColorIdx"
-      :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
+      :paletteId="pageOptions.fillPaletteId"
+      :swatchId="pageOptions.fillSwatchId"
+      :paletteType="PALETTE_TYPES.TOOL_FILL"
       @update="handleFillColorChange"
     />
     <ColorPicker
       v-if="isDrawingTool"
       style="display: inline"
       :ref="addColorPickerRef"
-      :color="page.strokeColor"
-      :swatchId="options.selectedStrokeSwatchId"
-      :colorIdx="options.selectedStrokeColorIdx"
-      :specialSwatchKey="SPECIAL_TOOL_SWATCH_KEY"
+      :paletteId="pageOptions.strokePaletteId"
+      :swatchId="pageOptions.strokeSwatchId"
+      :paletteType="PALETTE_TYPES.TOOL_STROKE"
       @update="handleStrokeColorChange"
     />
     <select v-if="isPaperTool" v-model="page.patternType" @change="handlePatternTypeChange">
@@ -234,20 +207,18 @@ defineExpose({
       v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       style="display: inline"
       :ref="addColorPickerRef"
-      :color="page.paperColor"
-      :swatchId="options.selectedPaperSwatchId"
-      :colorIdx="options.selectedPaperColorIdx"
-      :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
+      :paletteId="page.paperPalette"
+      :swatchId="page.paperSwatch"
+      :paletteType="PALETTE_TYPES.PAPER"
       @update="handlePaperColorChange"
     />
     <ColorPicker
       v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       style="display: inline"
       :ref="addColorPickerRef"
-      :color="page.patternColor as TColor"
-      :swatchId="options.selectedPatternSwatchId"
-      :colorIdx="options.selectedPatternColorIdx"
-      :specialSwatchKey="SPECIAL_PAPER_SWATCH_KEY"
+      :paletteId="page.patternPalette"
+      :swatchId="page.patternSwatch"
+      :paletteType="PALETTE_TYPES.PATTERN"
       @update="handlePatternColorChange"
     />
     <input

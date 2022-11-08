@@ -11,10 +11,6 @@ import {
   CANVAS_LINE_TOOLS,
   TRANSPARENT_COLOR,
   CANVAS_INTERACTIVE_TOOLS,
-  DEFAULT_SWATCH_KEY,
-  DEFAULT_ELEMENT_FILLCOLOR_INDEX,
-  DEFAULT_ELEMENT_STROKECOLOR_INDEX,
-  SPECIAL_TOOL_SWATCH_KEY,
 } from "@/constants/core";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
@@ -33,6 +29,7 @@ const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 
 const page = computed(() => coreStore.pages[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
 const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
@@ -44,6 +41,9 @@ const rulerLayer = ref<typeof PageRulerLayer>();
 const toolbar = ref<typeof PageToolbar>();
 const drawingCanvas = ref<HTMLCanvasElement>();
 const activePanCoords = ref<{ x: number; y: number }[]>([]);
+
+const selectedFillColor = computed(() => canvasStore.selectedFillColor(props.pageId));
+const selectedStrokeColor = computed(() => canvasStore.selectedStrokeColor(props.pageId));
 
 function initScene(canvas: HTMLCanvasElement) {
   if (typeof canvas === "undefined") {
@@ -58,6 +58,7 @@ function initScene(canvas: HTMLCanvasElement) {
 
   drawingCanvas.value = canvas;
   canvasStore.setupSceneStore(props.pageId, ctx.getTransform());
+  canvasStore.initPageOptions(props.pageId);
 
   watch(
     () => (sceneStore.value ? sceneStore.value.isDebugMode : false),
@@ -339,8 +340,8 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   sceneStore.value.isDrawing = true;
 
   const strokeColor =
-    selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : page.value.strokeColor;
-  const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : page.value.fillColor;
+    selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
+  const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
 
   const newElement = new ELEMENT_MAP[selectedTool]({
     tool: selectedTool,

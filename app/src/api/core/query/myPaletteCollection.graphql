@@ -1,0 +1,31 @@
+query MyPaletteCollection($pk: ID) {
+  myPaletteCollection(id: $pk) {
+    edges {
+      node {
+        pk
+        paletteOrder
+        palettes {
+          edges {
+            node {
+              pk
+              updatedAt
+              createdAt
+              title
+              isPublic
+              paletteType
+              swatches {
+                edges {
+                  node {
+                    pk
+                    swatch
+                    isDefault
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

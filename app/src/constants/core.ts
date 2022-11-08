@@ -1,5 +1,3 @@
-import type { IColorSwatches } from "@/types/core";
-
 export enum PageHistoryEvent {
   ADD_CANVAS_ELEMENT = 1,
   REMOVE_CANVAS_ELEMENT = 2,
@@ -84,55 +82,23 @@ export const LINE_END_STYLE_CHOICES = [
 
 export const PEN_SIZES = [5, 10, 20, 40, 60];
 export const DEFAULT_PEN_SIZE = 40;
-
 export const MAX_SWATCH_COLORS = 9;
 export const TRANSPARENT_COLOR = { r: 0, g: 0, b: 0, a: 0 };
-export const SPECIAL_TOOL_SWATCH_KEY = "special-tool-swatch";
-export const SPECIAL_PAPER_SWATCH_KEY = "special-paper-swatch";
-export const DEFAULT_SWATCH_KEY = "default";
-export const DEFAULT_COLOR_SWATCHES: IColorSwatches = {
-  [SPECIAL_TOOL_SWATCH_KEY]: [TRANSPARENT_COLOR],
-  [SPECIAL_PAPER_SWATCH_KEY]: [
-    { r: 255, g: 255, b: 255, a: 1 },
-    { r: 0, g: 0, b: 0, a: 1 },
-    { r: 255, g: 250, b: 232, a: 1 },
-    { r: 127, g: 127, b: 127, a: 1 },
-  ],
-  [DEFAULT_SWATCH_KEY]: [
-    { r: 0, g: 0, b: 0, a: 1 },
-    { r: 255, g: 0, b: 0, a: 1 },
-    { r: 0, g: 255, b: 0, a: 1 },
-    { r: 0, g: 0, b: 255, a: 1 },
-    { r: 255, g: 255, b: 0, a: 1 },
-    { r: 0, g: 255, b: 255, a: 1 },
-    { r: 255, g: 0, b: 255, a: 1 },
-    [
-      {
-        percent: 0,
-        color: { r: 255, g: 0, b: 0, a: 1 },
-      },
-      {
-        percent: 100,
-        color: { r: 0, g: 0, b: 255, a: 1 },
-      },
-    ],
-    [
-      {
-        percent: 0,
-        color: { r: 0, g: 255, b: 0, a: 1 },
-      },
-      {
-        percent: 100,
-        color: { r: 0, g: 0, b: 255, a: 1 },
-      },
-    ],
-  ],
-};
-export const DEFAULT_ELEMENT_FILLCOLOR_INDEX = 0;
-export const DEFAULT_ELEMENT_STROKECOLOR_INDEX = 0;
-export const DEFAULT_PAPER_COLOR_INDEX = 0;
-export const DEFAULT_PATTERN_COLOR_INDEX = 3;
 export const DEFAULT_PATTERN_OPACITY = 50;
+
+export enum PALETTE_TYPES {
+  GENERAL = 1,
+  PAPER = 10,
+  PATTERN = 20,
+  TOOL_FILL = 31,
+  TOOL_STROKE = 32,
+}
+
+export enum SWATCH_DEFAULT_USAGES {
+  PAPER = 1,
+  PATTERN = 10,
+  TOOL = 20,
+}
 
 export enum PATTERN_TYPES {
   SOLID = 1,

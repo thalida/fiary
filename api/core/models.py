@@ -2,7 +2,7 @@ import uuid
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.dispatch import receiver
-from .choices import PatternTypes, SwatchTypes, Tools
+from .choices import PaletteTypes, PatternTypes, SwatchDefaultUsages, Tools
 
 
 class Room(models.Model):
@@ -21,8 +21,8 @@ class Room(models.Model):
         blank=True
     )
 
-    def __unicode__(self):
-        return self.id
+    def __str__(self):
+        return f'{self.owner.username}\'s Room'
 
 
 @receiver(models.signals.post_save, sender=Room)
@@ -56,8 +56,8 @@ class Bookshelf(models.Model):
         blank=True
     )
 
-    def __unicode__(self):
-        return self.id
+    def __str__(self):
+        return f'{self.owner.username}\'s Bookshelf'
 
 
 @receiver(models.signals.post_save, sender=Bookshelf)
@@ -99,7 +99,7 @@ class Notebook(models.Model):
         null=True
     )
 
-    def __unicode__(self):
+    def __str__(self):
         return self.title
 
 
@@ -129,16 +129,25 @@ class Page(models.Model):
         related_name='pages',
         on_delete=models.CASCADE
     )
-
-    paper_color = models.JSONField()
-    pattern_type = models.IntegerField(
-        choices=PatternTypes.choices,
-        default=PatternTypes.SOLID
-    )
-    pattern_color = models.JSONField(
+    paper_swatch = models.ForeignKey(
+        'core.PaletteSwatch',
+        related_name='paper_swatch',
+        on_delete=models.SET_NULL,
         default=None,
         blank=True,
         null=True
+    )
+    pattern_swatch = models.ForeignKey(
+        'core.PaletteSwatch',
+        related_name='pattern_swatch',
+        on_delete=models.SET_NULL,
+        default=None,
+        blank=True,
+        null=True
+    )
+    pattern_type = models.IntegerField(
+        choices=PatternTypes.choices,
+        default=PatternTypes.SOLID
     )
     pattern_size = models.FloatField(
         default=None,
@@ -156,8 +165,8 @@ class Page(models.Model):
         null=True
     )
 
-    def __unicode__(self):
-        return f"{self.owner}'s page {self.id}"
+    def __str__(self):
+        return f"{self.owner.username}'s page {self.id}"
 
 
 @receiver(models.signals.post_save, sender=Page)
@@ -225,7 +234,7 @@ class Element(models.Model):
         blank=True
     )
 
-    def __unicode__(self):
+    def __str__(self):
         return f'{self.id}-tool:{self.tool}'
 
 
@@ -239,14 +248,15 @@ class PaletteCollection(models.Model):
         related_name='palette_collection',
         on_delete=models.CASCADE
     )
+
     palette_order = ArrayField(
         models.UUIDField(),
         default=list,
         blank=True
     )
 
-    def __unicode__(self):
-        return self.id
+    def __str__(self):
+        return f"{self.owner.username}'s collection - {self.id}"
 
 
 class Palette(models.Model):
@@ -260,10 +270,10 @@ class Palette(models.Model):
         on_delete=models.CASCADE
     )
 
-    collection = models.ForeignKey(
+    collections = models.ManyToManyField(
         PaletteCollection,
         related_name='palettes',
-        on_delete=models.CASCADE
+        blank=True
     )
 
     title = models.CharField(
@@ -273,19 +283,36 @@ class Palette(models.Model):
         null=True
     )
 
-    def __unicode__(self):
-        return self.title
+    is_public = models.BooleanField(
+        default=False
+    )
+
+    palette_type = models.IntegerField(
+        choices=PaletteTypes.choices,
+        default=PaletteTypes.GENERAL
+    )
+
+    def __str__(self):
+        return f'{self.title}'
 
 
 @receiver(models.signals.post_save, sender=Palette)
 def setup_palette(sender, instance, created, **kwargs):
-    if not created:
-        return
-
     palette = instance
-    collection = palette.collection
-    collection.palette_order.append(palette.id)
-    collection.save()
+
+    for collection in palette.collections.all():
+        if palette.id not in collection.palette_order:
+            collection.palette_order.append(palette.id)
+            collection.save()
+
+@receiver(models.signals.post_delete, sender=Palette)
+def teardown_palette(sender, instance, **kwargs):
+    palette = instance
+
+    for collection in palette.collections.all():
+        if palette.id in collection.palette_order:
+            collection.palette_order.remove(palette.id)
+            collection.save()
 
 
 class PaletteSwatch(models.Model):
@@ -305,14 +332,13 @@ class PaletteSwatch(models.Model):
         on_delete=models.CASCADE
     )
 
-    swatch_type = models.IntegerField(
-        choices=SwatchTypes.choices,
-        default=None,
-    )
-
     swatch = models.JSONField(
         default=None,
     )
 
-    def __unicode__(self):
-        return f'{self.palette}-{self.swatch_type}'
+    is_default = models.BooleanField(
+        default=False
+    )
+
+    def __str__(self):
+        return f'{self.palette}-{self.swatch}'

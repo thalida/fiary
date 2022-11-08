@@ -4,14 +4,6 @@ import {
   DEFAULT_PEN_SIZE,
   LineEndSide,
   LineEndStyle,
-  DEFAULT_SWATCH_KEY,
-  SPECIAL_PAPER_SWATCH_KEY,
-  DEFAULT_PAPER_COLOR_INDEX,
-  DEFAULT_PATTERN_COLOR_INDEX,
-  DEFAULT_PATTERN_OPACITY,
-  DEFAULT_ELEMENT_FILLCOLOR_INDEX,
-  SPECIAL_TOOL_SWATCH_KEY,
-  DEFAULT_ELEMENT_STROKECOLOR_INDEX,
   PageHistoryEvent,
 } from "@/constants/core";
 import type { IImageElementOptions, TPrimaryKey } from "@/types/core";

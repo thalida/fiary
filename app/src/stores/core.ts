@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import merge from "lodash/merge";
-import { v4 as uuidv4 } from "uuid";
 import { useQuery, processGraphqlData, useMutation } from "@/api";
 import {
   CreateNotebookDocument,
@@ -10,28 +9,27 @@ import {
   CreatePageDocument,
   MyPagesDocument,
   MyPalettesDocument,
+  UpdatePaletteSwatchDocument,
+  CreatePaletteDocument,
 } from "@/api/graphql-operations";
 import type {
   IBookshelves,
   INotebooks,
   IPage,
   IPages,
+  IPalette,
+  IPalettes,
+  IPaletteSwatch,
   IRooms,
   TColor,
   TPrimaryKey,
 } from "@/types/core";
 import {
-  DEFAULT_COLOR_SWATCHES,
-  DEFAULT_ELEMENT_FILLCOLOR_INDEX,
-  DEFAULT_ELEMENT_STROKECOLOR_INDEX,
-  DEFAULT_PAPER_COLOR_INDEX,
-  DEFAULT_PATTERN_COLOR_INDEX,
   DEFAULT_PATTERN_OPACITY,
   DEFAULT_PATTERN_TYPE,
-  DEFAULT_SWATCH_KEY,
   MAX_SWATCH_COLORS,
-  SPECIAL_PAPER_SWATCH_KEY,
-  SPECIAL_TOOL_SWATCH_KEY,
+  PALETTE_TYPES,
+  TRANSPARENT_COLOR,
 } from "@/constants/core";
 import { randomInteger } from "@/utils/math";
 
@@ -40,6 +38,22 @@ export const useCoreStore = defineStore("core", () => {
   const bookshelves = ref({} as IBookshelves);
   const notebooks = ref({} as INotebooks);
   const pages = ref({} as IPages);
+  const paletteCollections = ref({} as { [key: TPrimaryKey]: TPrimaryKey[] });
+  const palettes = ref({} as IPalettes);
+  const defaultPalettes = ref(
+    {} as { [key in PALETTE_TYPES]: { palette: TPrimaryKey; swatch: TPrimaryKey } }
+  );
+  const getSwatchColor = computed(
+    () => (paletteId: TPrimaryKey | null, swatchId: TPrimaryKey | null) => {
+      if (paletteId === null || swatchId === null) {
+        return TRANSPARENT_COLOR;
+      }
+
+      const palette = palettes.value[paletteId];
+      const swatch = palette.swatches[swatchId];
+      return swatch.swatch;
+    }
+  );
 
   const myRoom = computed(() => {
     const roomKeys = Object.keys(rooms.value);
@@ -56,10 +70,6 @@ export const useCoreStore = defineStore("core", () => {
 
     return bookshelves.value[bookshelfOrder[0]];
   });
-
-  const swatches = ref(DEFAULT_COLOR_SWATCHES);
-  const swatchOrder = ref([DEFAULT_SWATCH_KEY]);
-  const getSwatchColor = computed(() => (key: string, idx: number) => swatches.value[key][idx]);
 
   async function fetchMyRooms() {
     const { data } = await useQuery({
@@ -91,57 +101,88 @@ export const useCoreStore = defineStore("core", () => {
     }
   }
 
+  function storePalettes(res: any[]) {
+    for (let i = 0; i < res.length; i += 1) {
+      const paletteRes = res[i];
+      const palette: IPalette = {
+        pk: paletteRes.pk,
+        updatedAt: paletteRes.updatedAt,
+        createdAt: paletteRes.createdAt,
+        title: paletteRes.title,
+        paletteType: paletteRes.paletteType,
+        isPublic: paletteRes.isPublic,
+        swatches: {},
+        swatchOrder: [],
+      };
+      let defaultSwatch: TPrimaryKey | null = null;
+
+      for (let j = 0; j < paletteRes.swatches.length; j += 1) {
+        const swatchRes = paletteRes.swatches[j];
+        const swatch: IPaletteSwatch = {
+          pk: swatchRes.pk,
+          isDefault: swatchRes.isDefault,
+          swatch: JSON.parse(swatchRes.swatch),
+        };
+
+        if (swatch.isDefault) {
+          defaultSwatch = swatch.pk;
+        }
+
+        palette.swatches[swatch.pk] = swatch;
+        palette.swatchOrder.push(swatch.pk);
+      }
+
+      defaultSwatch = defaultSwatch || palette.swatchOrder[0];
+
+      if (palette.isPublic) {
+        defaultPalettes.value[palette.paletteType as PALETTE_TYPES] = {
+          palette: palette.pk,
+          swatch: defaultSwatch,
+        };
+      }
+
+      if (paletteRes.collections.length > 0) {
+        for (let k = 0; k < paletteRes.collections.length; k += 1) {
+          const collectionRes = paletteRes.collections[k];
+          const collectionPk = collectionRes.pk;
+          paletteCollections.value[collectionPk] = [...collectionRes.paletteOrder];
+        }
+      }
+
+      palettes.value[palette.pk] = palette;
+    }
+  }
+
   async function fetchMyPalettes() {
     const { data } = await useQuery({
       query: MyPalettesDocument,
       cachePolicy: "network-only",
     });
 
-    console.log(data.value);
+    const res = processGraphqlData(data.value, true);
 
-    // const res = processGraphqlData(data.value);
-    // for (let i = 0; i < res.myRooms.length; i += 1) {
-    //   const { pk, bookshelfOrder, updatedAt, createdAt } = res.myRooms[i];
-    //   rooms.value[pk] = { pk, bookshelfOrder, updatedAt, createdAt };
-    // }
-
-    // for (let i = 0; i < res.bookshelves.length; i += 1) {
-    //   const { pk, notebookOrder, updatedAt, createdAt, room } = res.bookshelves[i];
-    //   bookshelves.value[pk] = { pk, notebookOrder, updatedAt, createdAt, room: room.pk };
-    // }
-
-    // for (let i = 0; i < res.notebooks.length; i += 1) {
-    //   const { pk, title, pageOrder, updatedAt, createdAt, bookshelf } = res.notebooks[i];
-    //   notebooks.value[pk] = {
-    //     pk,
-    //     title,
-    //     pageOrder,
-    //     updatedAt,
-    //     createdAt,
-    //     bookshelf: bookshelf.pk,
-    //   };
-    // }
+    storePalettes(res.myPalettes);
   }
 
-  function createSwatch() {
-    const swatchId = uuidv4();
-    const colors = [];
+  async function createPalette() {
+    const { execute, data } = useMutation(CreatePaletteDocument);
+    const swatches = Array(MAX_SWATCH_COLORS).fill(JSON.stringify(TRANSPARENT_COLOR));
+    await execute({ swatches });
 
-    for (let i = 0; i < MAX_SWATCH_COLORS; i += 1) {
-      const color = {
-        r: randomInteger(0, 255),
-        g: randomInteger(0, 255),
-        b: randomInteger(0, 255),
-        a: 1,
-      };
-      colors.push(color);
+    const res = processGraphqlData(data.value.createPalette?.palette, true);
+    storePalettes([res]);
+  }
+
+  async function updateSwatchColor(paletteId: TPrimaryKey, swatchId: TPrimaryKey, color: TColor) {
+    const { execute, data } = useMutation(UpdatePaletteSwatchDocument);
+    await execute({ pk: swatchId, swatch: JSON.stringify(color) });
+
+    const swatch = data.value.updatePaletteSwatch?.swatch;
+    if (swatch) {
+      const palettePk = swatch.palette.pk;
+      const swatchPk = swatch.pk;
+      palettes.value[palettePk].swatches[swatchPk].swatch = JSON.parse(swatch.swatch);
     }
-    swatches.value[swatchId] = colors;
-    swatchOrder.value.push(swatchId);
-  }
-
-  function updateSwatchColor(swatchId: string, colorIdx: number, color: TColor) {
-    swatches.value[swatchId][colorIdx] = color;
   }
 
   async function fetchNotebook(pk: TPrimaryKey) {
@@ -211,33 +252,25 @@ export const useCoreStore = defineStore("core", () => {
       updatedAt: page.updatedAt,
       createdAt: page.createdAt,
       notebook: page.notebook.pk,
-      paperColor: page.paperColor
-        ? JSON.parse(page.paperColor as unknown as string)
-        : getSwatchColor.value(SPECIAL_PAPER_SWATCH_KEY, DEFAULT_PAPER_COLOR_INDEX),
+      paperSwatch: page.paperSwatch
+        ? page.paperSwatch.pk
+        : defaultPalettes.value[PALETTE_TYPES.PAPER]?.swatch,
+      paperPalette: page.paperSwatch
+        ? page.paperSwatch.palette.pk
+        : defaultPalettes.value[PALETTE_TYPES.PAPER]?.palette,
+      patternSwatch: page.patternSwatch
+        ? page.patternSwatch.pk
+        : defaultPalettes.value[PALETTE_TYPES.PATTERN]?.swatch,
+      patternPalette: page.patternSwatch
+        ? page.patternSwatch.palette.pk
+        : defaultPalettes.value[PALETTE_TYPES.PATTERN]?.palette,
       patternType: page.patternType ? page.patternType : DEFAULT_PATTERN_TYPE,
-      patternColor: page.patternColor
-        ? JSON.parse(page.patternColor as unknown as string)
-        : getSwatchColor.value(SPECIAL_PAPER_SWATCH_KEY, DEFAULT_PATTERN_COLOR_INDEX),
       patternSize: typeof page.patternSize !== "undefined" ? page.patternSize : null,
       patternSpacing: typeof page.patternSpacing !== "undefined" ? page.patternSpacing : null,
       patternOpacity: page.patternOpacity ? page.patternOpacity : DEFAULT_PATTERN_OPACITY,
     };
 
     pages.value[page.pk] = merge(currPage, formattedPage);
-
-    const updatedPage = pages.value[page.pk];
-    if (typeof updatedPage.fillColor === "undefined" || updatedPage.fillColor === null) {
-      const fillColor = getSwatchColor.value(DEFAULT_SWATCH_KEY, DEFAULT_ELEMENT_FILLCOLOR_INDEX);
-      pages.value[page.pk].fillColor = fillColor;
-    }
-
-    if (typeof updatedPage.strokeColor === "undefined" || updatedPage.strokeColor === null) {
-      const strokeColor = getSwatchColor.value(
-        SPECIAL_TOOL_SWATCH_KEY,
-        DEFAULT_ELEMENT_STROKECOLOR_INDEX
-      );
-      pages.value[page.pk].strokeColor = strokeColor;
-    }
 
     notebooks.value[page.notebook.pk] = merge(notebooks.value[page.notebook.pk], page.notebook);
 
@@ -262,11 +295,9 @@ export const useCoreStore = defineStore("core", () => {
 
   async function createPage(notebookPk: TPrimaryKey) {
     const { execute, data } = useMutation(CreatePageDocument);
-    const paperColor = JSON.stringify(
-      getSwatchColor.value(SPECIAL_PAPER_SWATCH_KEY, DEFAULT_PAPER_COLOR_INDEX)
-    );
+    const paperSwatchPk = defaultPalettes.value[PALETTE_TYPES.PAPER].swatch;
 
-    await execute({ notebookPk, paperColor });
+    await execute({ notebookPk, paperSwatchPk });
 
     const page = data.value.createPage?.page;
     if (typeof page === "undefined" || page === null) {
@@ -284,12 +315,13 @@ export const useCoreStore = defineStore("core", () => {
     bookshelves,
     myBookshelf,
 
-    swatches,
-    swatchOrder,
-    fetchMyPalettes,
-    createSwatch,
-    updateSwatchColor,
+    paletteCollections,
+    palettes,
     getSwatchColor,
+    defaultPalettes,
+    fetchMyPalettes,
+    createPalette,
+    updateSwatchColor,
 
     notebooks,
     fetchNotebook,

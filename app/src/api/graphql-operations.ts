@@ -58,50 +58,6 @@ export type BookshelfNodeEdge = {
   node?: Maybe<BookshelfNode>;
 };
 
-/** An enumeration. */
-export enum CoreElementToolChoices {
-  /** Eraser */
-  A_1 = "A_1",
-  /** Clear All */
-  A_2 = "A_2",
-  /** Pen */
-  A_10 = "A_10",
-  /** Marker */
-  A_11 = "A_11",
-  /** Highlighter */
-  A_12 = "A_12",
-  /** Blob */
-  A_20 = "A_20",
-  /** Circle */
-  A_30 = "A_30",
-  /** Rectangle */
-  A_31 = "A_31",
-  /** Triangle */
-  A_32 = "A_32",
-  /** Line */
-  A_33 = "A_33",
-  /** Cut */
-  A_40 = "A_40",
-  /** Paste */
-  A_41 = "A_41",
-  /** Image */
-  A_50 = "A_50",
-  /** Checkbox */
-  A_60 = "A_60",
-  /** Textbox */
-  A_61 = "A_61",
-  /** Paper */
-  A_70 = "A_70",
-}
-
-/** An enumeration. */
-export enum CorePaletteSwatchSwatchTypeChoices {
-  /** Solid Color */
-  A_1 = "A_1",
-  /** Linear Gradient Color */
-  A_10 = "A_10",
-}
-
 export type CreateBookshelfInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   roomPk: Scalars["UUID"];
@@ -146,11 +102,11 @@ export type CreateNotebookPayload = {
 export type CreatePageInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookPk: Scalars["UUID"];
-  paperColor?: InputMaybe<Scalars["JSONString"]>;
-  patternColor?: InputMaybe<Scalars["JSONString"]>;
+  paperSwatchPk?: InputMaybe<Scalars["UUID"]>;
   patternOpacity?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
+  patternSwatchPk?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
 };
 
@@ -162,7 +118,8 @@ export type CreatePagePayload = {
 
 export type CreatePaletteInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  title: Scalars["String"];
+  swatches?: InputMaybe<Array<InputMaybe<Scalars["JSONString"]>>>;
+  title?: InputMaybe<Scalars["String"]>;
 };
 
 export type CreatePalettePayload = {
@@ -175,7 +132,6 @@ export type CreatePaletteSwatchInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   palettePk: Scalars["UUID"];
   swatch: Scalars["JSONString"];
-  swatchType: Scalars["Int"];
 };
 
 export type CreatePaletteSwatchPayload = {
@@ -253,7 +209,7 @@ export type ElementNode = Node & {
   points: Array<Scalars["JSONString"]>;
   size?: Maybe<Scalars["Float"]>;
   strokeColor?: Maybe<Scalars["String"]>;
-  tool?: Maybe<CoreElementToolChoices>;
+  tool?: Maybe<Scalars["Int"]>;
   updatedAt: Scalars["DateTime"];
 };
 
@@ -478,11 +434,11 @@ export type PageNode = Node & {
   id: Scalars["ID"];
   notebook: NotebookNode;
   owner: UserNode;
-  paperColor: Scalars["JSONString"];
-  patternColor?: Maybe<Scalars["JSONString"]>;
+  paperSwatch?: Maybe<PaletteSwatchNode>;
   patternOpacity?: Maybe<Scalars["Int"]>;
   patternSize?: Maybe<Scalars["Float"]>;
   patternSpacing?: Maybe<Scalars["Float"]>;
+  patternSwatch?: Maybe<PaletteSwatchNode>;
   patternType: Scalars["Int"];
   pk: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
@@ -557,15 +513,27 @@ export type PaletteCollectionNodeEdge = {
 
 export type PaletteNode = Node & {
   __typename?: "PaletteNode";
-  collection: PaletteCollectionNode;
+  collections: PaletteCollectionNodeConnection;
   createdAt: Scalars["DateTime"];
   /** The ID of the object */
   id: Scalars["ID"];
+  isPublic: Scalars["Boolean"];
   owner: UserNode;
+  paletteType: Scalars["Int"];
   pk: Scalars["UUID"];
   swatches: PaletteSwatchNodeConnection;
   title?: Maybe<Scalars["String"]>;
   updatedAt: Scalars["DateTime"];
+};
+
+export type PaletteNodeCollectionsArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
 };
 
 export type PaletteNodeSwatchesArgs = {
@@ -600,12 +568,36 @@ export type PaletteSwatchNode = Node & {
   createdAt: Scalars["DateTime"];
   /** The ID of the object */
   id: Scalars["ID"];
+  isDefault: Scalars["Boolean"];
   owner: UserNode;
   palette: PaletteNode;
+  paperSwatch: PageNodeConnection;
+  patternSwatch: PageNodeConnection;
   pk: Scalars["UUID"];
   swatch: Scalars["JSONString"];
-  swatchType: CorePaletteSwatchSwatchTypeChoices;
   updatedAt: Scalars["DateTime"];
+};
+
+export type PaletteSwatchNodePaperSwatchArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  notebook?: InputMaybe<Scalars["ID"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
+};
+
+export type PaletteSwatchNodePatternSwatchArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  id?: InputMaybe<Scalars["ID"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  notebook?: InputMaybe<Scalars["ID"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  owner?: InputMaybe<Scalars["ID"]>;
 };
 
 export type PaletteSwatchNodeConnection = {
@@ -634,7 +626,7 @@ export type Query = {
   myElements?: Maybe<ElementNodeConnection>;
   myNotebooks?: Maybe<NotebookNodeConnection>;
   myPages?: Maybe<PageNodeConnection>;
-  myPaletteCollections?: Maybe<PaletteCollectionNodeConnection>;
+  myPaletteCollection?: Maybe<PaletteCollectionNodeConnection>;
   myPaletteSwatchs?: Maybe<PaletteSwatchNodeConnection>;
   myPalettes?: Maybe<PaletteNodeConnection>;
   myRooms?: Maybe<RoomNodeConnection>;
@@ -699,7 +691,7 @@ export type QueryMyPagesArgs = {
   owner?: InputMaybe<Scalars["ID"]>;
 };
 
-export type QueryMyPaletteCollectionsArgs = {
+export type QueryMyPaletteCollectionArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
@@ -905,11 +897,11 @@ export type UpdateNotebookPayload = {
 export type UpdatePageInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookPk?: InputMaybe<Scalars["UUID"]>;
-  paperColor?: InputMaybe<Scalars["JSONString"]>;
-  patternColor?: InputMaybe<Scalars["JSONString"]>;
+  paperSwatchPk?: InputMaybe<Scalars["UUID"]>;
   patternOpacity?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
+  patternSwatchPk?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
   pk: Scalars["UUID"];
 };
@@ -936,7 +928,6 @@ export type UpdatePaletteSwatchInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   pk: Scalars["UUID"];
   swatch?: InputMaybe<Scalars["JSONString"]>;
-  swatchType?: InputMaybe<Scalars["Int"]>;
 };
 
 export type UpdatePaletteSwatchPayload = {
@@ -1077,7 +1068,7 @@ export type CreateElementMutation = {
       pk: any;
       updatedAt: any;
       createdAt: any;
-      tool?: CoreElementToolChoices | null;
+      tool?: number | null;
       fillColor?: string | null;
       strokeColor?: string | null;
       size?: number | null;
@@ -1112,8 +1103,8 @@ export type CreateNotebookMutation = {
 
 export type CreatePageMutationVariables = Exact<{
   notebookPk: Scalars["UUID"];
-  paperColor?: InputMaybe<Scalars["JSONString"]>;
-  patternColor?: InputMaybe<Scalars["JSONString"]>;
+  paperSwatchPk: Scalars["UUID"];
+  patternSwatchPk?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
@@ -1129,13 +1120,101 @@ export type CreatePageMutation = {
       pk: any;
       updatedAt: any;
       createdAt: any;
-      paperColor: any;
       patternType: number;
-      patternColor?: any | null;
       patternSize?: number | null;
       patternSpacing?: number | null;
       patternOpacity?: number | null;
       notebook: { __typename?: "NotebookNode"; pk: any; pageOrder: Array<any> };
+      paperSwatch?: {
+        __typename?: "PaletteSwatchNode";
+        pk: any;
+        palette: { __typename?: "PaletteNode"; pk: any };
+      } | null;
+      patternSwatch?: {
+        __typename?: "PaletteSwatchNode";
+        pk: any;
+        palette: { __typename?: "PaletteNode"; pk: any };
+      } | null;
+    } | null;
+  } | null;
+};
+
+export type CreatePaletteMutationVariables = Exact<{
+  title?: InputMaybe<Scalars["String"]>;
+  swatches?: InputMaybe<
+    Array<InputMaybe<Scalars["JSONString"]>> | InputMaybe<Scalars["JSONString"]>
+  >;
+}>;
+
+export type CreatePaletteMutation = {
+  __typename?: "Mutation";
+  createPalette?: {
+    __typename?: "CreatePalettePayload";
+    palette?: {
+      __typename?: "PaletteNode";
+      pk: any;
+      updatedAt: any;
+      createdAt: any;
+      title?: string | null;
+      paletteType: number;
+      isPublic: boolean;
+      collections: {
+        __typename?: "PaletteCollectionNodeConnection";
+        edges: Array<{
+          __typename?: "PaletteCollectionNodeEdge";
+          node?: { __typename?: "PaletteCollectionNode"; pk: any; paletteOrder: Array<any> } | null;
+        } | null>;
+      };
+      swatches: {
+        __typename?: "PaletteSwatchNodeConnection";
+        edges: Array<{
+          __typename?: "PaletteSwatchNodeEdge";
+          node?: {
+            __typename?: "PaletteSwatchNode";
+            pk: any;
+            swatch: any;
+            isDefault: boolean;
+          } | null;
+        } | null>;
+      };
+    } | null;
+  } | null;
+};
+
+export type CreatePaletteSwatchMutationVariables = Exact<{
+  palette_pk: Scalars["UUID"];
+  swatch: Scalars["JSONString"];
+}>;
+
+export type CreatePaletteSwatchMutation = {
+  __typename?: "Mutation";
+  createPaletteSwatch?: {
+    __typename?: "CreatePaletteSwatchPayload";
+    swatch?: {
+      __typename?: "PaletteSwatchNode";
+      pk: any;
+      swatch: any;
+      isDefault: boolean;
+      palette: { __typename?: "PaletteNode"; pk: any };
+    } | null;
+  } | null;
+};
+
+export type UpdatePaletteSwatchMutationVariables = Exact<{
+  pk: Scalars["UUID"];
+  swatch?: InputMaybe<Scalars["JSONString"]>;
+}>;
+
+export type UpdatePaletteSwatchMutation = {
+  __typename?: "Mutation";
+  updatePaletteSwatch?: {
+    __typename?: "UpdatePaletteSwatchPayload";
+    swatch?: {
+      __typename?: "PaletteSwatchNode";
+      pk: any;
+      swatch: any;
+      isDefault: boolean;
+      palette: { __typename?: "PaletteNode"; pk: any };
     } | null;
   } | null;
 };
@@ -1191,13 +1270,67 @@ export type MyPagesQuery = {
         pk: any;
         updatedAt: any;
         createdAt: any;
-        paperColor: any;
-        patternColor?: any | null;
         patternType: number;
         patternSize?: number | null;
         patternSpacing?: number | null;
         patternOpacity?: number | null;
         notebook: { __typename?: "NotebookNode"; pk: any };
+        paperSwatch?: {
+          __typename?: "PaletteSwatchNode";
+          pk: any;
+          palette: { __typename?: "PaletteNode"; pk: any };
+        } | null;
+        patternSwatch?: {
+          __typename?: "PaletteSwatchNode";
+          pk: any;
+          palette: { __typename?: "PaletteNode"; pk: any };
+        } | null;
+      } | null;
+    } | null>;
+  } | null;
+};
+
+export type MyPaletteCollectionQueryVariables = Exact<{
+  pk?: InputMaybe<Scalars["ID"]>;
+}>;
+
+export type MyPaletteCollectionQuery = {
+  __typename?: "Query";
+  myPaletteCollection?: {
+    __typename?: "PaletteCollectionNodeConnection";
+    edges: Array<{
+      __typename?: "PaletteCollectionNodeEdge";
+      node?: {
+        __typename?: "PaletteCollectionNode";
+        pk: any;
+        paletteOrder: Array<any>;
+        palettes: {
+          __typename?: "PaletteNodeConnection";
+          edges: Array<{
+            __typename?: "PaletteNodeEdge";
+            node?: {
+              __typename?: "PaletteNode";
+              pk: any;
+              updatedAt: any;
+              createdAt: any;
+              title?: string | null;
+              isPublic: boolean;
+              paletteType: number;
+              swatches: {
+                __typename?: "PaletteSwatchNodeConnection";
+                edges: Array<{
+                  __typename?: "PaletteSwatchNodeEdge";
+                  node?: {
+                    __typename?: "PaletteSwatchNode";
+                    pk: any;
+                    swatch: any;
+                    isDefault: boolean;
+                  } | null;
+                } | null>;
+              };
+            } | null;
+          } | null>;
+        };
       } | null;
     } | null>;
   } | null;
@@ -1219,7 +1352,19 @@ export type MyPalettesQuery = {
         updatedAt: any;
         createdAt: any;
         title?: string | null;
-        collection: { __typename?: "PaletteCollectionNode"; paletteOrder: Array<any> };
+        paletteType: number;
+        isPublic: boolean;
+        collections: {
+          __typename?: "PaletteCollectionNodeConnection";
+          edges: Array<{
+            __typename?: "PaletteCollectionNodeEdge";
+            node?: {
+              __typename?: "PaletteCollectionNode";
+              pk: any;
+              paletteOrder: Array<any>;
+            } | null;
+          } | null>;
+        };
         swatches: {
           __typename?: "PaletteSwatchNodeConnection";
           edges: Array<{
@@ -1227,8 +1372,8 @@ export type MyPalettesQuery = {
             node?: {
               __typename?: "PaletteSwatchNode";
               pk: any;
-              swatchType: CorePaletteSwatchSwatchTypeChoices;
               swatch: any;
+              isDefault: boolean;
             } | null;
           } | null>;
         };
@@ -1603,13 +1748,16 @@ export const CreatePageDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "paperColor" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatchPk" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+          },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternColor" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSwatchPk" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
           kind: "VariableDefinition",
@@ -1652,13 +1800,13 @@ export const CreatePageDocument = {
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "paperColor" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "paperColor" } },
+                      name: { kind: "Name", value: "paperSwatchPk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "paperSwatchPk" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternColor" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternColor" } },
+                      name: { kind: "Name", value: "patternSwatchPk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternSwatchPk" } },
                     },
                     {
                       kind: "ObjectField",
@@ -1707,9 +1855,47 @@ export const CreatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "pk" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                      { kind: "Field", name: { kind: "Name", value: "paperColor" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "paperSwatch" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palette" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "patternSwatch" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palette" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
                       { kind: "Field", name: { kind: "Name", value: "patternType" } },
-                      { kind: "Field", name: { kind: "Name", value: "patternColor" } },
                       { kind: "Field", name: { kind: "Name", value: "patternSize" } },
                       { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                       { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
@@ -1724,6 +1910,309 @@ export const CreatePageDocument = {
     },
   ],
 } as unknown as DocumentNode<CreatePageMutation, CreatePageMutationVariables>;
+export const CreatePaletteDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "CreatePalette" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "title" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "swatches" } },
+          type: {
+            kind: "ListType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createPalette" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "title" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "title" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "swatches" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "swatches" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "palette" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "title" } },
+                      { kind: "Field", name: { kind: "Name", value: "paletteType" } },
+                      { kind: "Field", name: { kind: "Name", value: "isPublic" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "collections" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "edges" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "node" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "paletteOrder" },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "swatches" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "edges" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "node" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                        { kind: "Field", name: { kind: "Name", value: "swatch" } },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "isDefault" },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<CreatePaletteMutation, CreatePaletteMutationVariables>;
+export const CreatePaletteSwatchDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "CreatePaletteSwatch" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "palette_pk" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "swatch" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "createPaletteSwatch" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "palettePk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "palette_pk" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "swatch" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "swatch" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "swatch" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "swatch" } },
+                      { kind: "Field", name: { kind: "Name", value: "isDefault" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "palette" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "pk" } }],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<CreatePaletteSwatchMutation, CreatePaletteSwatchMutationVariables>;
+export const UpdatePaletteSwatchDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "UpdatePaletteSwatch" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "swatch" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updatePaletteSwatch" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "pk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "swatch" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "swatch" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "swatch" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "swatch" } },
+                      { kind: "Field", name: { kind: "Name", value: "isDefault" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "palette" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "pk" } }],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<UpdatePaletteSwatchMutation, UpdatePaletteSwatchMutationVariables>;
 export const MyNotebooksDocument = {
   kind: "Document",
   definitions: [
@@ -1902,8 +2391,46 @@ export const MyPagesDocument = {
                             { kind: "Field", name: { kind: "Name", value: "pk" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
-                            { kind: "Field", name: { kind: "Name", value: "paperColor" } },
-                            { kind: "Field", name: { kind: "Name", value: "patternColor" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "paperSwatch" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "palette" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "patternSwatch" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "palette" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
                             { kind: "Field", name: { kind: "Name", value: "patternType" } },
                             { kind: "Field", name: { kind: "Name", value: "patternSize" } },
                             { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
@@ -1922,6 +2449,163 @@ export const MyPagesDocument = {
     },
   ],
 } as unknown as DocumentNode<MyPagesQuery, MyPagesQueryVariables>;
+export const MyPaletteCollectionDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "MyPaletteCollection" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "myPaletteCollection" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "id" },
+                value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "paletteOrder" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palettes" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "pk" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "updatedAt" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "createdAt" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "title" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "isPublic" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "paletteType" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "swatches" },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: { kind: "Name", value: "edges" },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: { kind: "Name", value: "node" },
+                                                            selectionSet: {
+                                                              kind: "SelectionSet",
+                                                              selections: [
+                                                                {
+                                                                  kind: "Field",
+                                                                  name: {
+                                                                    kind: "Name",
+                                                                    value: "pk",
+                                                                  },
+                                                                },
+                                                                {
+                                                                  kind: "Field",
+                                                                  name: {
+                                                                    kind: "Name",
+                                                                    value: "swatch",
+                                                                  },
+                                                                },
+                                                                {
+                                                                  kind: "Field",
+                                                                  name: {
+                                                                    kind: "Name",
+                                                                    value: "isDefault",
+                                                                  },
+                                                                },
+                                                              ],
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<MyPaletteCollectionQuery, MyPaletteCollectionQueryVariables>;
 export const MyPalettesDocument = {
   kind: "Document",
   definitions: [
@@ -1964,20 +2648,47 @@ export const MyPalettesDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            {
-                              kind: "Field",
-                              name: { kind: "Name", value: "collection" },
-                              selectionSet: {
-                                kind: "SelectionSet",
-                                selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "paletteOrder" } },
-                                ],
-                              },
-                            },
                             { kind: "Field", name: { kind: "Name", value: "pk" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                             { kind: "Field", name: { kind: "Name", value: "title" } },
+                            { kind: "Field", name: { kind: "Name", value: "paletteType" } },
+                            { kind: "Field", name: { kind: "Name", value: "isPublic" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "collections" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "pk" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "paletteOrder" },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "swatches" },
@@ -2002,11 +2713,11 @@ export const MyPalettesDocument = {
                                               },
                                               {
                                                 kind: "Field",
-                                                name: { kind: "Name", value: "swatchType" },
+                                                name: { kind: "Name", value: "swatch" },
                                               },
                                               {
                                                 kind: "Field",
-                                                name: { kind: "Name", value: "swatch" },
+                                                name: { kind: "Name", value: "isDefault" },
                                               },
                                             ],
                                           },

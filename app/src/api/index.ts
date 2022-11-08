@@ -51,12 +51,13 @@ export function useMutation<TData, TVars = QueryVariables>(
   return vUseMutation(query, merge(opts, { context }));
 }
 
-export function processGraphqlData(data: any) {
-  const { flattenedEdges } = flattenGraphqlData(data);
-  return flattenedEdges;
+export function processGraphqlData(data: any, nested_edges = false) {
+  const { flattenedEdges, flattenedProps } = flattenGraphqlData(data, nested_edges);
+
+  return nested_edges ? flattenedProps : flattenedEdges;
 }
 
-function flattenGraphqlData(data: any) {
+function flattenGraphqlData(data: any, nested_edges = false) {
   const flattenedProps: { [key: string]: any } = {};
   let flattenedEdges: { [key: string]: any[] } = {};
   for (const [key, value] of Object.entries(data)) {
@@ -67,11 +68,21 @@ function flattenGraphqlData(data: any) {
       typeof typedValue === "object" &&
       typeof typedValue.edges !== "undefined"
     ) {
-      flattenedEdges[key] = [];
+      if (nested_edges) {
+        flattenedProps[key] = [];
+      } else {
+        flattenedEdges[key] = [];
+      }
+
       for (const edge of typedValue.edges) {
-        const res = flattenGraphqlData(edge.node);
-        flattenedEdges[key].push(res.flattenedProps);
-        flattenedEdges = merge(flattenedEdges, res.flattenedEdges);
+        const res = flattenGraphqlData(edge.node, nested_edges);
+
+        if (nested_edges) {
+          flattenedProps[key].push(res.flattenedProps);
+        } else {
+          flattenedEdges[key].push(res.flattenedProps);
+          flattenedEdges = merge(flattenedEdges, res.flattenedEdges);
+        }
       }
     } else {
       flattenedProps[key] = typedValue;

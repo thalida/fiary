@@ -1,4 +1,4 @@
-import type { PATTERN_TYPES } from "@/constants/core";
+import type { PALETTE_TYPES, PATTERN_TYPES } from "@/constants/core";
 
 export type TPrimaryKey = string;
 
@@ -47,14 +47,21 @@ export interface IPage {
   updatedAt: string;
   createdAt: string;
   notebook: TPrimaryKey;
-  paperColor: TColor;
+  paperPalette: TPrimaryKey;
+  paperSwatch: TPrimaryKey;
+  patternPalette: TPrimaryKey;
+  patternSwatch: TPrimaryKey;
   patternType: PATTERN_TYPES;
-  patternColor: TColor;
   patternOpacity: number;
   patternSize: number | null;
   patternSpacing: number | null;
-  fillColor: TColor;
-  strokeColor: TColor;
+}
+
+export interface IPageOptions {
+  fillPaletteId: TPrimaryKey | null;
+  fillSwatchId: TPrimaryKey | null;
+  strokePaletteId: TPrimaryKey | null;
+  strokeSwatchId: TPrimaryKey | null;
 }
 
 export interface IElements {
@@ -133,11 +140,26 @@ export interface ITextboxElementOptions {
   textContents: string | null;
 }
 
-export interface IColorSwatches {
-  [key: string]: TColorSwatch;
+export interface IPalettes {
+  [key: TPrimaryKey]: IPalette;
 }
 
-export type TColorSwatch = TColor[];
+export interface IPalette {
+  pk: TPrimaryKey;
+  updatedAt: string;
+  createdAt: string;
+  title: string;
+  isPublic: boolean;
+  paletteType: PALETTE_TYPES;
+  swatches: { [key: TPrimaryKey]: IPaletteSwatch };
+  swatchOrder: TPrimaryKey[];
+}
+
+export interface IPaletteSwatch {
+  pk: TPrimaryKey;
+  swatch: TColor;
+  isDefault: boolean;
+}
 
 export interface ISolidColor {
   r: number;

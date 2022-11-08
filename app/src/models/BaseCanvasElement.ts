@@ -62,15 +62,13 @@ export default class BaseCanvasElement extends BaseElement {
   }
 
   getOpacity(): number {
-    if (this.tool === ELEMENT_TYPE.MARKER) {
-      return 0.9;
+    if (Array.isArray(this.fillColor)) {
+      const avgOpacity =
+        this.fillColor.reduce((acc, { color }) => acc + color.a, 0) / this.fillColor.length;
+      return avgOpacity;
     }
 
-    if (this.tool === ELEMENT_TYPE.HIGHLIGHTER) {
-      return 0.75;
-    }
-
-    return 1;
+    return this.fillColor?.a || 1;
   }
 
   calculateDimensions() {

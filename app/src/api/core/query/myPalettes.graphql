@@ -2,19 +2,26 @@ query MyPalettes($pk: ID) {
   myPalettes(id: $pk) {
     edges {
       node {
-        collection {
-          paletteOrder
-        }
         pk
         updatedAt
         createdAt
         title
+        paletteType
+        isPublic
+        collections {
+          edges {
+            node {
+              pk
+              paletteOrder
+            }
+          }
+        }
         swatches {
           edges {
             node {
               pk
-              swatchType
               swatch
+              isDefault
             }
           }
         }

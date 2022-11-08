@@ -16,10 +16,10 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
-  colorSwatches: {
-    type: Object,
-    required: true,
-  },
+  // colorSwatches: {
+  //   type: Object,
+  //   required: true,
+  // },
 });
 const emit = defineEmits(["change", "focus", "blur"]);
 const toolbar = ref(null);
@@ -27,19 +27,20 @@ const editor = ref(null);
 let quill: Quill;
 
 const allowedSwatches = computed(() => {
-  const {
-    [SPECIAL_TOOL_SWATCH_KEY]: omit1,
-    [SPECIAL_PAPER_SWATCH_KEY]: omit2,
-    ...rest
-  } = props.colorSwatches;
-  const solidColors: { [key: string]: ISolidColor[] } = {};
-  for (const swatch in rest) {
-    const colors = rest[swatch].filter((color: TColor) => !Array.isArray(color));
-    if (colors.length > 0) {
-      solidColors[swatch] = colors;
-    }
-  }
-  return solidColors;
+  return [];
+  // const {
+  //   [SPECIAL_TOOL_SWATCH_KEY]: omit1,
+  //   [SPECIAL_PAPER_SWATCH_KEY]: omit2,
+  //   ...rest
+  // } = props.colorSwatches;
+  // const solidColors: { [key: string]: ISolidColor[] } = {};
+  // for (const swatch in rest) {
+  //   const colors = rest[swatch].filter((color: TColor) => !Array.isArray(color));
+  //   if (colors.length > 0) {
+  //     solidColors[swatch] = colors;
+  //   }
+  // }
+  // return solidColors;
 });
 
 onMounted(() => {

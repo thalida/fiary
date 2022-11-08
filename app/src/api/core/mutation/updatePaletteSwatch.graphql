@@ -1,0 +1,12 @@
+mutation UpdatePaletteSwatch($pk: UUID!, $swatch: JSONString) {
+  updatePaletteSwatch(input: { pk: $pk, swatch: $swatch }) {
+    swatch {
+      pk
+      swatch
+      isDefault
+      palette {
+        pk
+      }
+    }
+  }
+}
