@@ -1102,9 +1102,9 @@ export type CreateNotebookMutation = {
 };
 
 export type CreatePageMutationVariables = Exact<{
-  notebookPk: Scalars["UUID"];
-  paperSwatchPk: Scalars["UUID"];
-  patternSwatchPk?: InputMaybe<Scalars["UUID"]>;
+  notebook: Scalars["UUID"];
+  paperSwatch: Scalars["UUID"];
+  patternSwatch?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
@@ -1196,6 +1196,45 @@ export type CreatePaletteSwatchMutation = {
       swatch: any;
       isDefault: boolean;
       palette: { __typename?: "PaletteNode"; pk: any };
+    } | null;
+  } | null;
+};
+
+export type UpdatePageMutationVariables = Exact<{
+  pk: Scalars["UUID"];
+  notebook?: InputMaybe<Scalars["UUID"]>;
+  paperSwatch?: InputMaybe<Scalars["UUID"]>;
+  patternSwatch?: InputMaybe<Scalars["UUID"]>;
+  patternType?: InputMaybe<Scalars["Int"]>;
+  patternSize?: InputMaybe<Scalars["Float"]>;
+  patternSpacing?: InputMaybe<Scalars["Float"]>;
+  patternOpacity?: InputMaybe<Scalars["Int"]>;
+}>;
+
+export type UpdatePageMutation = {
+  __typename?: "Mutation";
+  updatePage?: {
+    __typename?: "UpdatePagePayload";
+    page?: {
+      __typename?: "PageNode";
+      pk: any;
+      updatedAt: any;
+      createdAt: any;
+      patternType: number;
+      patternSize?: number | null;
+      patternSpacing?: number | null;
+      patternOpacity?: number | null;
+      notebook: { __typename?: "NotebookNode"; pk: any; pageOrder: Array<any> };
+      paperSwatch?: {
+        __typename?: "PaletteSwatchNode";
+        pk: any;
+        palette: { __typename?: "PaletteNode"; pk: any };
+      } | null;
+      patternSwatch?: {
+        __typename?: "PaletteSwatchNode";
+        pk: any;
+        palette: { __typename?: "PaletteNode"; pk: any };
+      } | null;
     } | null;
   } | null;
 };
@@ -1740,7 +1779,7 @@ export const CreatePageDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "notebookPk" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "notebook" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -1748,7 +1787,7 @@ export const CreatePageDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatchPk" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatch" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -1756,7 +1795,7 @@ export const CreatePageDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternSwatchPk" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSwatch" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
@@ -1796,17 +1835,17 @@ export const CreatePageDocument = {
                     {
                       kind: "ObjectField",
                       name: { kind: "Name", value: "notebookPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "notebookPk" } },
+                      value: { kind: "Variable", name: { kind: "Name", value: "notebook" } },
                     },
                     {
                       kind: "ObjectField",
                       name: { kind: "Name", value: "paperSwatchPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "paperSwatchPk" } },
+                      value: { kind: "Variable", name: { kind: "Name", value: "paperSwatch" } },
                     },
                     {
                       kind: "ObjectField",
                       name: { kind: "Name", value: "patternSwatchPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternSwatchPk" } },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternSwatch" } },
                     },
                     {
                       kind: "ObjectField",
@@ -2133,6 +2172,193 @@ export const CreatePaletteSwatchDocument = {
     },
   ],
 } as unknown as DocumentNode<CreatePaletteSwatchMutation, CreatePaletteSwatchMutationVariables>;
+export const UpdatePageDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "UpdatePage" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "notebook" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatch" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSwatch" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternType" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSize" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSpacing" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updatePage" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "pk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "notebookPk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "notebook" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "paperSwatchPk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "paperSwatch" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternSwatchPk" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternSwatch" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternType" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternType" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternSize" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternSize" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternSpacing" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternSpacing" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "patternOpacity" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "page" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "notebook" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "pageOrder" } },
+                          ],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "paperSwatch" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palette" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "patternSwatch" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palette" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "patternType" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternSize" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<UpdatePageMutation, UpdatePageMutationVariables>;
 export const UpdatePaletteSwatchDocument = {
   kind: "Document",
   definitions: [

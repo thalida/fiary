@@ -59,20 +59,6 @@ export const useCanvasStore = defineStore("canvas", () => {
     return pageOptions.value[pageId];
   }
 
-  // const updatedPage = pages.value[page.pk];
-  // if (typeof updatedPage.fillColor === "undefined" || updatedPage.fillColor === null) {
-  //   const fillColor = getSwatchColor.value(DEFAULT_SWATCH_KEY, DEFAULT_ELEMENT_FILLCOLOR_INDEX);
-  //   pages.value[page.pk].fillColor = fillColor;
-  // }
-
-  // if (typeof updatedPage.strokeColor === "undefined" || updatedPage.strokeColor === null) {
-  //   const strokeColor = getSwatchColor.value(
-  //     SPECIAL_TOOL_SWATCH_KEY,
-  //     DEFAULT_ELEMENT_STROKECOLOR_INDEX
-  //   );
-  //   pages.value[page.pk].strokeColor = strokeColor;
-  // }
-
   return {
     scenes,
     setupSceneStore,

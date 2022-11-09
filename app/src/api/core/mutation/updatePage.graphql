@@ -1,14 +1,16 @@
-mutation CreatePage(
-  $notebook: UUID!
-  $paperSwatch: UUID!
+mutation UpdatePage(
+  $pk: UUID!
+  $notebook: UUID
+  $paperSwatch: UUID
   $patternSwatch: UUID
   $patternType: Int
   $patternSize: Float
   $patternSpacing: Float
   $patternOpacity: Int
 ) {
-  createPage(
+  updatePage(
     input: {
+      pk: $pk
       notebookPk: $notebook
       paperSwatchPk: $paperSwatch
       patternSwatchPk: $patternSwatch

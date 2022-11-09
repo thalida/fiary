@@ -90,11 +90,17 @@ function handleStrokeColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) 
 function handlePaperColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
   page.value.paperPalette = paletteId;
   page.value.paperSwatch = swatchId;
+  coreStore.updatePage(props.pageId, {
+    paperSwatch: swatchId,
+  });
 }
 
 function handlePatternColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
   page.value.patternPalette = paletteId;
   page.value.patternSwatch = swatchId;
+  coreStore.updatePage(props.pageId, {
+    patternSwatch: swatchId,
+  });
 }
 
 function handlePatternTypeChange() {
@@ -108,22 +114,30 @@ function handlePatternTypeChange() {
   page.value.patternSpacing = patterns[page.value.patternType]
     ? patterns[page.value.patternType].DEFAULT_PROPS.spacing
     : null;
+
+  coreStore.updatePage(props.pageId, {
+    patternType: page.value.patternType,
+    patternSize: page.value.patternSize,
+    patternSpacing: page.value.patternSpacing,
+  });
 }
 
 function handlePatternOpacityChange() {
-  // TODO: implement
+  coreStore.updatePage(props.pageId, {
+    patternOpacity: page.value.patternOpacity,
+  });
 }
 
 function handlePatternSizeChange() {
-  // const target = e.target as HTMLInputElement;
-  // const value = parseInt(target.value, 10);
-  // page.value.patternSize = value;
+  coreStore.updatePage(props.pageId, {
+    patternSize: page.value.patternSize,
+  });
 }
 
 function handlePatternSpacingChange() {
-  // const target = e.target as HTMLInputElement;
-  // const value = parseInt(target.value, 10);
-  // page.value.patternSpacing = value;
+  coreStore.updatePage(props.pageId, {
+    patternSpacing: page.value.patternSpacing,
+  });
 }
 
 defineExpose({
@@ -227,7 +241,7 @@ defineExpose({
       min="0"
       max="100"
       step="1"
-      v-model="page.patternOpacity"
+      v-model.number="page.patternOpacity"
       @change="handlePatternOpacityChange"
     />
     <input
@@ -236,7 +250,7 @@ defineExpose({
       min="0"
       max="512"
       step="1"
-      v-model="page.patternSize"
+      v-model.number="page.patternSize"
       @change="handlePatternSizeChange"
     />
     <input
@@ -245,7 +259,7 @@ defineExpose({
       min="0"
       max="512"
       step="1"
-      v-model="page.patternSpacing"
+      v-model.number="page.patternSpacing"
       @change="handlePatternSpacingChange"
     />
 

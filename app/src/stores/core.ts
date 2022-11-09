@@ -11,6 +11,7 @@ import {
   MyPalettesDocument,
   UpdatePaletteSwatchDocument,
   CreatePaletteDocument,
+  UpdatePageDocument,
 } from "@/api/graphql-operations";
 import type {
   IBookshelves,
@@ -300,11 +301,11 @@ export const useCoreStore = defineStore("core", () => {
     return storePage(page);
   }
 
-  async function createPage(notebookPk: TPrimaryKey) {
+  async function createPage(notebook: TPrimaryKey) {
     const { execute, data } = useMutation(CreatePageDocument);
-    const paperSwatchPk = builtinPalettes.value[PALETTE_TYPES.PAPER].swatch;
+    const paperSwatch = builtinPalettes.value[PALETTE_TYPES.PAPER].swatch;
 
-    await execute({ notebookPk, paperSwatchPk });
+    await execute({ notebook, paperSwatch });
 
     const page = data.value.createPage?.page;
     if (typeof page === "undefined" || page === null) {
@@ -312,6 +313,18 @@ export const useCoreStore = defineStore("core", () => {
     }
 
     return storePage(page);
+  }
+
+  async function updatePage(pk: TPrimaryKey, page: Partial<IPage>) {
+    const { execute, data } = useMutation(UpdatePageDocument);
+    await execute({ pk, ...page });
+
+    const updatedPage = data.value.updatePage?.page;
+    if (typeof updatedPage === "undefined" || updatedPage === null) {
+      throw new Error("Failed to update page");
+    }
+
+    return storePage(updatedPage);
   }
 
   return {
@@ -338,5 +351,6 @@ export const useCoreStore = defineStore("core", () => {
     pages,
     fetchPage,
     createPage,
+    updatePage,
   };
 });
