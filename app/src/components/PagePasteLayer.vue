@@ -10,7 +10,7 @@ import { ELEMENT_MAP } from "@/models/elements";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
-const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
 const rootEl = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
 const pasteTransform = ref({
@@ -29,11 +29,11 @@ async function handlePasteStart() {
     scale: [1, 1],
     rotate: 0,
   };
-  sceneStore.value.isPasteMode = true;
+  pageOptions.value.isPasteMode = true;
   await nextTick();
 
   if (typeof rootEl.value === "undefined" || typeof canvas.value === "undefined") {
-    sceneStore.value.isPasteMode = false;
+    pageOptions.value.isPasteMode = false;
     return;
   }
 
@@ -43,9 +43,9 @@ async function handlePasteStart() {
     return;
   }
 
-  const cutSelectionId =
-    sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
-  const cutSelection = sceneStore.value.elementById(cutSelectionId);
+  let activeElements = canvasStore.activeElements(props.pageId);
+  const cutSelectionId = activeElements[activeElements.length - 1];
+  const cutSelection = canvasStore.elementById(props.pageId, cutSelectionId);
 
   if (!cutSelection.isDrawingCached) {
     cutSelection.isCompletedCut = true;
@@ -71,9 +71,10 @@ async function handlePasteStart() {
 
   clearCanvas(canvas.value);
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
-  for (let i = 0; i < sceneStore.value.activeElements.length - 1; i += 1) {
-    const elementId = sceneStore.value.activeElements[i];
-    const element = sceneStore.value.elementById(elementId);
+  activeElements = canvasStore.activeElements(props.pageId);
+  for (let i = 0; i < activeElements.length - 1; i += 1) {
+    const elementId = activeElements[i];
+    const element = canvasStore.elementById(props.pageId, elementId);
     element.drawElement(canvas.value);
   }
   const cutSelectionClip = cloneDeep(cutSelection);
@@ -95,10 +96,10 @@ async function handlePasteStart() {
 }
 
 function handleCancelPaste() {
-  const cutSelectionId =
-    sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
-  sceneStore.value.deleteElement(cutSelectionId, false);
-  sceneStore.value.isPasteMode = false;
+  const activeElements = canvasStore.activeElements(props.pageId);
+  const cutSelectionId = activeElements[activeElements.length - 1];
+  canvasStore.deleteElement(props.pageId, cutSelectionId, false);
+  pageOptions.value.isPasteMode = false;
 }
 
 function handlePasteEnd() {
@@ -106,9 +107,9 @@ function handlePasteEnd() {
     return;
   }
 
-  const cutSelectionId =
-    sceneStore.value.activeElements[sceneStore.value.activeElements.length - 1];
-  const cutSelection = sceneStore.value.elementById(cutSelectionId);
+  const activeElements = canvasStore.activeElements(props.pageId);
+  const cutSelectionId = activeElements[activeElements.length - 1];
+  const cutSelection = canvasStore.elementById(props.pageId, cutSelectionId);
   const moveableRect = moveableEl.getRect();
   const pasteElement = new ELEMENT_MAP[ELEMENT_TYPE.PASTE](moveableRect);
 
@@ -121,7 +122,7 @@ function handlePasteEnd() {
   ) {
     handleCancelPaste();
     emit("redraw");
-    sceneStore.value.popHistoryEvent();
+    canvasStore.popHistoryEvent(props.pageId);
     return;
   }
 
@@ -167,14 +168,14 @@ function handlePasteEnd() {
     canvas: pasteCacheCanvas,
   };
 
-  sceneStore.value.createElement(pasteElement);
+  canvasStore.createElement(props.pageId, pasteElement);
   emit("redraw");
-  sceneStore.value.isPasteMode = false;
+  pageOptions.value.isPasteMode = false;
 }
 
 function handlePasteDelete() {
   emit("redraw");
-  sceneStore.value.isPasteMode = false;
+  pageOptions.value.isPasteMode = false;
 }
 
 function setPasteTransform(
@@ -231,7 +232,7 @@ defineExpose({
 });
 </script>
 <template>
-  <div ref="rootEl" class="paste-layer" v-if="sceneStore && sceneStore.isPasteMode">
+  <div ref="rootEl" class="paste-layer" v-if="pageOptions && pageOptions.isPasteMode">
     <canvas class="paste-canvas" ref="canvas"></canvas>
   </div>
 </template>

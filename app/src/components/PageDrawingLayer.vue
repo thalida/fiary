@@ -5,7 +5,7 @@ import { computed, onMounted, ref } from "vue";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
-const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
 const drawingCanvas = ref<HTMLCanvasElement>();
 const emits = defineEmits<{
   (event: "ready", canvas: HTMLCanvasElement): void;
@@ -44,14 +44,14 @@ function drawElements() {
     return;
   }
 
-  ctx.setTransform(sceneStore.value.initTransformMatrix);
+  ctx.setTransform(pageOptions.value.initTransformMatrix);
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
-  ctx.setTransform(sceneStore.value.transformMatrix);
+  ctx.setTransform(pageOptions.value.transformMatrix);
 
-  const drawElementIds = sceneStore.value.activeElements;
+  const drawElementIds = canvasStore.activeElements(props.pageId);
   for (let i = 0; i < drawElementIds.length; i += 1) {
     const elementId = drawElementIds[i];
-    const element = sceneStore.value.elementById(elementId);
+    const element = canvasStore.elementById(props.pageId, elementId);
     if (typeof element.drawElement === "undefined") {
       continue;
     }

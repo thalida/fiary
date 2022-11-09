@@ -6,7 +6,7 @@ import type { TPrimaryKey } from "@/types/core";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
-const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
 const rootEl = ref<HTMLElement>();
 const rulerEl = ref();
 const moveableEl = ref();
@@ -19,11 +19,14 @@ const ruler = ref({
   },
 });
 const showRulerControls = computed(() => {
-  return !sceneStore.value.isDrawing && !sceneStore.value.isPanning;
+  return !pageOptions.value.isDrawing && !pageOptions.value.isPanning;
+});
+const lastActiveElementId = computed(() => {
+  return canvasStore.lastActiveElementId(props.pageId);
 });
 
 watchPostEffect(() => {
-  if (sceneStore.value?.isRulerMode) {
+  if (pageOptions.value?.isRulerMode) {
     setRulerTransform(rulerEl.value, {});
   }
 });
@@ -45,11 +48,11 @@ function setRulerTransform(
 }
 
 function onRulerMoveStart() {
-  sceneStore.value.isMovingRuler = true;
+  pageOptions.value.isMovingRuler = true;
 }
 
 function onRulerMoveEnd() {
-  sceneStore.value.isMovingRuler = false;
+  pageOptions.value.isMovingRuler = false;
 }
 
 function onRulerDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
@@ -98,40 +101,34 @@ defineExpose({
 <template>
   <div
     ref="rootEl"
-    v-if="sceneStore && sceneStore.isRulerMode"
+    v-if="pageOptions && pageOptions.isRulerMode"
     class="ruler-layer"
     :class="{ 'hide-ruler-controls': !showRulerControls }"
   >
     <div class="ruler" ref="rulerEl" :style="{ width: ruler.width + 'px' }">
       <div class="ruler__label">
         {{ Math.round(ruler.transform.rotate) }}&deg;
-        <span v-if="sceneStore.elementOrder.length > 0 && sceneStore.isDrawing">
-          <span v-if="sceneStore.elements[sceneStore.lastActiveElementId].dimensions.lineLength">
-            {{
-              Math.round(sceneStore.elements[sceneStore.lastActiveElementId].dimensions.lineLength)
-            }}px
+        <span v-if="pageOptions.elementOrder.length > 0 && pageOptions.isDrawing">
+          <span v-if="pageOptions.elements[lastActiveElementId].dimensions.lineLength">
+            {{ Math.round(pageOptions.elements[lastActiveElementId].dimensions.lineLength) }}px
           </span>
           <span v-else>
-            {{
-              Math.round(sceneStore.elements[sceneStore.lastActiveElementId].dimensions.outerWidth)
-            }}
+            {{ Math.round(pageOptions.elements[lastActiveElementId].dimensions.outerWidth) }}
             x
-            {{
-              Math.round(sceneStore.elements[sceneStore.lastActiveElementId].dimensions.outerHeight)
-            }}
+            {{ Math.round(pageOptions.elements[lastActiveElementId].dimensions.outerHeight) }}
           </span>
         </span>
       </div>
       <div class="ruler__tool" :style="{ width: ruler.width + 'px' }"></div>
     </div>
     <MoveableVue
-      v-if="sceneStore.isRulerMode"
+      v-if="pageOptions.isRulerMode"
       ref="moveableEl"
       className="moveable-ruler"
       :target="['.ruler']"
       :pinchable="['rotatable']"
-      :draggable="!sceneStore.isDrawing"
-      :rotatable="!sceneStore.isDrawing"
+      :draggable="!pageOptions.isDrawing"
+      :rotatable="!pageOptions.isDrawing"
       :scalable="false"
       :throttleRotate="1"
       @drag="onRulerDrag"

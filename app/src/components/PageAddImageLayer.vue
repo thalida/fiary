@@ -9,7 +9,7 @@ import { ELEMENT_MAP } from "@/models/elements";
 
 const props = defineProps<{ pageId: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
-const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
 const rootEl = ref<HTMLElement>();
 const activeImage = ref<HTMLImageElement | null>(null);
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
@@ -53,7 +53,7 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
     clipType: "inset",
     clipStyles: [0, 0, 0, 0],
   };
-  sceneStore.value.isAddImageMode = true;
+  pageOptions.value.isAddImageMode = true;
   await nextTick();
 
   if (
@@ -111,7 +111,7 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
     .on("clip", onImageClip);
 
   if (trackHistory) {
-    sceneStore.value.addHistoryEvent({
+    canvasStore.addHistoryEvent(props.pageId, {
       type: PageHistoryEvent.ADD_IMAGE_START,
       image,
     });
@@ -194,14 +194,14 @@ function handleAddImageEnd() {
     canvas: imageCacheCanvas,
   };
 
-  sceneStore.value.createElement(imageElement);
+  canvasStore.createElement(props.pageId, imageElement);
   emit("redraw");
   activeImage.value = null;
-  sceneStore.value.isAddImageMode = false;
+  pageOptions.value.isAddImageMode = false;
 }
 
 function handleCancelAddImage() {
-  sceneStore.value.isAddImageMode = false;
+  pageOptions.value.isAddImageMode = false;
 }
 
 function handleImageUpload(e: Event) {
@@ -313,7 +313,7 @@ defineExpose({
 });
 </script>
 <template>
-  <div v-if="sceneStore && sceneStore.isAddImageMode" ref="rootEl" class="image-layer">
+  <div v-if="pageOptions && pageOptions.isAddImageMode" ref="rootEl" class="image-layer">
     <div class="image-canvases">
       <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
       <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>

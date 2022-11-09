@@ -11,6 +11,7 @@ import {
   CANVAS_LINE_TOOLS,
   TRANSPARENT_COLOR,
   CANVAS_INTERACTIVE_TOOLS,
+  CANVAS_NONDRAWING_TOOLS,
 } from "@/constants/core";
 import type { IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
@@ -30,7 +31,6 @@ const canvasStore = useCanvasStore();
 
 const page = computed(() => coreStore.pages[props.pageId]);
 const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
-const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const paperLayer = ref<typeof PagePaperLayer>();
@@ -57,30 +57,42 @@ function initScene(canvas: HTMLCanvasElement) {
   }
 
   drawingCanvas.value = canvas;
-  canvasStore.setupSceneStore(props.pageId, ctx.getTransform());
-  canvasStore.initPageOptions(props.pageId);
+  canvasStore.initPageOptions(props.pageId, ctx.getTransform());
 
   watch(
-    () => (sceneStore.value ? sceneStore.value.isDebugMode : false),
+    () => (pageOptions.value ? pageOptions.value.isDebugMode : false),
     () => {
       drawingLayer.value?.drawElements();
     }
   );
 
   watchEffect(() => {
-    paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+    paperLayer.value?.setPaperTransforms(pageOptions.value.transformMatrix);
   });
 }
 
 function isDrawingAllowed(isDrawingOverride = false) {
-  const activelyDrawing = sceneStore.value.isDrawing || isDrawingOverride;
-  return !canvasStore.isSwatchOpen && sceneStore.value.isDrawingAllowed && activelyDrawing;
+  const activelyDrawing = pageOptions.value.isDrawing || isDrawingOverride;
+  const isOverlayMode =
+    pageOptions.value.isSwatchOpen ||
+    pageOptions.value.isPasteMode ||
+    pageOptions.value.isAddImageMode ||
+    pageOptions.value.isInteractiveEditMode ||
+    pageOptions.value.isMovingRuler ||
+    pageOptions.value.isTextboxEditMode;
+  const isNonDrawingTool = CANVAS_NONDRAWING_TOOLS.includes(pageOptions.value.selectedTool);
+  const stylusAllowed = pageOptions.value.detectedStylus && pageOptions.value.isStylus;
+  const isFingerAllowed = !pageOptions.value.isStylus && pageOptions.value.allowFingerDrawing;
+
+  return (
+    activelyDrawing && !isOverlayMode && !isNonDrawingTool && (stylusAllowed || isFingerAllowed)
+  );
 }
 
 function handleToolChange() {
   interactiveLayer.value?.reset();
 
-  if (sceneStore.value.selectedTool === ELEMENT_TYPE.CLEAR_ALL) {
+  if (pageOptions.value.selectedTool === ELEMENT_TYPE.CLEAR_ALL) {
     handleClearAll();
   }
 }
@@ -88,19 +100,19 @@ function handleToolChange() {
 function handleAddCheckbox(pos: IElementPoint) {
   const checkboxElement = new ELEMENT_MAP[ELEMENT_TYPE.CHECKBOX]({
     pos,
-    initMatrix: sceneStore.value.initTransformMatrix,
-    matrix: sceneStore.value.transformMatrix,
+    initMatrix: pageOptions.value.initTransformMatrix,
+    matrix: pageOptions.value.transformMatrix,
   });
-  sceneStore.value.createElement(checkboxElement);
+  canvasStore.createElement(props.pageId, checkboxElement);
 }
 
 function handleAddTextbox(pos: IElementPoint) {
   const textboxElement = new ELEMENT_MAP[ELEMENT_TYPE.TEXTBOX]({
     pos,
-    initMatrix: sceneStore.value.initTransformMatrix,
-    matrix: sceneStore.value.transformMatrix,
+    initMatrix: pageOptions.value.initTransformMatrix,
+    matrix: pageOptions.value.transformMatrix,
   });
-  sceneStore.value.createElement(textboxElement);
+  canvasStore.createElement(props.pageId, textboxElement);
 }
 
 function getMousePos(
@@ -120,7 +132,7 @@ function getMousePos(
   let inputY = clientY;
   let isRulerLine = false;
 
-  if (sceneStore.value.isRulerMode && followRuler && rulerElement) {
+  if (pageOptions.value.isRulerMode && followRuler && rulerElement) {
     const searchDistance = 25;
     let foundX, foundY;
     let searchFor = true;
@@ -191,15 +203,15 @@ function getDrawPos(
   rulerElement?: Moveable
 ) {
   const pos = getMousePos(canvas, event, followRuler, rulerElement);
-  let cameraX = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.e : 0;
-  let cameraY = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.f : 0;
-  const cameraZoom = sceneStore.value.transformMatrix ? sceneStore.value.transformMatrix.a : 1;
-  const initMatrixA = sceneStore.value.initTransformMatrix
-    ? sceneStore.value.initTransformMatrix.a
+  let cameraX = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.e : 0;
+  let cameraY = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.f : 0;
+  const cameraZoom = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.a : 1;
+  const initMatrixA = pageOptions.value.initTransformMatrix
+    ? pageOptions.value.initTransformMatrix.a
     : 1;
   const relativeZoom = initMatrixA / cameraZoom;
 
-  const isInteractiveTool = CANVAS_INTERACTIVE_TOOLS.includes(sceneStore.value.selectedTool);
+  const isInteractiveTool = CANVAS_INTERACTIVE_TOOLS.includes(pageOptions.value.selectedTool);
   if (isInteractiveTool) {
     cameraX /= cameraZoom;
     cameraY /= cameraZoom;
@@ -217,11 +229,11 @@ function getDrawPos(
 }
 
 function handleClearAll() {
-  const lastElementId = sceneStore.value.lastActiveElementId;
-  const lastElement = sceneStore.value.elementById(lastElementId);
+  const lastElementId = canvasStore.lastActiveElementId(props.pageId);
+  const lastElement = canvasStore.elementById(props.pageId, lastElementId);
   if (
-    sceneStore.value.elementOrder.length === 0 ||
-    (sceneStore.value.elementOrder.length > 0 && lastElement.tool === ELEMENT_TYPE.CLEAR_ALL)
+    pageOptions.value.elementOrder.length === 0 ||
+    (pageOptions.value.elementOrder.length > 0 && lastElement.tool === ELEMENT_TYPE.CLEAR_ALL)
   ) {
     return;
   }
@@ -233,34 +245,34 @@ function handleClearAll() {
     },
   });
   clearElement.cacheElement();
-  sceneStore.value.createElement(clearElement);
+  canvasStore.createElement(props.pageId, clearElement);
   drawingLayer.value?.drawElements();
-  sceneStore.value.selectedTool = ELEMENT_TYPE.ERASER;
+  pageOptions.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
 
 function handleCameraZoom(zoomStep: number) {
-  if (typeof sceneStore.value.transformMatrix === "undefined") {
+  if (typeof pageOptions.value.transformMatrix === "undefined") {
     return;
   }
 
-  if (sceneStore.value.transformMatrix.a > 0.5 && sceneStore.value.transformMatrix.a < 6) {
-    sceneStore.value.transformMatrix.a += zoomStep;
-    sceneStore.value.transformMatrix.a =
-      Math.round((sceneStore.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    sceneStore.value.transformMatrix.d = sceneStore.value.transformMatrix.a;
+  if (pageOptions.value.transformMatrix.a > 0.5 && pageOptions.value.transformMatrix.a < 6) {
+    pageOptions.value.transformMatrix.a += zoomStep;
+    pageOptions.value.transformMatrix.a =
+      Math.round((pageOptions.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+    pageOptions.value.transformMatrix.d = pageOptions.value.transformMatrix.a;
   }
 
-  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+  paperLayer.value?.setPaperTransforms(pageOptions.value.transformMatrix);
   interactiveLayer.value?.setInteractiveElementTransforms(
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix
+    pageOptions.value.initTransformMatrix,
+    pageOptions.value.transformMatrix
   );
   drawingLayer.value?.drawElements();
 }
 
 function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
   if (
-    typeof sceneStore.value.transformMatrix === "undefined" ||
+    typeof pageOptions.value.transformMatrix === "undefined" ||
     typeof drawingCanvas.value === "undefined"
   ) {
     return;
@@ -271,8 +283,8 @@ function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
   if (isStart) {
     activePanCoords.value = [
       {
-        x: pos.x - sceneStore.value.transformMatrix.e,
-        y: pos.y - sceneStore.value.transformMatrix.f,
+        x: pos.x - pageOptions.value.transformMatrix.e,
+        y: pos.y - pageOptions.value.transformMatrix.f,
       },
     ];
   }
@@ -284,13 +296,13 @@ function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
     y: activePanCoords.value[1].y - activePanCoords.value[0].y,
   };
 
-  sceneStore.value.transformMatrix.e = transformOrigin.x;
-  sceneStore.value.transformMatrix.f = transformOrigin.y;
+  pageOptions.value.transformMatrix.e = transformOrigin.x;
+  pageOptions.value.transformMatrix.f = transformOrigin.y;
 
-  paperLayer.value?.setPaperTransforms(sceneStore.value.transformMatrix);
+  paperLayer.value?.setPaperTransforms(pageOptions.value.transformMatrix);
   interactiveLayer.value?.setInteractiveElementTransforms(
-    sceneStore.value.initTransformMatrix,
-    sceneStore.value.transformMatrix
+    pageOptions.value.initTransformMatrix,
+    pageOptions.value.transformMatrix
   );
   drawingLayer.value?.drawElements();
 }
@@ -298,20 +310,21 @@ function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
 function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   toolbar.value?.closeAllColorPickers();
 
-  if (sceneStore.value.selectedTool === CANVAS_POINTER_TOOL) {
-    sceneStore.value.isPanning = true;
+  if (pageOptions.value.selectedTool === CANVAS_POINTER_TOOL) {
+    pageOptions.value.isPanning = true;
     handleCameraPan(event, true);
     return;
   }
 
-  if (sceneStore.value.selectedTool === CANVAS_PAPER_TOOL) {
+  if (pageOptions.value.selectedTool === CANVAS_PAPER_TOOL) {
     return;
   }
 
-  const selectedTool = sceneStore.value.selectedTool as ELEMENT_TYPE;
+  const selectedTool = pageOptions.value.selectedTool as ELEMENT_TYPE;
+  const activeElements = canvasStore.activeElements(props.pageId);
 
   if (
-    sceneStore.value.activeElements.length === 0 &&
+    activeElements.length === 0 &&
     (selectedTool === ELEMENT_TYPE.ERASER || selectedTool === ELEMENT_TYPE.CUT)
   ) {
     return;
@@ -327,7 +340,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  sceneStore.value.setIsStylus(event);
+  canvasStore.setIsStylus(props.pageId, event);
 
   if (
     !isDrawingAllowed(true) ||
@@ -337,7 +350,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  sceneStore.value.isDrawing = true;
+  pageOptions.value.isDrawing = true;
 
   const strokeColor =
     selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
@@ -351,21 +364,21 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
 
   const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
   newElement.isRulerLine = pos.isRulerLine;
-  newElement.size = selectedTool === ELEMENT_TYPE.CUT ? 0 : sceneStore.value.selectedToolSize;
+  newElement.size = selectedTool === ELEMENT_TYPE.CUT ? 0 : pageOptions.value.selectedToolSize;
   newElement.toolOptions = {
-    lineEndSide: sceneStore.value.selectedLineEndSide,
-    lineEndStyle: sceneStore.value.selectedLineEndStyle,
+    lineEndSide: pageOptions.value.selectedLineEndSide,
+    lineEndStyle: pageOptions.value.selectedLineEndStyle,
   };
   newElement.freehandOptions = {
-    size: sceneStore.value.selectedToolSize,
-    simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !sceneStore.value.isStylus,
+    size: pageOptions.value.selectedToolSize,
+    simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !pageOptions.value.isStylus,
     thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.95 : 0,
     streamline: newElement.isRulerLine ? 1 : 0.32,
     smoothing: newElement.isRulerLine ? 1 : 0.32,
     last: false,
   };
 
-  const pressure = newElement.getPressure(event, sceneStore.value.isStylus);
+  const pressure = newElement.getPressure(event, pageOptions.value.isStylus);
   newElement.points = [{ x: pos.x, y: pos.y, pressure }];
 
   if (
@@ -387,13 +400,13 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   }
 
   newElement.dimensions = newElement.calculateDimensions();
-  sceneStore.value.createElement(newElement);
+  canvasStore.createElement(props.pageId, newElement);
   drawingLayer.value?.drawElements();
 }
 
 function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   if (
-    !(sceneStore.value.isPanning || isDrawingAllowed()) ||
+    !(pageOptions.value.isPanning || isDrawingAllowed()) ||
     typeof drawingCanvas.value === "undefined" ||
     drawingCanvas.value === null
   ) {
@@ -402,16 +415,16 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
 
   event.preventDefault();
 
-  if (sceneStore.value.isPanning) {
+  if (pageOptions.value.isPanning) {
     handleCameraPan(event);
     return;
   }
 
-  const lastElementId = sceneStore.value.elementOrder[sceneStore.value.elementOrder.length - 1];
-  const lastElement = sceneStore.value.elementById(lastElementId);
+  const lastElementId = pageOptions.value.elementOrder[pageOptions.value.elementOrder.length - 1];
+  const lastElement = canvasStore.elementById(props.pageId, lastElementId);
   const followRuler = lastElement.isRulerLine || !CANVAS_LINE_TOOLS.includes(lastElement.tool);
   const pos = getDrawPos(drawingCanvas.value, event, followRuler, rulerLayer.value?.moveableEl);
-  const pressure = lastElement.getPressure(event, sceneStore.value.isStylus);
+  const pressure = lastElement.getPressure(event, pageOptions.value.isStylus);
 
   if (lastElement.tool === ELEMENT_TYPE.CIRCLE || lastElement.tool === ELEMENT_TYPE.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
@@ -449,26 +462,26 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
 
 function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   if (
-    sceneStore.value.isInteractiveEditMode ||
-    sceneStore.value.isTextboxEditMode ||
+    pageOptions.value.isInteractiveEditMode ||
+    pageOptions.value.isTextboxEditMode ||
     typeof drawingCanvas.value === "undefined"
   ) {
     return;
   }
 
-  if (sceneStore.value.isPanning) {
+  if (pageOptions.value.isPanning) {
     handleCameraPan(event);
-    sceneStore.value.isPanning = false;
+    pageOptions.value.isPanning = false;
     return;
   }
 
-  if (sceneStore.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
+  if (pageOptions.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
     const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
     handleAddCheckbox(pos);
     return;
   }
 
-  if (sceneStore.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
+  if (pageOptions.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
     const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
     handleAddTextbox(pos);
     return;
@@ -478,14 +491,14 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  const lastElementId = sceneStore.value.elementOrder[sceneStore.value.elementOrder.length - 1];
-  const lastElement = sceneStore.value.elementById(lastElementId);
+  const lastElementId = pageOptions.value.elementOrder[pageOptions.value.elementOrder.length - 1];
+  const lastElement = canvasStore.elementById(props.pageId, lastElementId);
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = lastElement.calculateDimensions();
 
   if (lastElement.dimensions.outerWidth === 0 || lastElement.dimensions.outerHeight === 0) {
-    sceneStore.value.elementOrder.pop();
-    sceneStore.value.isDrawing = false;
+    pageOptions.value.elementOrder.pop();
+    pageOptions.value.isDrawing = false;
     return;
   }
 
@@ -495,30 +508,30 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     lastElement.cacheElement();
     drawingLayer.value?.drawElements();
   }
-  sceneStore.value.isDrawing = false;
+  pageOptions.value.isDrawing = false;
 }
 function handleUndo() {
-  const action = sceneStore.value.history[sceneStore.value.historyIndex];
+  const action = pageOptions.value.history[pageOptions.value.historyIndex];
   let redoPaste = false;
   let redoAddImage = false;
 
-  if (sceneStore.value.isPasteMode) {
+  if (pageOptions.value.isPasteMode) {
     pasteLayer.value?.handleCancelPaste();
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     addImageLayer.value?.handleCancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = sceneStore.value.elementById(action.elementId);
+    const element = canvasStore.elementById(props.pageId, action.elementId);
     redoPaste = element.tool === ELEMENT_TYPE.PASTE;
     redoAddImage = element.tool === ELEMENT_TYPE.IMAGE;
-    sceneStore.value.hideElement(action.elementId);
+    canvasStore.hideElement(props.pageId, action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    sceneStore.value.showElement(action.elementId);
+    canvasStore.showElement(props.pageId, action.elementId);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = sceneStore.value.elementById(action.elementId);
+    const element = canvasStore.elementById(props.pageId, action.elementId);
     element.style = cloneDeep(action.from);
   }
 
-  sceneStore.value.historyIndex -= 1;
+  pageOptions.value.historyIndex -= 1;
 
   if (redoPaste) {
     pasteLayer.value?.handlePasteStart();
@@ -531,32 +544,32 @@ function handleUndo() {
 }
 
 function handleRedo() {
-  const action = sceneStore.value.history[sceneStore.value.historyIndex + 1];
+  const action = pageOptions.value.history[pageOptions.value.historyIndex + 1];
   let redoPaste = false;
   let redoAddImage = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = sceneStore.value.elementById(action.elementId);
+    const element = canvasStore.elementById(props.pageId, action.elementId);
     redoPaste = element.tool === ELEMENT_TYPE.CUT;
-    sceneStore.value.showElement(action.elementId);
+    canvasStore.showElement(props.pageId, action.elementId);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    sceneStore.value.hideElement(action.elementId);
+    canvasStore.hideElement(props.pageId, action.elementId);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = sceneStore.value.elementById(action.elementId);
+    const element = canvasStore.elementById(props.pageId, action.elementId);
     element.style = cloneDeep(action.to);
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     redoAddImage = true;
   }
 
-  sceneStore.value.historyIndex += 1;
+  pageOptions.value.historyIndex += 1;
 
   if (redoPaste) {
     pasteLayer.value?.handlePasteStart();
   } else if (redoAddImage) {
     addImageLayer.value?.handleAddImageStart(action.image, false);
   } else {
-    sceneStore.value.isPasteMode = false;
-    sceneStore.value.isAddImageMode = false;
+    pageOptions.value.isPasteMode = false;
+    pageOptions.value.isAddImageMode = false;
     drawingLayer.value?.drawElements();
   }
 }

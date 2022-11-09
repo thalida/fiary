@@ -1,4 +1,4 @@
-import type { PALETTE_TYPES, PATTERN_TYPES } from "@/constants/core";
+import type { LineEndSide, LineEndStyle, PALETTE_TYPES, PATTERN_TYPES } from "@/constants/core";
 
 export type TPrimaryKey = string;
 
@@ -62,6 +62,42 @@ export interface IPageOptions {
   fillSwatchId: TPrimaryKey | null;
   strokePaletteId: TPrimaryKey | null;
   strokeSwatchId: TPrimaryKey | null;
+  selectedTool: number;
+  selectedToolSize: number;
+  selectedLineEndStyle: LineEndStyle;
+  selectedLineEndSide: LineEndSide;
+
+  elements: { [key: TPrimaryKey]: any };
+  elementOrder: TPrimaryKey[];
+  clearAllElementIndexes: number[];
+  isDebugMode: boolean;
+  isPasteMode: boolean;
+  isAddImageMode: boolean;
+  isInteractiveEditMode: boolean;
+  isTextboxEditMode: boolean;
+  isRulerMode: boolean;
+  isPanning: boolean;
+  isMovingRuler: boolean;
+  isDrawing: boolean;
+  isSwatchOpen: boolean;
+  isStylus: boolean;
+  detectedStylus: boolean;
+  allowFingerDrawing: boolean;
+
+  history: any[];
+  historyIndex: number;
+
+  initTransformMatrix: ITransformMatrix;
+  transformMatrix: ITransformMatrix;
+}
+
+export interface ITransformMatrix {
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  e: number;
+  f: number;
 }
 
 export interface IElements {

@@ -23,23 +23,22 @@ const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 const page = computed(() => coreStore.pages[props.pageId]);
 const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
-const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
 const colorPickerRefs: any[] = [];
 
 const isDrawingTool = computed(() => {
-  return !CANVAS_NONDRAWING_TOOLS.includes(sceneStore.value.selectedTool);
+  return !CANVAS_NONDRAWING_TOOLS.includes(pageOptions.value.selectedTool);
 });
 const isPaperTool = computed(() => {
-  return CANVAS_PAPER_TOOLS.includes(sceneStore.value.selectedTool);
+  return CANVAS_PAPER_TOOLS.includes(pageOptions.value.selectedTool);
 });
 const hasUndo = computed(() => {
-  return sceneStore.value.historyIndex >= 0;
+  return pageOptions.value.historyIndex >= 0;
 });
 const hasRedo = computed(() => {
-  return sceneStore.value.historyIndex < sceneStore.value.history.length - 1;
+  return pageOptions.value.historyIndex < pageOptions.value.history.length - 1;
 });
 const zoomPercent = computed(() => {
-  const percent = Math.round(sceneStore.value.transformMatrix.a * 100);
+  const percent = Math.round(pageOptions.value.transformMatrix.a * 100);
   return percent;
 });
 const emit = defineEmits<{
@@ -64,7 +63,7 @@ function addColorPickerRef(ref: any) {
 }
 
 function handleToolChange(event: Event) {
-  emit("update:tool", sceneStore.value.selectedTool);
+  emit("update:tool", pageOptions.value.selectedTool);
 
   if (event.target) {
     (event.target as HTMLElement).blur();
@@ -145,19 +144,19 @@ defineExpose({
 });
 </script>
 <template>
-  <div v-if="sceneStore" class="tools">
-    <select v-model="sceneStore.selectedTool" @change="handleToolChange">
+  <div v-if="pageOptions" class="tools">
+    <select v-model="pageOptions.selectedTool" @change="handleToolChange">
       <option v-for="tool in supportedTools" :key="tool.key" :value="tool.key">
         {{ tool.label }}
       </option>
     </select>
-    <div v-if="sceneStore.selectedTool === ELEMENT_TYPE.LINE">
-      <select v-model="sceneStore.selectedLineEndSide">
+    <div v-if="pageOptions.selectedTool === ELEMENT_TYPE.LINE">
+      <select v-model="pageOptions.selectedLineEndSide">
         <option v-for="endSide in LINE_END_SIDE_CHOICES" :key="endSide.key" :value="endSide.key">
           {{ endSide.label }}
         </option>
       </select>
-      <select v-model="sceneStore.selectedLineEndStyle">
+      <select v-model="pageOptions.selectedLineEndStyle">
         <option
           v-for="endStyle in LINE_END_STYLE_CHOICES"
           :key="endStyle.key"
@@ -167,28 +166,28 @@ defineExpose({
         </option>
       </select>
     </div>
-    <label v-else-if="sceneStore.selectedTool === ELEMENT_TYPE.IMAGE">
+    <label v-else-if="pageOptions.selectedTool === ELEMENT_TYPE.IMAGE">
       <input type="file" accept="image/*" @change="emit('action:addImage:inputChange')" />
     </label>
     <label
       v-else-if="
-        (sceneStore.selectedTool === ELEMENT_TYPE.CHECKBOX ||
-          sceneStore.selectedTool === ELEMENT_TYPE.TEXTBOX) &&
-        !sceneStore.isInteractiveEditMode
+        (pageOptions.selectedTool === ELEMENT_TYPE.CHECKBOX ||
+          pageOptions.selectedTool === ELEMENT_TYPE.TEXTBOX) &&
+        !pageOptions.isInteractiveEditMode
       "
     >
       <button @click="emit('action:interactiveEdit:start')">Edit</button>
     </label>
-    <div v-if="sceneStore.isInteractiveEditMode">
+    <div v-if="pageOptions.isInteractiveEditMode">
       <button @click="emit('action:interactiveEdit:elementDelete')">Delete</button>
       <button @click="emit('action:interactiveEdit:end')">Done</button>
     </div>
-    <button v-if="sceneStore.isAddImageMode" @click="emit('action:addImage:end')">Done</button>
-    <button v-if="sceneStore.isPasteMode" @click="emit('action:paste:end')">Done</button>
-    <button v-if="sceneStore.isPasteMode" @click="emit('action:paste:delete')">
+    <button v-if="pageOptions.isAddImageMode" @click="emit('action:addImage:end')">Done</button>
+    <button v-if="pageOptions.isPasteMode" @click="emit('action:paste:end')">Done</button>
+    <button v-if="pageOptions.isPasteMode" @click="emit('action:paste:delete')">
       Delete Selection
     </button>
-    <select v-if="isDrawingTool" v-model="sceneStore.selectedToolSize">
+    <select v-if="isDrawingTool" v-model="pageOptions.selectedToolSize">
       <option v-for="size in PEN_SIZES" :key="size" :value="size">
         {{ size }}
       </option>
@@ -263,17 +262,17 @@ defineExpose({
       @change="handlePatternSpacingChange"
     />
 
-    <label><input type="checkbox" v-model="sceneStore.isRulerMode" /> Show ruler?</label>
+    <label><input type="checkbox" v-model="pageOptions.isRulerMode" /> Show ruler?</label>
     <label>
-      <input type="checkbox" v-model="sceneStore.detectedStylus" :disabled="true" /> Detected
+      <input type="checkbox" v-model="pageOptions.detectedStylus" :disabled="true" /> Detected
       Stylus?
     </label>
     <label>
-      <input type="checkbox" v-model="sceneStore.isStylus" :disabled="true" />
+      <input type="checkbox" v-model="pageOptions.isStylus" :disabled="true" />
       isStylus?
     </label>
-    <label><input type="checkbox" v-model="sceneStore.allowFingerDrawing" /> finger?</label>
-    <label><input type="checkbox" v-model="sceneStore.isDebugMode" /> debug?</label>
+    <label><input type="checkbox" v-model="pageOptions.allowFingerDrawing" /> finger?</label>
+    <label><input type="checkbox" v-model="pageOptions.isDebugMode" /> debug?</label>
     <button @click="emit('action:camera:zoomOut', -0.1)">Zoom -</button>
     <button @click="emit('action:camera:zoomIn', 0.1)">Zoom +</button>
     <span>{{ zoomPercent }}%</span>

@@ -12,7 +12,7 @@ const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 
 const page = computed(() => coreStore.pages[props.pageId]);
-const sceneStore = computed(() => canvasStore.scenes[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
 const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 
 const selectedPatternComponent = computed(() => {
@@ -34,8 +34,8 @@ function setPaperTransforms(
   let relativeZoom = 1;
 
   if (typeof matrix !== "undefined" && matrix !== null) {
-    const initMatrixA = sceneStore.value.initTransformMatrix
-      ? sceneStore.value.initTransformMatrix.a
+    const initMatrixA = pageOptions.value.initTransformMatrix
+      ? pageOptions.value.initTransformMatrix.a
       : 1;
     relativeZoom = initMatrixA / matrix.a;
     paperPatternTransform.value.x = matrix.e / initMatrixA;
@@ -55,7 +55,7 @@ defineExpose({
 });
 </script>
 <template>
-  <div v-if="sceneStore" class="paper-layer">
+  <div v-if="pageOptions" class="paper-layer">
     <div class="paper-color" :style="{ background: getColorAsCss(paperColor) }"></div>
     <svg class="paper-pattern" width="100%" height="100%" v-if="selectedPatternComponent !== null">
       <component
