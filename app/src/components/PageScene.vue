@@ -682,16 +682,16 @@ function handleRedo() {
   z-index: 1;
 }
 
+.ruler-layer {
+  z-index: 3;
+}
+
 .paste-layer {
-  z-index: 2;
+  z-index: 4;
 }
 
 .image-layer {
-  z-index: 2;
-}
-
-.ruler-layer {
-  z-index: 3;
+  z-index: 4;
 }
 
 .drawing-area .drawing-layer,
