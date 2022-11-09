@@ -3,9 +3,11 @@ import { onMounted, ref, computed } from "vue";
 import Quill from "quill";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
-import { getColorAsCss } from "@/utils/color";
-import type { ISolidColor, TColor } from "@/types/core";
-import { SPECIAL_PAPER_SWATCH_KEY, SPECIAL_TOOL_SWATCH_KEY } from "@/constants/core";
+import { getColorAsCss, isTransparent } from "@/utils/color";
+import type { IPaletteSwatch, ISolidColor, TColor } from "@/types/core";
+import { useCoreStore } from "@/stores/core";
+import { filter } from "lodash";
+import { PALETTE_TYPES } from "@/constants/core";
 
 const props = defineProps({
   element: {
@@ -16,31 +18,38 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
-  // colorSwatches: {
-  //   type: Object,
-  //   required: true,
-  // },
 });
+const coreStore = useCoreStore();
 const emit = defineEmits(["change", "focus", "blur"]);
 const toolbar = ref(null);
 const editor = ref(null);
 let quill: Quill;
 
-const allowedSwatches = computed(() => {
-  return [];
-  // const {
-  //   [SPECIAL_TOOL_SWATCH_KEY]: omit1,
-  //   [SPECIAL_PAPER_SWATCH_KEY]: omit2,
-  //   ...rest
-  // } = props.colorSwatches;
-  // const solidColors: { [key: string]: ISolidColor[] } = {};
-  // for (const swatch in rest) {
-  //   const colors = rest[swatch].filter((color: TColor) => !Array.isArray(color));
-  //   if (colors.length > 0) {
-  //     solidColors[swatch] = colors;
-  //   }
-  // }
-  // return solidColors;
+const supportedPalettes = computed(() => {
+  let paletteOrder = [coreStore.builtinPalettes[PALETTE_TYPES.TOOL_FILL]?.palette];
+
+  const defaultPalette = coreStore.defaultPaletteCollection;
+  if (defaultPalette) {
+    paletteOrder = paletteOrder.concat(defaultPalette);
+  }
+
+  if (paletteOrder.length === 0) {
+    return [];
+  }
+
+  const solidColors: IPaletteSwatch[][] = [];
+  for (const paletteId of paletteOrder) {
+    const palette = coreStore.palettes[paletteId];
+    if (typeof palette === "undefined" || palette === null) {
+      continue;
+    }
+    const solidOnly = filter(palette.swatches, ({ swatch }) => {
+      return !Array.isArray(swatch) && !isTransparent(swatch);
+    });
+    solidColors.push(solidOnly);
+  }
+
+  return solidColors;
 });
 
 onMounted(() => {
@@ -94,22 +103,22 @@ onMounted(() => {
       </span>
       <span class="ql-formats">
         <select class="ql-color">
-          <optgroup v-for="(swatch, index) in allowedSwatches" :key="index">
+          <optgroup v-for="(palette, index) in supportedPalettes" :key="index">
             <option
-              v-for="(color, colorIdx) in swatch"
-              :key="colorIdx"
-              :value="getColorAsCss(color)"
-              :label="getColorAsCss(color)"
+              v-for="swatch in palette"
+              :key="swatch.pk"
+              :value="getColorAsCss(swatch.swatch)"
+              :label="getColorAsCss(swatch.swatch)"
             ></option>
           </optgroup>
         </select>
         <select class="ql-background">
-          <optgroup v-for="(swatch, index) in allowedSwatches" :key="index">
+          <optgroup v-for="(palette, index) in supportedPalettes" :key="index">
             <option
-              v-for="(color, colorIdx) in swatch"
-              :key="colorIdx"
-              :value="getColorAsCss(color)"
-              :label="getColorAsCss(color)"
+              v-for="swatch in palette"
+              :key="swatch.pk"
+              :value="getColorAsCss(swatch.swatch)"
+              :label="getColorAsCss(swatch.swatch)"
             ></option>
           </optgroup>
         </select>

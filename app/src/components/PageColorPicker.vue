@@ -20,16 +20,9 @@ const emits = defineEmits<{
 }>();
 const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
-const paletteOrder = computed(() => {
-  const keys = Object.keys(coreStore.paletteCollections);
-  if (keys.length === 0) {
-    return null;
-  }
 
-  return coreStore.paletteCollections[keys[0]];
-});
-const defaultPalette = computed(() => {
-  const paletteId = coreStore.defaultPalettes[props.paletteType]?.palette;
+const builtinPalette = computed(() => {
+  const paletteId = coreStore.builtinPalettes[props.paletteType]?.palette;
   return coreStore.palettes[paletteId];
 });
 
@@ -143,7 +136,7 @@ defineExpose({
       <div
         class="swatch"
         :class="{ selected: props.paletteId === paletteId }"
-        v-for="paletteId in paletteOrder"
+        v-for="paletteId in coreStore.defaultPaletteCollection"
         :key="paletteId"
       >
         <div
@@ -162,13 +155,13 @@ defineExpose({
       <div class="swatch">
         <div
           class="swatch__color"
-          v-for="swatchId in defaultPalette.swatchOrder"
+          v-for="swatchId in builtinPalette.swatchOrder"
           :key="swatchId"
-          :style="{ background: getColorAsCss(defaultPalette.swatches[swatchId].swatch) }"
+          :style="{ background: getColorAsCss(builtinPalette.swatches[swatchId].swatch) }"
           :class="{
-            selected: props.paletteId === defaultPalette.pk && props.swatchId === swatchId,
+            selected: props.paletteId === builtinPalette.pk && props.swatchId === swatchId,
           }"
-          @click="handleSwatchClick(defaultPalette.pk, swatchId)"
+          @click="handleSwatchClick(builtinPalette.pk, swatchId)"
         ></div>
       </div>
       <button @click="handleCreatePalette">Add Swatch</button>

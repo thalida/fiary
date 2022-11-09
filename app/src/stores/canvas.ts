@@ -48,10 +48,10 @@ export const useCanvasStore = defineStore("canvas", () => {
   function initPageOptions(pageId: TPrimaryKey) {
     if (typeof pageOptions.value[pageId] === "undefined") {
       const options = {
-        fillPaletteId: coreStore.defaultPalettes[PALETTE_TYPES.TOOL_FILL]?.palette,
-        fillSwatchId: coreStore.defaultPalettes[PALETTE_TYPES.TOOL_FILL]?.swatch,
-        strokePaletteId: coreStore.defaultPalettes[PALETTE_TYPES.TOOL_STROKE]?.palette,
-        strokeSwatchId: coreStore.defaultPalettes[PALETTE_TYPES.TOOL_STROKE]?.swatch,
+        fillPaletteId: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_FILL]?.palette,
+        fillSwatchId: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_FILL]?.swatch,
+        strokePaletteId: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_STROKE]?.palette,
+        strokeSwatchId: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_STROKE]?.swatch,
       };
       pageOptions.value[pageId] = options;
     }

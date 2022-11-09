@@ -39,9 +39,17 @@ export const useCoreStore = defineStore("core", () => {
   const pages = ref({} as IPages);
   const paletteCollections = ref({} as { [key: TPrimaryKey]: TPrimaryKey[] });
   const palettes = ref({} as IPalettes);
-  const defaultPalettes = ref(
+  const builtinPalettes = ref(
     {} as { [key in PALETTE_TYPES]: { palette: TPrimaryKey; swatch: TPrimaryKey } }
   );
+  const defaultPaletteCollection = computed(() => {
+    const keys = Object.keys(paletteCollections.value);
+    if (keys.length === 0) {
+      return null;
+    }
+
+    return paletteCollections.value[keys[0]];
+  });
   const getSwatchColor = computed(
     () => (paletteId: TPrimaryKey | null, swatchId: TPrimaryKey | null) => {
       if (paletteId === null || swatchId === null) {
@@ -134,7 +142,7 @@ export const useCoreStore = defineStore("core", () => {
       defaultSwatch = defaultSwatch || palette.swatchOrder[0];
 
       if (palette.isPublic) {
-        defaultPalettes.value[palette.paletteType as PALETTE_TYPES] = {
+        builtinPalettes.value[palette.paletteType as PALETTE_TYPES] = {
           palette: palette.pk,
           swatch: defaultSwatch,
         };
@@ -253,16 +261,16 @@ export const useCoreStore = defineStore("core", () => {
       notebook: page.notebook.pk,
       paperSwatch: page.paperSwatch
         ? page.paperSwatch.pk
-        : defaultPalettes.value[PALETTE_TYPES.PAPER]?.swatch,
+        : builtinPalettes.value[PALETTE_TYPES.PAPER]?.swatch,
       paperPalette: page.paperSwatch
         ? page.paperSwatch.palette.pk
-        : defaultPalettes.value[PALETTE_TYPES.PAPER]?.palette,
+        : builtinPalettes.value[PALETTE_TYPES.PAPER]?.palette,
       patternSwatch: page.patternSwatch
         ? page.patternSwatch.pk
-        : defaultPalettes.value[PALETTE_TYPES.PATTERN]?.swatch,
+        : builtinPalettes.value[PALETTE_TYPES.PATTERN]?.swatch,
       patternPalette: page.patternSwatch
         ? page.patternSwatch.palette.pk
-        : defaultPalettes.value[PALETTE_TYPES.PATTERN]?.palette,
+        : builtinPalettes.value[PALETTE_TYPES.PATTERN]?.palette,
       patternType: page.patternType ? page.patternType : DEFAULT_PATTERN_TYPE,
       patternSize: typeof page.patternSize !== "undefined" ? page.patternSize : null,
       patternSpacing: typeof page.patternSpacing !== "undefined" ? page.patternSpacing : null,
@@ -294,7 +302,7 @@ export const useCoreStore = defineStore("core", () => {
 
   async function createPage(notebookPk: TPrimaryKey) {
     const { execute, data } = useMutation(CreatePageDocument);
-    const paperSwatchPk = defaultPalettes.value[PALETTE_TYPES.PAPER].swatch;
+    const paperSwatchPk = builtinPalettes.value[PALETTE_TYPES.PAPER].swatch;
 
     await execute({ notebookPk, paperSwatchPk });
 
@@ -315,9 +323,10 @@ export const useCoreStore = defineStore("core", () => {
     myBookshelf,
 
     paletteCollections,
+    defaultPaletteCollection,
     palettes,
     getSwatchColor,
-    defaultPalettes,
+    builtinPalettes,
     fetchMyPalettes,
     createPalette,
     updateSwatchColor,
