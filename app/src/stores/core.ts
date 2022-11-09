@@ -31,7 +31,6 @@ import {
   PALETTE_TYPES,
   TRANSPARENT_COLOR,
 } from "@/constants/core";
-import { randomInteger } from "@/utils/math";
 
 export const useCoreStore = defineStore("core", () => {
   const rooms = ref({} as IRooms);

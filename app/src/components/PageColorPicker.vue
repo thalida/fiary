@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from "vue";
+import { debounce } from "lodash";
 import ColorPicker from "@mcistudio/vue-colorpicker";
 import "@mcistudio/vue-colorpicker/dist/style.css";
-import { getColorAsCss } from "@/utils/color";
+import { getColorAsCss, isTransparent } from "@/utils/color";
 import { useCanvasStore } from "@/stores/canvas";
 import type { TColor, TPrimaryKey } from "@/types/core";
 import { useCoreStore } from "@/stores/core";
 import type { PALETTE_TYPES } from "@/constants/core";
-import { debounce } from "lodash";
+import { randomInteger } from "@/utils/math";
 
 const props = defineProps<{
   paletteId: TPrimaryKey | null;
@@ -32,7 +33,30 @@ const defaultPalette = computed(() => {
   return coreStore.palettes[paletteId];
 });
 
-const color = computed(() => coreStore.getSwatchColor(props.paletteId, props.swatchId));
+const color = computed(() => {
+  const swatch = coreStore.getSwatchColor(props.paletteId, props.swatchId);
+  return swatch;
+});
+const isGradient = computed(() => {
+  return Array.isArray(color.value);
+});
+const pickerColor = computed(() => {
+  if (Array.isArray(color.value)) {
+    return color.value;
+  }
+
+  if (color.value.a < 1) {
+    const randomColor = {
+      r: randomInteger(0, 255),
+      g: randomInteger(0, 255),
+      b: randomInteger(0, 255),
+      a: 1,
+    };
+    return randomColor;
+  }
+
+  return color.value;
+});
 const showModal = ref(false);
 const isDropdownOpen = ref(false);
 const debouncedUpdateSwatchColor = debounce(coreStore.updateSwatchColor, 100);
@@ -46,9 +70,11 @@ function handleCreatePalette() {
 }
 
 async function handleSwatchClick(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
+  const selectedColor = coreStore.getSwatchColor(paletteId, swatchId);
+  const isTransparentColor = isTransparent(selectedColor);
   const isAlreadySelected = props.paletteId === paletteId && props.swatchId === swatchId;
   const isPublicPalette = coreStore.palettes[paletteId].isPublic;
-  showModal.value = isAlreadySelected && !isPublicPalette;
+  showModal.value = (isTransparentColor || isAlreadySelected) && !isPublicPalette;
 
   emits("update", paletteId, swatchId);
 }
@@ -68,9 +94,6 @@ function handleColorChange({ color }: { color: TColor }) {
   coreStore.palettes[paletteId].swatches[swatchId].swatch = color;
 
   debouncedUpdateSwatchColor(paletteId, swatchId, color);
-
-  // debounce
-  // coreStore.updateSwatchColor(paletteId, swatchId, color);
 }
 
 function closeDropdown() {
@@ -108,11 +131,11 @@ defineExpose({
       ref="colorPicker"
       :showPanelOnly="true"
       :supportedModes="['solid', 'linear']"
-      :showOpacityPicker="true"
+      :showOpacityPicker="false"
       :showDegreePicker="false"
-      :mode="Array.isArray(color) ? 'linear' : 'solid'"
-      :color="Array.isArray(color) ? {} : color"
-      :gradients="Array.isArray(color) ? color : []"
+      :mode="isGradient ? 'linear' : 'solid'"
+      :color="isGradient ? {} : pickerColor"
+      :gradients="isGradient ? pickerColor : []"
       @colorChanged="handleColorChange"
     >
     </ColorPicker>

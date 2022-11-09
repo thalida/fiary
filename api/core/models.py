@@ -342,3 +342,6 @@ class PaletteSwatch(models.Model):
 
     def __str__(self):
         return f'{self.palette}-{self.swatch}'
+
+    class Meta:
+        ordering = ['created_at']
