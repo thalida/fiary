@@ -50,7 +50,7 @@ const emit = defineEmits<{
   (event: "action:interactiveEdit:start"): void;
   (event: "action:interactiveEdit:end"): void;
   (event: "action:interactiveEdit:elementDelete"): void;
-  (event: "action:addImage:inputChange", ...args: any[]): void;
+  (event: "action:addImage:inputChange", value: Event): void;
   (event: "action:addImage:end"): void;
   (event: "action:paste:end"): void;
   (event: "action:paste:delete"): void;
@@ -139,6 +139,10 @@ function handlePatternSpacingChange() {
   });
 }
 
+function handleImageInput(event: Event) {
+  emit("action:addImage:inputChange", event);
+}
+
 defineExpose({
   closeAllColorPickers,
 });
@@ -167,7 +171,7 @@ defineExpose({
       </select>
     </div>
     <label v-else-if="pageOptions.selectedTool === ELEMENT_TYPE.IMAGE">
-      <input type="file" accept="image/*" @change="emit('action:addImage:inputChange')" />
+      <input type="file" accept="image/*" @input="handleImageInput" />
     </label>
     <label
       v-else-if="
