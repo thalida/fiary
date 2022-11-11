@@ -254,7 +254,12 @@ function handleCameraZoom(zoomStep: number) {
     return;
   }
 
-  if (pageOptions.value.transformMatrix.a > 0.5 && pageOptions.value.transformMatrix.a < 6) {
+  const isInBounds =
+    zoomStep > 0
+      ? pageOptions.value.transformMatrix.a < 6
+      : pageOptions.value.transformMatrix.a > 0.5;
+
+  if (isInBounds) {
     pageOptions.value.transformMatrix.a += zoomStep;
     pageOptions.value.transformMatrix.a =
       Math.round((pageOptions.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
