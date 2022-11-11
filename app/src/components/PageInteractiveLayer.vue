@@ -211,14 +211,11 @@ function handleInteractiveElementEvent(e: Event) {
   }
 }
 
-function setInteractiveElementTransforms(
-  initMatrix: { a: number; b: number; c: number; d: number; e: number; f: number },
-  transformMatrix: { a: number; b: number; c: number; d: number; e: number; f: number }
-) {
+function setInteractiveElementTransforms() {
   for (let i = 0; i < activeHtmlElements.value.length; i += 1) {
     const elementId = activeHtmlElements.value[i];
     const element = pageOptions.value.elements[elementId];
-    element.setTransform(initMatrix, transformMatrix);
+    element.setTransform(pageOptions.value.initTransformMatrix, pageOptions.value.transformMatrix);
   }
 }
 

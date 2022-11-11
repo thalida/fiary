@@ -10,8 +10,13 @@ const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
 const rootEl = ref<HTMLElement>();
 const rulerEl = ref();
 const moveableEl = ref();
+const rulerWidth = computed(() => {
+  return Math.sqrt(
+    canvasStore.canvasConfig.width * canvasStore.canvasConfig.width +
+      canvasStore.canvasConfig.height * canvasStore.canvasConfig.height
+  );
+});
 const ruler = ref({
-  width: canvasStore.canvasDiagSize,
   transform: {
     translate: [0, 0],
     scale: [1, 1],
@@ -105,7 +110,7 @@ defineExpose({
     class="ruler-layer"
     :class="{ 'hide-ruler-controls': !showRulerControls }"
   >
-    <div class="ruler" ref="rulerEl" :style="{ width: ruler.width + 'px' }">
+    <div class="ruler" ref="rulerEl" :style="{ width: rulerWidth + 'px' }">
       <div class="ruler__label">
         {{ Math.round(ruler.transform.rotate) }}&deg;
         <span v-if="pageOptions.elementOrder.length > 0 && pageOptions.isDrawing">
@@ -119,7 +124,7 @@ defineExpose({
           </span>
         </span>
       </div>
-      <div class="ruler__tool" :style="{ width: ruler.width + 'px' }"></div>
+      <div class="ruler__tool" :style="{ width: rulerWidth + 'px' }"></div>
     </div>
     <MoveableVue
       v-if="pageOptions.isRulerMode"

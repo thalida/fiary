@@ -25,21 +25,19 @@ const patternColor = computed(() =>
   coreStore.getSwatchColor(page.value.patternPalette, page.value.patternSwatch)
 );
 
-function setPaperTransforms(
-  matrix:
-    | { a: number; b: number; c: number; d: number; e: number; f: number }
-    | null
-    | undefined = null
-) {
+function setPaperTransforms() {
   let relativeZoom = 1;
 
-  if (typeof matrix !== "undefined" && matrix !== null) {
+  if (
+    typeof pageOptions.value.transformMatrix !== "undefined" &&
+    pageOptions.value.transformMatrix !== null
+  ) {
     const initMatrixA = pageOptions.value.initTransformMatrix
       ? pageOptions.value.initTransformMatrix.a
       : 1;
-    relativeZoom = initMatrixA / matrix.a;
-    paperPatternTransform.value.x = matrix.e / initMatrixA;
-    paperPatternTransform.value.y = matrix.f / initMatrixA;
+    relativeZoom = initMatrixA / pageOptions.value.transformMatrix.a;
+    paperPatternTransform.value.x = pageOptions.value.transformMatrix.e / initMatrixA;
+    paperPatternTransform.value.y = pageOptions.value.transformMatrix.f / initMatrixA;
   }
 
   paperPatternTransform.value.lineSize = page.value.patternSize

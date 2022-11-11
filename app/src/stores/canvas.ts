@@ -26,12 +26,6 @@ export const useCanvasStore = defineStore("canvas", () => {
     height: window.innerHeight,
     dpi: window.devicePixelRatio,
   });
-  const canvasDiagSize = computed(() => {
-    return Math.sqrt(
-      canvasConfig.value.width * canvasConfig.value.width +
-        canvasConfig.value.height * canvasConfig.value.height
-    );
-  });
 
   const selectedFillColor = computed(() => (pageId: TPrimaryKey) => {
     const options = pageOptions.value[pageId];
@@ -212,7 +206,6 @@ export const useCanvasStore = defineStore("canvas", () => {
   return {
     pageOptions,
     canvasConfig,
-    canvasDiagSize,
     initPageOptions,
     selectedFillColor,
     selectedStrokeColor,

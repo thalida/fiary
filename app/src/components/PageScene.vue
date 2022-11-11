@@ -58,6 +58,7 @@ function initScene(canvas: HTMLCanvasElement) {
 
   drawingCanvas.value = canvas;
   canvasStore.initPageOptions(props.pageId, ctx.getTransform());
+  paperLayer.value?.setPaperTransforms();
 
   watch(
     () => (pageOptions.value ? pageOptions.value.isDebugMode : false),
@@ -66,9 +67,7 @@ function initScene(canvas: HTMLCanvasElement) {
     }
   );
 
-  watchEffect(() => {
-    paperLayer.value?.setPaperTransforms(pageOptions.value.transformMatrix);
-  });
+  // watchEffect(() => {});
 }
 
 function isDrawingAllowed(isDrawingOverride = false) {
@@ -262,11 +261,8 @@ function handleCameraZoom(zoomStep: number) {
     pageOptions.value.transformMatrix.d = pageOptions.value.transformMatrix.a;
   }
 
-  paperLayer.value?.setPaperTransforms(pageOptions.value.transformMatrix);
-  interactiveLayer.value?.setInteractiveElementTransforms(
-    pageOptions.value.initTransformMatrix,
-    pageOptions.value.transformMatrix
-  );
+  paperLayer.value?.setPaperTransforms();
+  interactiveLayer.value?.setInteractiveElementTransforms();
   drawingLayer.value?.drawElements();
 }
 
@@ -299,11 +295,8 @@ function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
   pageOptions.value.transformMatrix.e = transformOrigin.x;
   pageOptions.value.transformMatrix.f = transformOrigin.y;
 
-  paperLayer.value?.setPaperTransforms(pageOptions.value.transformMatrix);
-  interactiveLayer.value?.setInteractiveElementTransforms(
-    pageOptions.value.initTransformMatrix,
-    pageOptions.value.transformMatrix
-  );
+  paperLayer.value?.setPaperTransforms();
+  interactiveLayer.value?.setInteractiveElementTransforms();
   drawingLayer.value?.drawElements();
 }
 
