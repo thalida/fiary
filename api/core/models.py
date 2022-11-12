@@ -100,7 +100,7 @@ class Notebook(models.Model):
     )
 
     def __str__(self):
-        return self.title
+        return f'{self.title}-{self.owner.username}[{self.uid}]'
 
 
 @receiver(models.signals.post_save, sender=Notebook)
@@ -240,7 +240,7 @@ class Element(models.Model):
     )
 
     def __str__(self):
-        return f'{self.uid}-tool:{self.tool}'
+        return f'{self.uid}'
 
 
 
