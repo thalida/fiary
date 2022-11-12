@@ -20,8 +20,8 @@ export function getColorAsCss(color: TColor): string {
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
 }
 
-export function isTransparent(color: TColor | undefined): boolean {
-  if (typeof color === "undefined") {
+export function isTransparent(color: TColor | null | undefined): boolean {
+  if (typeof color === "undefined" || color === null) {
     return true;
   }
 
@@ -29,8 +29,8 @@ export function isTransparent(color: TColor | undefined): boolean {
   return !isGradient && color.a === 0;
 }
 
-export function formatColor(color: ISolidColor | undefined, opacity = 1) {
-  if (typeof color === "undefined" || isTransparent(color)) {
+export function formatColor(color: ISolidColor | null | undefined, opacity = 1) {
+  if (typeof color === "undefined" || color === null || isTransparent(color)) {
     return "transparent";
   }
 

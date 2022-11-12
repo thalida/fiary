@@ -69,11 +69,18 @@ export type CreateBookshelfPayload = {
 };
 
 export type CreateElementInput = {
+  canvasSettings?: InputMaybe<Scalars["JSONString"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  options?: InputMaybe<Scalars["JSONString"]>;
+  dimensions?: InputMaybe<Scalars["JSONString"]>;
+  imageRender?: InputMaybe<Scalars["String"]>;
+  isCached?: InputMaybe<Scalars["Boolean"]>;
+  isHidden?: InputMaybe<Scalars["Boolean"]>;
+  isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
   pageUid: Scalars["UUID"];
-  render?: InputMaybe<Scalars["JSONString"]>;
+  points: Scalars["JSONString"];
+  settings?: InputMaybe<Scalars["JSONString"]>;
   tool: Scalars["Int"];
+  transform?: InputMaybe<Scalars["JSONString"]>;
 };
 
 export type CreateElementPayload = {
@@ -192,14 +199,21 @@ export type DeletePaletteSwatchPayload = {
 
 export type ElementNode = Node & {
   __typename?: "ElementNode";
+  canvasSettings?: Maybe<Scalars["JSONString"]>;
   createdAt: Scalars["DateTime"];
+  dimensions?: Maybe<Scalars["JSONString"]>;
   /** The ID of the object */
   id: Scalars["ID"];
-  options?: Maybe<Scalars["JSONString"]>;
+  imageRender?: Maybe<Scalars["String"]>;
+  isCached: Scalars["Boolean"];
+  isHidden: Scalars["Boolean"];
+  isHtmlElement: Scalars["Boolean"];
   owner: UserNode;
   page: PageNode;
-  render: Scalars["JSONString"];
+  points: Scalars["JSONString"];
+  settings?: Maybe<Scalars["JSONString"]>;
   tool: Scalars["Int"];
+  transform?: Maybe<Scalars["JSONString"]>;
   uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
@@ -839,10 +853,17 @@ export type UpdateBookshelfPayload = {
 };
 
 export type UpdateElementInput = {
+  canvasSettings?: InputMaybe<Scalars["JSONString"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  options?: InputMaybe<Scalars["JSONString"]>;
-  render?: InputMaybe<Scalars["JSONString"]>;
+  dimensions?: InputMaybe<Scalars["JSONString"]>;
+  imageRender?: InputMaybe<Scalars["String"]>;
+  isCached?: InputMaybe<Scalars["Boolean"]>;
+  isHidden?: InputMaybe<Scalars["Boolean"]>;
+  isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
+  points?: InputMaybe<Scalars["JSONString"]>;
+  settings?: InputMaybe<Scalars["JSONString"]>;
   tool?: InputMaybe<Scalars["Int"]>;
+  transform?: InputMaybe<Scalars["JSONString"]>;
   uid: Scalars["UUID"];
 };
 
@@ -1016,8 +1037,15 @@ export type VerifyPayload = {
 export type CreateElementMutationVariables = Exact<{
   pageUid: Scalars["UUID"];
   tool: Scalars["Int"];
-  render?: InputMaybe<Scalars["JSONString"]>;
-  options?: InputMaybe<Scalars["JSONString"]>;
+  points: Scalars["JSONString"];
+  settings?: InputMaybe<Scalars["JSONString"]>;
+  transform?: InputMaybe<Scalars["JSONString"]>;
+  dimensions?: InputMaybe<Scalars["JSONString"]>;
+  canvasSettings?: InputMaybe<Scalars["JSONString"]>;
+  imageRender?: InputMaybe<Scalars["String"]>;
+  isCached?: InputMaybe<Scalars["Boolean"]>;
+  isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
+  isHidden?: InputMaybe<Scalars["Boolean"]>;
 }>;
 
 export type CreateElementMutation = {
@@ -1030,9 +1058,16 @@ export type CreateElementMutation = {
       updatedAt: any;
       createdAt: any;
       tool: number;
-      render: any;
-      options?: any | null;
-      page: { __typename?: "PageNode"; uid: any };
+      points: any;
+      settings?: any | null;
+      transform?: any | null;
+      dimensions?: any | null;
+      canvasSettings?: any | null;
+      imageRender?: string | null;
+      isCached: boolean;
+      isHtmlElement: boolean;
+      isHidden: boolean;
+      page: { __typename?: "PageNode"; uid: any; elementOrder: Array<any> };
     } | null;
   } | null;
 };
@@ -1238,9 +1273,16 @@ export type MyElementsQuery = {
         updatedAt: any;
         createdAt: any;
         tool: number;
-        render: any;
-        options?: any | null;
-        page: { __typename?: "PageNode"; uid: any };
+        points: any;
+        settings?: any | null;
+        transform?: any | null;
+        dimensions?: any | null;
+        canvasSettings?: any | null;
+        imageRender?: string | null;
+        isCached: boolean;
+        isHtmlElement: boolean;
+        isHidden: boolean;
+        page: { __typename?: "PageNode"; uid: any; elementOrder: Array<any> };
       } | null;
     } | null>;
   } | null;
@@ -1531,13 +1573,51 @@ export const CreateElementDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "render" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "points" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "settings" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "options" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "transform" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "dimensions" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "canvasSettings" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "imageRender" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isCached" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isHtmlElement" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isHidden" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
         },
       ],
       selectionSet: {
@@ -1565,13 +1645,48 @@ export const CreateElementDocument = {
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "render" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "render" } },
+                      name: { kind: "Name", value: "points" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "points" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "options" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "options" } },
+                      name: { kind: "Name", value: "settings" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "settings" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "transform" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "transform" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "dimensions" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "dimensions" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "canvasSettings" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "canvasSettings" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "imageRender" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "imageRender" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isCached" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isCached" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isHtmlElement" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isHtmlElement" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isHidden" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isHidden" } },
                     },
                   ],
                 },
@@ -1591,15 +1706,25 @@ export const CreateElementDocument = {
                         name: { kind: "Name", value: "page" },
                         selectionSet: {
                           kind: "SelectionSet",
-                          selections: [{ kind: "Field", name: { kind: "Name", value: "uid" } }],
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
+                            { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
+                          ],
                         },
                       },
                       { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                       { kind: "Field", name: { kind: "Name", value: "tool" } },
-                      { kind: "Field", name: { kind: "Name", value: "render" } },
-                      { kind: "Field", name: { kind: "Name", value: "options" } },
+                      { kind: "Field", name: { kind: "Name", value: "points" } },
+                      { kind: "Field", name: { kind: "Name", value: "settings" } },
+                      { kind: "Field", name: { kind: "Name", value: "transform" } },
+                      { kind: "Field", name: { kind: "Name", value: "dimensions" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasSettings" } },
+                      { kind: "Field", name: { kind: "Name", value: "imageRender" } },
+                      { kind: "Field", name: { kind: "Name", value: "isCached" } },
+                      { kind: "Field", name: { kind: "Name", value: "isHtmlElement" } },
+                      { kind: "Field", name: { kind: "Name", value: "isHidden" } },
                     ],
                   },
                 },
@@ -2433,6 +2558,7 @@ export const MyElementsDocument = {
                                 kind: "SelectionSet",
                                 selections: [
                                   { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                  { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
                                 ],
                               },
                             },
@@ -2440,8 +2566,15 @@ export const MyElementsDocument = {
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                             { kind: "Field", name: { kind: "Name", value: "tool" } },
-                            { kind: "Field", name: { kind: "Name", value: "render" } },
-                            { kind: "Field", name: { kind: "Name", value: "options" } },
+                            { kind: "Field", name: { kind: "Name", value: "points" } },
+                            { kind: "Field", name: { kind: "Name", value: "settings" } },
+                            { kind: "Field", name: { kind: "Name", value: "transform" } },
+                            { kind: "Field", name: { kind: "Name", value: "dimensions" } },
+                            { kind: "Field", name: { kind: "Name", value: "canvasSettings" } },
+                            { kind: "Field", name: { kind: "Name", value: "imageRender" } },
+                            { kind: "Field", name: { kind: "Name", value: "isCached" } },
+                            { kind: "Field", name: { kind: "Name", value: "isHtmlElement" } },
+                            { kind: "Field", name: { kind: "Name", value: "isHidden" } },
                           ],
                         },
                       },

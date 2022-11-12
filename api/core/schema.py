@@ -174,11 +174,11 @@ class UpdateNotebook(graphene.relay.ClientIDMutation):
 
             if k == 'bookshelf_uid':
                 current_shelf = notebook.bookshelf
-                current_shelf.notebook_order.remove(notebook.id)
+                current_shelf.notebook_order.remove(notebook.uid)
                 current_shelf.save()
 
                 new_bookshelf = Bookshelf.objects.get(uid=v)
-                new_bookshelf.notebook_order.append(notebook.id)
+                new_bookshelf.notebook_order.append(notebook.uid)
                 new_bookshelf.save()
                 notebook.bookshelf = new_bookshelf
                 continue
@@ -269,11 +269,11 @@ class UpdatePage(graphene.relay.ClientIDMutation):
 
             if k == 'notebook_uid':
                 current_notebook = page.notebook
-                current_notebook.page_order.remove(page.id)
+                current_notebook.page_order.remove(page.uid)
                 current_notebook.save()
 
                 new_notebook = Notebook.objects.get(uid=v)
-                new_notebook.page_order.append(page.id)
+                new_notebook.page_order.append(page.uid)
                 new_notebook.save()
 
                 page.notebook = new_notebook
@@ -313,8 +313,15 @@ class CreateElement(graphene.relay.ClientIDMutation):
     class Input:
         page_uid = graphene.UUID(required=True)
         tool = graphene.Int(required=True)
-        render = graphene.JSONString(required=False)
-        options = graphene.JSONString(required=False)
+        points = graphene.JSONString(required=True)
+        settings = graphene.JSONString(required=False)
+        transform = graphene.JSONString(required=False)
+        dimensions = graphene.JSONString(required=False)
+        canvas_settings = graphene.JSONString(required=False)
+        image_render = graphene.String(required=False)
+        is_cached = graphene.Boolean(required=False)
+        is_html_element = graphene.Boolean(required=False)
+        is_hidden = graphene.Boolean(required=False)
 
     element = graphene.Field(ElementNode)
 
@@ -326,9 +333,22 @@ class CreateElement(graphene.relay.ClientIDMutation):
             owner=info.context.user,
             page=page,
             tool=input['tool'],
-            render=input.get('render', None),
-            options=input.get('options', None)
+            points=input['points']
         )
+
+        for k, v in input.items():
+            if k == 'page_uid':
+                continue
+
+            if k == 'tool':
+                continue
+
+            if k == 'points':
+                continue
+
+            setattr(element, k, v)
+
+        element.save()
 
         return CreateElement(element=element)
 
@@ -337,8 +357,16 @@ class UpdateElement(graphene.relay.ClientIDMutation):
     class Input:
         uid = graphene.UUID(required=True)
         tool = graphene.Int(required=False)
-        render = graphene.JSONString(required=False)
-        options = graphene.JSONString(required=False)
+        points = graphene.JSONString(required=False)
+        settings = graphene.JSONString(required=False)
+        transform = graphene.JSONString(required=False)
+        dimensions = graphene.JSONString(required=False)
+        canvas_settings = graphene.JSONString(required=False)
+        image_render = graphene.String(required=False)
+        is_cached = graphene.Boolean(required=False)
+        is_html_element = graphene.Boolean(required=False)
+        is_hidden = graphene.Boolean(required=False)
+
 
     element = graphene.Field(ElementNode)
 
@@ -367,7 +395,8 @@ class DeleteElement(graphene.relay.ClientIDMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         element = Element.objects.get(uid=input['uid'])
-        element.delete()
+        element['is_hidden'] = True
+        element.save()
 
         return DeleteElement(element=element)
 

@@ -67,7 +67,7 @@ def setup_bookshelf(sender, instance, created, **kwargs):
 
     bookshelf = instance
     room = bookshelf.room
-    room.bookshelf_order.append(bookshelf.id)
+    room.bookshelf_order.append(bookshelf.uid)
     room.save()
 
 
@@ -110,7 +110,7 @@ def setup_notebook(sender, instance, created, **kwargs):
 
     notebook = instance
     bookshelf = notebook.bookshelf
-    bookshelf.notebook_order.append(notebook.id)
+    bookshelf.notebook_order.append(notebook.uid)
     bookshelf.save()
 
 
@@ -171,7 +171,7 @@ class Page(models.Model):
     )
 
     def __str__(self):
-        return f"{self.owner.username}'s page {self.id}"
+        return f"{self.owner.username}'s page {self.uid}"
 
 
 @receiver(models.signals.post_save, sender=Page)
@@ -181,7 +181,7 @@ def setup_page(sender, instance, created, **kwargs):
 
     page = instance
     notebook = page.notebook
-    notebook.page_order.append(page.id)
+    notebook.page_order.append(page.uid)
     notebook.save()
 
 
@@ -200,19 +200,47 @@ class Element(models.Model):
         related_name='elements',
         on_delete=models.CASCADE
     )
-
     tool = models.IntegerField(
         choices=Tools.choices,
     )
-    render = models.JSONField()
-    options = models.JSONField(
+    points = models.JSONField()
+    settings = models.JSONField(
         default=None,
         null=True,
         blank=True
     )
+    transform = models.JSONField(
+        default=None,
+        null=True,
+        blank=True
+    )
+    dimensions = models.JSONField(
+        default=None,
+        null=True,
+        blank=True
+    )
+    canvas_settings = models.JSONField(
+        default=None,
+        null=True,
+        blank=True
+    )
+    image_render = models.TextField(
+        default=None,
+        null=True,
+        blank=True
+    )
+    is_cached = models.BooleanField(
+        default=False
+    )
+    is_html_element = models.BooleanField(
+        default=False
+    )
+    is_hidden = models.BooleanField(
+        default=False
+    )
 
     def __str__(self):
-        return f'{self.id}-tool:{self.tool}'
+        return f'{self.uid}-tool:{self.tool}'
 
 
 
@@ -223,7 +251,7 @@ def setup_element(sender, instance, created, **kwargs):
 
     element = instance
     page = element.page
-    page.element_order.append(element.id)
+    page.element_order.append(element.uid)
     page.save()
 
 
@@ -245,7 +273,7 @@ class PaletteCollection(models.Model):
     )
 
     def __str__(self):
-        return f"{self.owner.username}'s collection - {self.id}"
+        return f"{self.owner.username}'s collection - {self.uid}"
 
 
 class Palette(models.Model):
@@ -290,8 +318,8 @@ def setup_palette(sender, instance, created, **kwargs):
     palette = instance
 
     for collection in palette.collections.all():
-        if palette.id not in collection.palette_order:
-            collection.palette_order.append(palette.id)
+        if palette.uid not in collection.palette_order:
+            collection.palette_order.append(palette.uid)
             collection.save()
 
 @receiver(models.signals.post_delete, sender=Palette)
@@ -299,8 +327,8 @@ def teardown_palette(sender, instance, **kwargs):
     palette = instance
 
     for collection in palette.collections.all():
-        if palette.id in collection.palette_order:
-            collection.palette_order.remove(palette.id)
+        if palette.uid in collection.palette_order:
+            collection.palette_order.remove(palette.uid)
             collection.save()
 
 

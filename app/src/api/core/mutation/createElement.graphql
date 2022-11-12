@@ -1,27 +1,49 @@
 mutation CreateElement(
   $pageUid: UUID!
   $tool: Int!
-  $render: JSONString
-  $options: JSONString
+  $points: JSONString!
+  $settings: JSONString
+  $transform: JSONString
+  $dimensions: JSONString
+  $canvasSettings: JSONString
+  $imageRender: String
+  $isCached: Boolean
+  $isHtmlElement: Boolean
+  $isHidden: Boolean
 ) {
   createElement(
     input: {
       pageUid: $pageUid
       tool: $tool
-      render: $render
-      options: $options
+      points: $points
+      settings: $settings
+      transform: $transform
+      dimensions: $dimensions
+      canvasSettings: $canvasSettings
+      imageRender: $imageRender
+      isCached: $isCached
+      isHtmlElement: $isHtmlElement
+      isHidden: $isHidden
     }
   ) {
     element {
       page {
         uid
+        elementOrder
       }
       uid
       updatedAt
       createdAt
       tool
-      render
-      options
+      points
+      settings
+      transform
+      dimensions
+      canvasSettings
+      imageRender
+      isCached
+      isHtmlElement
+      isHidden
     }
   }
 }

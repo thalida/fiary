@@ -4,13 +4,21 @@ query MyElements($uid:UUID, $pageUid:UUID) {
       node {
         page {
           uid
+          elementOrder
         }
         uid
         updatedAt
         createdAt
         tool
-        render
-        options
+        points
+        settings
+        transform
+        dimensions
+        canvasSettings
+        imageRender
+        isCached
+        isHtmlElement
+        isHidden
       }
     }
   }

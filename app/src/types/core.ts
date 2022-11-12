@@ -74,9 +74,6 @@ export interface IPageOptions {
   selectedLineEndStyle: LineEndStyle;
   selectedLineEndSide: LineEndSide;
 
-  elements: { [key: TPrimaryKey]: any };
-  elementOrder: TPrimaryKey[];
-  clearAllElementIndexes: number[];
   isDebugMode: boolean;
   isPasteMode: boolean;
   isAddImageMode: boolean;
@@ -90,9 +87,6 @@ export interface IPageOptions {
   isStylus: boolean;
   detectedStylus: boolean;
   allowFingerDrawing: boolean;
-
-  history: any[];
-  historyIndex: number;
 
   initTransformMatrix: ITransformMatrix;
   transformMatrix: ITransformMatrix;
@@ -111,86 +105,89 @@ export interface IElements {
   [key: string]: IElement;
 }
 
-export type TElement = ICanvasElement & IInteractiveElement & IClearElement;
-
 export interface IElement {
   uid: TPrimaryKey;
   pageUid: TPrimaryKey;
   createdAt: string;
   updatedAt: string;
   tool: ELEMENT_TYPE;
-  render: any;
-  options: any;
-}
-
-export interface IElementBase {
-  id: TPrimaryKey;
-  uid: TPrimaryKey;
-  updatedAt?: string;
-  createdAt?: string;
-  page?: TPrimaryKey;
-  tool: number;
   points: IElementPoint[];
-  toolOptions: TElementOptions | null;
-  isDeleted: boolean;
+  settings: TElementSettings;
+  transform: IElementTransform;
+  dimensions: IElementDimensions;
+  canvasSettings: ICanvasSettings;
+  imageRender: string | null;
+  isCached: boolean;
   isHTMLElement: boolean;
+  isHidden: boolean;
 }
 
-export interface ICanvasElement extends IElementBase {
-  fillColor: TColor;
-  strokeColor: TColor;
+export interface ICanvasSettings {
+  dpi: number;
+  composition: string;
   opacity: number;
-  size: number;
-  isRulerLine: boolean;
-  cache: any;
-  isDrawingCached: boolean;
-  composition: string;
-  dimensions: any;
-  freehandOptions: any;
+  fillColor: TColor | undefined | null;
+  strokeColor: TColor | undefined | null;
   smoothPoints: any;
-  isCompletedCut?: boolean;
+  freehandOptions: { [key: string]: any };
+  lineSize: number | null;
+  isRulerLine: boolean | null;
 }
 
-export interface IClearElement extends IElementBase {
-  fillColor: TColor;
-  strokeColor: TColor;
-  cache: any;
-  isDrawingCached: boolean;
-  composition: string;
-  dimensions: any;
+export interface IElementDimensions {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  outerMinX: number;
+  outerMinY: number;
+  outerMaxX: number;
+  outerMaxY: number;
+  width: number;
+  height: number;
+  outerWidth: number;
+  outerHeight: number;
+  lineLength: number | null;
 }
-export interface IInteractiveElement extends IElementBase {
-  style: any;
-  tmpFromStyle?: any;
+
+export interface IElementTransform {
+  translate: [number, number];
+  rotate: [number, number];
+  scale: [number, number];
+}
+
+export type TElementSettings =
+  | ILineElementSettings
+  | IImageElementSettings
+  | ICheckboxElementSettings
+  | ITextboxElementSettings
+  | ICutElementSettings;
+
+export interface ILineElementSettings {
+  lineEndStyle: number;
+  lineEndSide: number;
+}
+
+export interface IImageElementSettings {
+  image: any;
+}
+
+export interface ICheckboxElementSettings {
+  isChecked: boolean;
+}
+
+export interface ITextboxElementSettings {
+  textContents: string | null;
+}
+
+export interface ICutElementSettings {
+  isCompletedCut: boolean | null;
 }
 
 export interface IElementPoint {
   x: number;
   y: number;
   pressure?: number;
-}
-
-export type TElementOptions =
-  | ILineElementOptions
-  | IImageElementOptions
-  | ICheckboxElementOptions
-  | ITextboxElementOptions;
-
-export interface ILineElementOptions {
-  lineEndStyle: number;
-  lineEndSide: number;
-}
-
-export interface IImageElementOptions {
-  image: any;
-}
-
-export interface ICheckboxElementOptions {
-  isChecked: boolean;
-}
-
-export interface ITextboxElementOptions {
-  textContents: string | null;
 }
 
 export interface IPalettes {
