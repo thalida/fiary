@@ -1,11 +1,11 @@
-mutation CreatePaletteSwatch($palette_pk: UUID!, $swatch: JSONString!) {
-  createPaletteSwatch(input: { palettePk: $palette_pk, swatch: $swatch }) {
+mutation CreatePaletteSwatch($paletteUid: UUID!, $swatch: JSONString!) {
+  createPaletteSwatch(input: { paletteUid: $paletteUid, swatch: $swatch }) {
     swatch {
-      pk
+      uid
       swatch
       isDefault
       palette {
-        pk
+        uid
       }
     }
   }

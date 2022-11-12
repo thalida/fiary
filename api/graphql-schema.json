@@ -192,20 +192,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -302,20 +292,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -422,20 +402,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -542,20 +512,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -662,30 +622,20 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "owner",
+                  "name": "page_Uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "page",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -782,20 +732,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -892,20 +832,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -1002,20 +932,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -1083,15 +1003,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -1223,20 +1143,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -1268,15 +1178,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -1375,6 +1285,16 @@
           "interfaces": null,
           "kind": "SCALAR",
           "name": "ID",
+          "possibleTypes": null
+        },
+        {
+          "description": "Leverages the internal Python implementation of UUID (uuid.UUID) to provide native UUID objects\nin fields, resolvers and input.",
+          "enumValues": null,
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "kind": "SCALAR",
+          "name": "UUID",
           "possibleTypes": null
         },
         {
@@ -1518,15 +1438,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -1586,20 +1506,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -1673,20 +1583,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -1770,20 +1670,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -1867,20 +1757,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -1964,30 +1844,20 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "owner",
+                  "name": "page_Uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "page",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -2073,20 +1943,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -2160,20 +2020,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -2195,15 +2045,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -2497,15 +2347,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -2653,20 +2503,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -2698,15 +2538,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -2722,16 +2562,6 @@
           ],
           "kind": "OBJECT",
           "name": "BookshelfNode",
-          "possibleTypes": null
-        },
-        {
-          "description": "Leverages the internal Python implementation of UUID (uuid.UUID) to provide native UUID objects\nin fields, resolvers and input.",
-          "enumValues": null,
-          "fields": null,
-          "inputFields": null,
-          "interfaces": null,
-          "kind": "SCALAR",
-          "name": "UUID",
           "possibleTypes": null
         },
         {
@@ -2827,15 +2657,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -2995,20 +2825,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -3040,15 +2860,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -3159,15 +2979,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -3313,6 +3133,30 @@
               }
             },
             {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
+              "name": "elementOrder",
+              "type": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "LIST",
+                  "name": null,
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "UUID",
+                      "ofType": null
+                    }
+                  }
+                }
+              }
+            },
+            {
               "args": [
                 {
                   "defaultValue": null,
@@ -3367,30 +3211,20 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "owner",
+                  "name": "page_Uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "page",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -3412,15 +3246,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -3445,15 +3279,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -3609,20 +3443,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -3706,20 +3530,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 },
@@ -3751,15 +3565,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -3784,15 +3598,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -3900,20 +3714,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -4031,20 +3835,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -4066,15 +3860,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -4185,15 +3979,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -4325,20 +4119,10 @@
                 {
                   "defaultValue": null,
                   "description": null,
-                  "name": "id",
+                  "name": "uid",
                   "type": {
                     "kind": "SCALAR",
-                    "name": "ID",
-                    "ofType": null
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "owner",
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "ID",
+                    "name": "UUID",
                     "ofType": null
                   }
                 }
@@ -4360,15 +4144,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -4671,15 +4455,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": "The ID of the object",
+              "description": null,
               "isDeprecated": false,
-              "name": "id",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "ID",
+                  "name": "UUID",
                   "ofType": null
                 }
               }
@@ -4755,59 +4539,11 @@
               "isDeprecated": false,
               "name": "tool",
               "type": {
-                "kind": "SCALAR",
-                "name": "Int",
-                "ofType": null
-              }
-            },
-            {
-              "args": [],
-              "deprecationReason": null,
-              "description": null,
-              "isDeprecated": false,
-              "name": "fillColor",
-              "type": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            {
-              "args": [],
-              "deprecationReason": null,
-              "description": null,
-              "isDeprecated": false,
-              "name": "strokeColor",
-              "type": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            {
-              "args": [],
-              "deprecationReason": null,
-              "description": null,
-              "isDeprecated": false,
-              "name": "size",
-              "type": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            {
-              "args": [],
-              "deprecationReason": null,
-              "description": null,
-              "isDeprecated": false,
-              "name": "isRulerLine",
-              "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "Boolean",
+                  "name": "Int",
                   "ofType": null
                 }
               }
@@ -4817,22 +4553,14 @@
               "deprecationReason": null,
               "description": null,
               "isDeprecated": false,
-              "name": "points",
+              "name": "render",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
-                  "kind": "LIST",
-                  "name": null,
-                  "ofType": {
-                    "kind": "NON_NULL",
-                    "name": null,
-                    "ofType": {
-                      "kind": "SCALAR",
-                      "name": "JSONString",
-                      "ofType": null
-                    }
-                  }
+                  "kind": "SCALAR",
+                  "name": "JSONString",
+                  "ofType": null
                 }
               }
             },
@@ -4851,15 +4579,15 @@
             {
               "args": [],
               "deprecationReason": null,
-              "description": null,
+              "description": "The ID of the object",
               "isDeprecated": false,
-              "name": "pk",
+              "name": "id",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
                 "ofType": {
                   "kind": "SCALAR",
-                  "name": "UUID",
+                  "name": "ID",
                   "ofType": null
                 }
               }
@@ -5552,7 +5280,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "roomPk",
+              "name": "roomUid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -5622,7 +5350,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -5706,7 +5434,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "bookshelfPk",
+              "name": "bookshelfUid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -5786,7 +5514,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -5810,7 +5538,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "bookshelfPk",
+              "name": "bookshelfUid",
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
@@ -5890,7 +5618,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -5960,7 +5688,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "notebookPk",
+              "name": "notebookUid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -5974,7 +5702,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "paperSwatchPk",
+              "name": "paperSwatchUid",
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
@@ -5984,7 +5712,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "patternSwatchPk",
+              "name": "patternSwatchUid",
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
@@ -6090,7 +5818,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -6104,7 +5832,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "notebookPk",
+              "name": "notebookUid",
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
@@ -6114,7 +5842,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "paperSwatchPk",
+              "name": "paperSwatchUid",
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
@@ -6124,7 +5852,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "patternSwatchPk",
+              "name": "patternSwatchUid",
               "type": {
                 "kind": "SCALAR",
                 "name": "UUID",
@@ -6230,7 +5958,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -6300,7 +6028,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pagePk",
+              "name": "pageUid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -6328,75 +6056,11 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "fillColor",
+              "name": "render",
               "type": {
-                "kind": "NON_NULL",
-                "name": null,
-                "ofType": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                }
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "strokeColor",
-              "type": {
-                "kind": "NON_NULL",
-                "name": null,
-                "ofType": {
-                  "kind": "SCALAR",
-                  "name": "String",
-                  "ofType": null
-                }
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "size",
-              "type": {
-                "kind": "NON_NULL",
-                "name": null,
-                "ofType": {
-                  "kind": "SCALAR",
-                  "name": "Float",
-                  "ofType": null
-                }
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "isRulerLine",
-              "type": {
-                "kind": "NON_NULL",
-                "name": null,
-                "ofType": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
-                  "ofType": null
-                }
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "points",
-              "type": {
-                "kind": "NON_NULL",
-                "name": null,
-                "ofType": {
-                  "kind": "LIST",
-                  "name": null,
-                  "ofType": {
-                    "kind": "SCALAR",
-                    "name": "JSONString",
-                    "ofType": null
-                  }
-                }
+                "kind": "SCALAR",
+                "name": "JSONString",
+                "ofType": null
               }
             },
             {
@@ -6468,7 +6132,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -6492,55 +6156,11 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "fillColor",
+              "name": "render",
               "type": {
                 "kind": "SCALAR",
-                "name": "String",
+                "name": "JSONString",
                 "ofType": null
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "strokeColor",
-              "type": {
-                "kind": "SCALAR",
-                "name": "String",
-                "ofType": null
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "size",
-              "type": {
-                "kind": "SCALAR",
-                "name": "Float",
-                "ofType": null
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "isRulerLine",
-              "type": {
-                "kind": "SCALAR",
-                "name": "Boolean",
-                "ofType": null
-              }
-            },
-            {
-              "defaultValue": null,
-              "description": null,
-              "name": "points",
-              "type": {
-                "kind": "LIST",
-                "name": null,
-                "ofType": {
-                  "kind": "SCALAR",
-                  "name": "JSONString",
-                  "ofType": null
-                }
               }
             },
             {
@@ -6612,7 +6232,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -6762,7 +6382,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -6842,7 +6462,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -6912,7 +6532,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "palettePk",
+              "name": "paletteUid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -6996,7 +6616,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,
@@ -7076,7 +6696,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "pk",
+              "name": "uid",
               "type": {
                 "kind": "NON_NULL",
                 "name": null,

@@ -25,12 +25,12 @@ import PageToolbar from "@/components/PageToolbar.vue";
 import { useCoreStore } from "@/stores/core";
 
 console.log("Updated PageScene");
-const props = defineProps<{ pageId: TPrimaryKey }>();
+const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 
-const page = computed(() => coreStore.pages[props.pageId]);
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
+const page = computed(() => coreStore.pages[props.pageUid]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const paperLayer = ref<typeof PagePaperLayer>();
@@ -42,8 +42,8 @@ const toolbar = ref<typeof PageToolbar>();
 const drawingCanvas = ref<HTMLCanvasElement>();
 const activePanCoords = ref<{ x: number; y: number }[]>([]);
 
-const selectedFillColor = computed(() => canvasStore.selectedFillColor(props.pageId));
-const selectedStrokeColor = computed(() => canvasStore.selectedStrokeColor(props.pageId));
+const selectedFillColor = computed(() => canvasStore.selectedFillColor(props.pageUid));
+const selectedStrokeColor = computed(() => canvasStore.selectedStrokeColor(props.pageUid));
 
 function initScene(canvas: HTMLCanvasElement) {
   if (typeof canvas === "undefined") {
@@ -57,7 +57,7 @@ function initScene(canvas: HTMLCanvasElement) {
   }
 
   drawingCanvas.value = canvas;
-  canvasStore.initPageOptions(props.pageId, ctx.getTransform());
+  canvasStore.initPageOptions(props.pageUid, ctx.getTransform());
   paperLayer.value?.setPaperTransforms();
 
   watch(
@@ -102,7 +102,7 @@ function handleAddCheckbox(pos: IElementPoint) {
     initMatrix: pageOptions.value.initTransformMatrix,
     matrix: pageOptions.value.transformMatrix,
   });
-  canvasStore.createElement(props.pageId, checkboxElement);
+  canvasStore.createElement(props.pageUid, checkboxElement);
 }
 
 function handleAddTextbox(pos: IElementPoint) {
@@ -111,7 +111,7 @@ function handleAddTextbox(pos: IElementPoint) {
     initMatrix: pageOptions.value.initTransformMatrix,
     matrix: pageOptions.value.transformMatrix,
   });
-  canvasStore.createElement(props.pageId, textboxElement);
+  canvasStore.createElement(props.pageUid, textboxElement);
 }
 
 function getMousePos(
@@ -228,8 +228,8 @@ function getDrawPos(
 }
 
 function handleClearAll() {
-  const lastElementId = canvasStore.lastActiveElementId(props.pageId);
-  const lastElement = canvasStore.elementById(props.pageId, lastElementId);
+  const lastElementUid = canvasStore.lastActiveElementUid(props.pageUid);
+  const lastElement = canvasStore.elementByUid(props.pageUid, lastElementUid);
   if (
     pageOptions.value.elementOrder.length === 0 ||
     (pageOptions.value.elementOrder.length > 0 && lastElement.tool === ELEMENT_TYPE.CLEAR_ALL)
@@ -244,7 +244,7 @@ function handleClearAll() {
     },
   });
   clearElement.cacheElement();
-  canvasStore.createElement(props.pageId, clearElement);
+  canvasStore.createElement(props.pageUid, clearElement);
   drawingLayer.value?.drawElements();
   pageOptions.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
@@ -319,7 +319,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   }
 
   const selectedTool = pageOptions.value.selectedTool as ELEMENT_TYPE;
-  const activeElements = canvasStore.activeElements(props.pageId);
+  const activeElements = canvasStore.activeElements(props.pageUid);
 
   if (
     activeElements.length === 0 &&
@@ -338,7 +338,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  canvasStore.setIsStylus(props.pageId, event);
+  canvasStore.setIsStylus(props.pageUid, event);
 
   if (
     !isDrawingAllowed(true) ||
@@ -398,7 +398,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   }
 
   newElement.dimensions = newElement.calculateDimensions();
-  canvasStore.createElement(props.pageId, newElement);
+  canvasStore.createElement(props.pageUid, newElement);
   drawingLayer.value?.drawElements();
 }
 
@@ -418,8 +418,8 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  const lastElementId = pageOptions.value.elementOrder[pageOptions.value.elementOrder.length - 1];
-  const lastElement = canvasStore.elementById(props.pageId, lastElementId);
+  const lastElementUid = pageOptions.value.elementOrder[pageOptions.value.elementOrder.length - 1];
+  const lastElement = canvasStore.elementByUid(props.pageUid, lastElementUid);
   const followRuler = lastElement.isRulerLine || !CANVAS_LINE_TOOLS.includes(lastElement.tool);
   const pos = getDrawPos(drawingCanvas.value, event, followRuler, rulerLayer.value?.moveableEl);
   const pressure = lastElement.getPressure(event, pageOptions.value.isStylus);
@@ -489,8 +489,8 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  const lastElementId = pageOptions.value.elementOrder[pageOptions.value.elementOrder.length - 1];
-  const lastElement = canvasStore.elementById(props.pageId, lastElementId);
+  const lastElementUid = pageOptions.value.elementOrder[pageOptions.value.elementOrder.length - 1];
+  const lastElement = canvasStore.elementByUid(props.pageUid, lastElementUid);
   lastElement.freehandOptions.last = true;
   lastElement.dimensions = lastElement.calculateDimensions();
 
@@ -505,6 +505,11 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   } else {
     lastElement.cacheElement();
     drawingLayer.value?.drawElements();
+    coreStore.createElement(props.pageUid, {
+      tool: lastElement.tool,
+      render: lastElement.cache.drawing,
+      options: lastElement.toolOptions,
+    });
   }
   pageOptions.value.isDrawing = false;
 }
@@ -518,14 +523,14 @@ function handleUndo() {
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     addImageLayer.value?.handleCancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = canvasStore.elementById(props.pageId, action.elementId);
+    const element = canvasStore.elementByUid(props.pageUid, action.elementUid);
     redoPaste = element.tool === ELEMENT_TYPE.PASTE;
     redoAddImage = element.tool === ELEMENT_TYPE.IMAGE;
-    canvasStore.hideElement(props.pageId, action.elementId);
+    canvasStore.hideElement(props.pageUid, action.elementUid);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    canvasStore.showElement(props.pageId, action.elementId);
+    canvasStore.showElement(props.pageUid, action.elementUid);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = canvasStore.elementById(props.pageId, action.elementId);
+    const element = canvasStore.elementByUid(props.pageUid, action.elementUid);
     element.style = cloneDeep(action.from);
   }
 
@@ -547,13 +552,13 @@ function handleRedo() {
   let redoAddImage = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = canvasStore.elementById(props.pageId, action.elementId);
+    const element = canvasStore.elementByUid(props.pageUid, action.elementUid);
     redoPaste = element.tool === ELEMENT_TYPE.CUT;
-    canvasStore.showElement(props.pageId, action.elementId);
+    canvasStore.showElement(props.pageUid, action.elementUid);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    canvasStore.hideElement(props.pageId, action.elementId);
+    canvasStore.hideElement(props.pageUid, action.elementUid);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = canvasStore.elementById(props.pageId, action.elementId);
+    const element = canvasStore.elementByUid(props.pageUid, action.elementUid);
     element.style = cloneDeep(action.to);
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     redoAddImage = true;
@@ -578,7 +583,7 @@ function handleRedo() {
     <div class="toolbar">
       <PageToolbar
         ref="toolbar"
-        :pageId="pageId"
+        :pageUid="pageUid"
         @update:tool="handleToolChange"
         @action:history:undo="handleUndo"
         @action:history:redo="handleRedo"
@@ -602,19 +607,19 @@ function handleRedo() {
       @mousemove="handleSurfaceTouchMove"
       @touchmove="handleSurfaceTouchMove"
     >
-      <PageRulerLayer ref="rulerLayer" class="ruler-layer" :pageId="pageId" />
+      <PageRulerLayer ref="rulerLayer" class="ruler-layer" :pageUid="pageUid" />
 
       <PageAddImageLayer
         ref="addImageLayer"
         class="image-layer"
-        :pageId="pageId"
+        :pageUid="pageUid"
         @redraw="drawingLayer?.drawElements"
       />
 
       <PagePasteLayer
         ref="pasteLayer"
         class="paste-layer"
-        :pageId="props.pageId"
+        :pageUid="props.pageUid"
         @redraw="drawingLayer?.drawElements"
       />
 
@@ -622,16 +627,16 @@ function handleRedo() {
         <PageInteractiveLayer
           ref="interactiveLayer"
           class="interactive-layer"
-          :pageId="props.pageId"
+          :pageUid="props.pageUid"
         />
         <PageDrawingLayer
           ref="drawingLayer"
           class="drawing-layer"
-          :pageId="props.pageId"
+          :pageUid="props.pageUid"
           @ready="initScene"
         />
       </div>
-      <PagePaperLayer ref="paperLayer" class="paper-layer" :pageId="props.pageId" />
+      <PagePaperLayer ref="paperLayer" class="paper-layer" :pageUid="props.pageUid" />
     </div>
   </div>
 </template>

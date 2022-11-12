@@ -7,9 +7,9 @@ import { clearCanvas } from "@/utils/canvas";
 import { ELEMENT_TYPE, PageHistoryEvent } from "@/constants/core";
 import { ELEMENT_MAP } from "@/models/elements";
 
-const props = defineProps<{ pageId: TPrimaryKey }>();
+const props = defineProps<{ pageUid: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const activeImage = ref<HTMLImageElement | null>(null);
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
@@ -111,7 +111,7 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
     .on("clip", onImageClip);
 
   if (trackHistory) {
-    canvasStore.addHistoryEvent(props.pageId, {
+    canvasStore.addHistoryEvent(props.pageUid, {
       type: PageHistoryEvent.ADD_IMAGE_START,
       image,
     });
@@ -194,7 +194,7 @@ function handleAddImageEnd() {
     canvas: imageCacheCanvas,
   };
 
-  canvasStore.createElement(props.pageId, imageElement);
+  canvasStore.createElement(props.pageUid, imageElement);
   emit("redraw");
   activeImage.value = null;
   pageOptions.value.isAddImageMode = false;

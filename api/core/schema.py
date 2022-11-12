@@ -8,71 +8,60 @@ from .models import Palette, PaletteCollection, PaletteSwatch, Room, Bookshelf, 
 
 
 class RoomNode(IsOwner, DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta:
         model = Room
-        filter_fields = ['id', 'owner']
+        filter_fields = ['uid']
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False
 
 
 class BookshelfNode(IsOwner, DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta:
         model = Bookshelf
-        filter_fields = ['id', 'owner', 'room']
+        filter_fields = ['uid', 'room']
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False
 
 
 class NotebookNode(IsOwner, DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta:
         model = Notebook
-        filter_fields = ['id', 'owner', 'bookshelf']
+        filter_fields = ['uid', 'bookshelf']
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False
 
 
 class PageNode(IsOwner, DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta:
         model = Page
-        filter_fields = ['id', 'owner', 'notebook']
+        filter_fields = ['uid', 'notebook']
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False
 
 
 class ElementNode(IsOwner, DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta:
         model = Element
-        filter_fields = ['id', 'owner', 'page']
+        filter_fields = {
+            'uid': ['exact'],
+            'page__uid': ['exact'],
+        }
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False
 
 
 class PaletteCollectionNode(IsOwner, DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta:
         model = PaletteCollection
-        filter_fields = ['id', 'owner']
+        filter_fields = ['uid']
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False
 
 
 class PaletteNode(DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta:
         model = Palette
-        filter_fields = ['id', 'owner']
+        filter_fields = ['uid']
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False
 
@@ -82,11 +71,9 @@ class PaletteNode(DjangoObjectType):
 
 
 class PaletteSwatchNode(DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta:
         model = PaletteSwatch
-        filter_fields = ['id', 'owner']
+        filter_fields = ['uid']
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False
 
@@ -108,14 +95,14 @@ class CreateRoom(graphene.relay.ClientIDMutation):
 
 class CreateBookshelf(graphene.relay.ClientIDMutation):
     class Input:
-        room_pk = graphene.UUID(required=True)
+        room_uid = graphene.UUID(required=True)
 
     bookshelf = graphene.Field(BookshelfNode)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        room = Room.objects.get(id=input['room_pk'])
+        room = Room.objects.get(uid=input['room_uid'])
         bookshelf = Bookshelf.objects.create(
             owner=info.context.user,
             room=room
@@ -126,7 +113,7 @@ class CreateBookshelf(graphene.relay.ClientIDMutation):
 
 class UpdateBookshelf(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
         notebook_order = graphene.List(graphene.UUID, required=False)
 
     bookshelf = graphene.Field(BookshelfNode)
@@ -134,11 +121,12 @@ class UpdateBookshelf(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        bookshelf = Bookshelf.objects.get(id=input['pk'])
+        bookshelf = Bookshelf.objects.get(uid=input['uid'])
 
         for k, v in input.items():
-            if k == 'id':
+            if k == 'uid':
                 continue
+
             setattr(bookshelf, k, v)
 
         bookshelf.save()
@@ -148,7 +136,7 @@ class UpdateBookshelf(graphene.relay.ClientIDMutation):
 
 class CreateNotebook(graphene.relay.ClientIDMutation):
     class Input:
-        bookshelf_pk = graphene.UUID(required=True)
+        bookshelf_uid = graphene.UUID(required=True)
         title = graphene.String(required=False)
 
     notebook = graphene.Field(NotebookNode)
@@ -156,7 +144,7 @@ class CreateNotebook(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        bookshelf = Bookshelf.objects.get(id=input['bookshelf_pk'])
+        bookshelf = Bookshelf.objects.get(uid=input['bookshelf_uid'])
         notebook = Notebook.objects.create(
             owner=info.context.user,
             bookshelf=bookshelf,
@@ -168,9 +156,9 @@ class CreateNotebook(graphene.relay.ClientIDMutation):
 
 class UpdateNotebook(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
         title = graphene.String(required=False)
-        bookshelf_pk = graphene.UUID(required=False)
+        bookshelf_uid = graphene.UUID(required=False)
         page_order = graphene.List(graphene.UUID, required=False)
 
     notebook = graphene.Field(NotebookNode)
@@ -178,18 +166,18 @@ class UpdateNotebook(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        notebook = Notebook.objects.get(id=input['pk'])
+        notebook = Notebook.objects.get(uid=input['uid'])
 
         for k, v in input.items():
-            if k == 'id':
+            if k == 'uid':
                 continue
 
-            if k == 'bookshelf_pk':
+            if k == 'bookshelf_uid':
                 current_shelf = notebook.bookshelf
                 current_shelf.notebook_order.remove(notebook.id)
                 current_shelf.save()
 
-                new_bookshelf = Bookshelf.objects.get(id=v)
+                new_bookshelf = Bookshelf.objects.get(uid=v)
                 new_bookshelf.notebook_order.append(notebook.id)
                 new_bookshelf.save()
                 notebook.bookshelf = new_bookshelf
@@ -204,14 +192,14 @@ class UpdateNotebook(graphene.relay.ClientIDMutation):
 
 class DeleteNotebook(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
 
     notebook = graphene.Field(NotebookNode)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        notebook = Notebook.objects.get(id=input['pk'])
+        notebook = Notebook.objects.get(uid=input['uid'])
         notebook.delete()
 
         return DeleteNotebook(notebook=notebook)
@@ -219,9 +207,9 @@ class DeleteNotebook(graphene.relay.ClientIDMutation):
 
 class CreatePage(graphene.relay.ClientIDMutation):
     class Input:
-        notebook_pk = graphene.UUID(required=True)
-        paper_swatch_pk = graphene.UUID(required=False)
-        pattern_swatch_pk = graphene.UUID(required=False)
+        notebook_uid = graphene.UUID(required=True)
+        paper_swatch_uid = graphene.UUID(required=False)
+        pattern_swatch_uid = graphene.UUID(required=False)
         pattern_type = graphene.Int(required=False)
         pattern_size = graphene.Float(required=False)
         pattern_spacing = graphene.Float(required=False)
@@ -232,22 +220,22 @@ class CreatePage(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        notebook = Notebook.objects.get(id=input['notebook_pk'])
+        notebook = Notebook.objects.get(uid=input['notebook_uid'])
         page = Page.objects.create(
             owner=info.context.user,
             notebook=notebook,
         )
 
         for k, v in input.items():
-            if k == 'notebook_pk':
+            if k == 'notebook_uid':
                 continue
 
-            if k == 'paper_swatch_pk':
-                page.paper_swatch = PaletteSwatch.objects.get(id=v)
+            if k == 'paper_swatch_uid':
+                page.paper_swatch = PaletteSwatch.objects.get(uid=v)
                 continue
 
-            if k == 'pattern_swatch_pk':
-                page.pattern_swatch = PaletteSwatch.objects.get(id=v)
+            if k == 'pattern_swatch_uid':
+                page.pattern_swatch = PaletteSwatch.objects.get(uid=v)
                 continue
 
             setattr(page, k, v)
@@ -259,10 +247,10 @@ class CreatePage(graphene.relay.ClientIDMutation):
 
 class UpdatePage(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
-        notebook_pk = graphene.UUID(required=False)
-        paper_swatch_pk = graphene.UUID(required=False)
-        pattern_swatch_pk = graphene.UUID(required=False)
+        uid = graphene.UUID(required=True)
+        notebook_uid = graphene.UUID(required=False)
+        paper_swatch_uid = graphene.UUID(required=False)
+        pattern_swatch_uid = graphene.UUID(required=False)
         pattern_type = graphene.Int(required=False)
         pattern_size = graphene.Float(required=False)
         pattern_spacing = graphene.Float(required=False)
@@ -273,30 +261,30 @@ class UpdatePage(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        page = Page.objects.get(id=input['pk'])
+        page = Page.objects.get(uid=input['uid'])
 
         for k, v in input.items():
-            if k == 'id':
+            if k == 'uid':
                 continue
 
-            if k == 'notebook_pk':
+            if k == 'notebook_uid':
                 current_notebook = page.notebook
                 current_notebook.page_order.remove(page.id)
                 current_notebook.save()
 
-                new_notebook = Notebook.objects.get(id=v)
+                new_notebook = Notebook.objects.get(uid=v)
                 new_notebook.page_order.append(page.id)
                 new_notebook.save()
 
                 page.notebook = new_notebook
                 continue
 
-            if k == 'paper_swatch_pk':
-                page.paper_swatch = PaletteSwatch.objects.get(id=v)
+            if k == 'paper_swatch_uid':
+                page.paper_swatch = PaletteSwatch.objects.get(uid=v)
                 continue
 
-            if k == 'pattern_swatch_pk':
-                page.pattern_swatch = PaletteSwatch.objects.get(id=v)
+            if k == 'pattern_swatch_uid':
+                page.pattern_swatch = PaletteSwatch.objects.get(uid=v)
                 continue
 
             setattr(page, k, v)
@@ -308,14 +296,14 @@ class UpdatePage(graphene.relay.ClientIDMutation):
 
 class DeletePage(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
 
     page = graphene.Field(PageNode)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        page = Page.objects.get(id=input['pk'])
+        page = Page.objects.get(uid=input['uid'])
         page.delete()
 
         return DeletePage(page=page)
@@ -323,13 +311,9 @@ class DeletePage(graphene.relay.ClientIDMutation):
 
 class CreateElement(graphene.relay.ClientIDMutation):
     class Input:
-        page_pk = graphene.UUID(required=True)
+        page_uid = graphene.UUID(required=True)
         tool = graphene.Int(required=True)
-        fill_color = graphene.String(required=True)
-        stroke_color = graphene.String(required=True)
-        size = graphene.Float(required=True)
-        is_ruler_line = graphene.Boolean(required=True)
-        points = graphene.List(graphene.JSONString, required=True)
+        render = graphene.JSONString(required=False)
         options = graphene.JSONString(required=False)
 
     element = graphene.Field(ElementNode)
@@ -337,16 +321,12 @@ class CreateElement(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        page = Page.objects.get(id=input['page_pk'])
+        page = Page.objects.get(uid=input['page_uid'])
         element = Element.objects.create(
             owner=info.context.user,
             page=page,
             tool=input['tool'],
-            fill_color=input['fill_color'],
-            stroke_color=input['stroke_color'],
-            size=input['size'],
-            is_ruler_line=input['is_ruler_line'],
-            points=input['points'],
+            render=input.get('render', None),
             options=input.get('options', None)
         )
 
@@ -355,13 +335,9 @@ class CreateElement(graphene.relay.ClientIDMutation):
 
 class UpdateElement(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
         tool = graphene.Int(required=False)
-        fill_color = graphene.String(required=False)
-        stroke_color = graphene.String(required=False)
-        size = graphene.Float(required=False)
-        is_ruler_line = graphene.Boolean(required=False)
-        points = graphene.List(graphene.JSONString, required=False)
+        render = graphene.JSONString(required=False)
         options = graphene.JSONString(required=False)
 
     element = graphene.Field(ElementNode)
@@ -369,10 +345,10 @@ class UpdateElement(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        element = Element.objects.get(id=input['pk'])
+        element = Element.objects.get(uid=input['uid'])
 
         for k, v in input.items():
-            if k == 'pk':
+            if k == 'uid':
                 continue
             setattr(element, k, v)
 
@@ -383,14 +359,14 @@ class UpdateElement(graphene.relay.ClientIDMutation):
 
 class DeleteElement(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
 
     element = graphene.Field(ElementNode)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        element = Element.objects.get(id=input['pk'])
+        element = Element.objects.get(uid=input['uid'])
         element.delete()
 
         return DeleteElement(element=element)
@@ -432,7 +408,7 @@ class CreatePalette(graphene.relay.ClientIDMutation):
 
 class UpdatePalette(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
         title = graphene.String(required=False)
 
     palette = graphene.Field(PaletteNode)
@@ -440,13 +416,13 @@ class UpdatePalette(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        palette = Palette.objects.get(id=input['pk'])
+        palette = Palette.objects.get(uid=input['uid'])
 
         if palette.owner != info.context.user:
             raise Exception('You do not have permission to update this palette.')
 
         for k, v in input.items():
-            if k == 'pk':
+            if k == 'uid':
                 continue
             setattr(palette, k, v)
 
@@ -457,14 +433,14 @@ class UpdatePalette(graphene.relay.ClientIDMutation):
 
 class DeletePalette(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
 
     palette = graphene.Field(PaletteNode)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        palette = Palette.objects.get(id=input['pk'])
+        palette = Palette.objects.get(uid=input['uid'])
 
         if palette.owner != info.context.user:
             raise Exception('You do not have permission to update this palette.')
@@ -476,7 +452,7 @@ class DeletePalette(graphene.relay.ClientIDMutation):
 
 class CreatePaletteSwatch(graphene.relay.ClientIDMutation):
     class Input:
-        palette_pk = graphene.UUID(required=True)
+        palette_uid = graphene.UUID(required=True)
         swatch = graphene.JSONString(required=True)
 
     swatch = graphene.Field(PaletteSwatchNode)
@@ -484,7 +460,7 @@ class CreatePaletteSwatch(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        palette = Palette.objects.get(id=input['palette_pk'])
+        palette = Palette.objects.get(uid=input['palette_uid'])
         swatch = PaletteSwatch.objects.create(
             owner=info.context.user,
             palette=palette,
@@ -496,7 +472,7 @@ class CreatePaletteSwatch(graphene.relay.ClientIDMutation):
 
 class UpdatePaletteSwatch(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
         swatch = graphene.JSONString(required=False)
 
     swatch = graphene.Field(PaletteSwatchNode)
@@ -504,13 +480,13 @@ class UpdatePaletteSwatch(graphene.relay.ClientIDMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        swatch = PaletteSwatch.objects.get(id=input['pk'])
+        swatch = PaletteSwatch.objects.get(uid=input['uid'])
 
         if swatch.owner != info.context.user:
             raise Exception('You do not have permission to update this palette.')
 
         for k, v in input.items():
-            if k == 'pk':
+            if k == 'uid':
                 continue
             setattr(swatch, k, v)
 
@@ -521,14 +497,14 @@ class UpdatePaletteSwatch(graphene.relay.ClientIDMutation):
 
 class DeletePaletteSwatch(graphene.relay.ClientIDMutation):
     class Input:
-        pk = graphene.UUID(required=True)
+        uid = graphene.UUID(required=True)
 
     swatch = graphene.Field(PaletteSwatchNode)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        swatch = PaletteSwatch.objects.get(id=input['pk'])
+        swatch = PaletteSwatch.objects.get(uid=input['uid'])
 
         if swatch.owner != info.context.user:
             raise Exception('You do not have permission to update this palette.')

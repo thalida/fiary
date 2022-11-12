@@ -8,9 +8,9 @@ import { clearCanvas } from "@/utils/canvas";
 import { ELEMENT_TYPE } from "@/constants/core";
 import { ELEMENT_MAP } from "@/models/elements";
 
-const props = defineProps<{ pageId: TPrimaryKey }>();
+const props = defineProps<{ pageUid: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
 const pasteTransform = ref({
@@ -43,9 +43,9 @@ async function handlePasteStart() {
     return;
   }
 
-  let activeElements = canvasStore.activeElements(props.pageId);
-  const cutSelectionId = activeElements[activeElements.length - 1];
-  const cutSelection = canvasStore.elementById(props.pageId, cutSelectionId);
+  let activeElements = canvasStore.activeElements(props.pageUid);
+  const cutSelectionUid = activeElements[activeElements.length - 1];
+  const cutSelection = canvasStore.elementByUid(props.pageUid, cutSelectionUid);
 
   if (!cutSelection.isDrawingCached) {
     cutSelection.isCompletedCut = true;
@@ -71,10 +71,10 @@ async function handlePasteStart() {
 
   clearCanvas(canvas.value);
   ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
-  activeElements = canvasStore.activeElements(props.pageId);
+  activeElements = canvasStore.activeElements(props.pageUid);
   for (let i = 0; i < activeElements.length - 1; i += 1) {
-    const elementId = activeElements[i];
-    const element = canvasStore.elementById(props.pageId, elementId);
+    const elementUid = activeElements[i];
+    const element = canvasStore.elementByUid(props.pageUid, elementUid);
     element.drawElement(canvas.value);
   }
   const cutSelectionClip = cloneDeep(cutSelection);
@@ -96,9 +96,9 @@ async function handlePasteStart() {
 }
 
 function handleCancelPaste() {
-  const activeElements = canvasStore.activeElements(props.pageId);
-  const cutSelectionId = activeElements[activeElements.length - 1];
-  canvasStore.deleteElement(props.pageId, cutSelectionId, false);
+  const activeElements = canvasStore.activeElements(props.pageUid);
+  const cutSelectionUid = activeElements[activeElements.length - 1];
+  canvasStore.deleteElement(props.pageUid, cutSelectionUid, false);
   pageOptions.value.isPasteMode = false;
 }
 
@@ -107,9 +107,9 @@ function handlePasteEnd() {
     return;
   }
 
-  const activeElements = canvasStore.activeElements(props.pageId);
-  const cutSelectionId = activeElements[activeElements.length - 1];
-  const cutSelection = canvasStore.elementById(props.pageId, cutSelectionId);
+  const activeElements = canvasStore.activeElements(props.pageUid);
+  const cutSelectionUid = activeElements[activeElements.length - 1];
+  const cutSelection = canvasStore.elementByUid(props.pageUid, cutSelectionUid);
   const moveableRect = moveableEl.getRect();
   const pasteElement = new ELEMENT_MAP[ELEMENT_TYPE.PASTE](moveableRect);
 
@@ -122,7 +122,7 @@ function handlePasteEnd() {
   ) {
     handleCancelPaste();
     emit("redraw");
-    canvasStore.popHistoryEvent(props.pageId);
+    canvasStore.popHistoryEvent(props.pageUid);
     return;
   }
 
@@ -168,7 +168,7 @@ function handlePasteEnd() {
     canvas: pasteCacheCanvas,
   };
 
-  canvasStore.createElement(props.pageId, pasteElement);
+  canvasStore.createElement(props.pageUid, pasteElement);
   emit("redraw");
   pageOptions.value.isPasteMode = false;
 }

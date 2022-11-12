@@ -12,9 +12,13 @@ import {
   UpdatePaletteSwatchDocument,
   CreatePaletteDocument,
   UpdatePageDocument,
+  CreateElementDocument,
+  MyElementsDocument,
 } from "@/api/graphql-operations";
 import type {
   IBookshelves,
+  IElement,
+  IElements,
   INotebooks,
   IPage,
   IPages,
@@ -38,6 +42,8 @@ export const useCoreStore = defineStore("core", () => {
   const bookshelves = ref({} as IBookshelves);
   const notebooks = ref({} as INotebooks);
   const pages = ref({} as IPages);
+  const elements = ref({} as IElements);
+
   const paletteCollections = ref({} as { [key: TPrimaryKey]: TPrimaryKey[] });
   const palettes = ref({} as IPalettes);
   const builtinPalettes = ref(
@@ -52,13 +58,13 @@ export const useCoreStore = defineStore("core", () => {
     return paletteCollections.value[keys[0]];
   });
   const getSwatchColor = computed(
-    () => (paletteId: TPrimaryKey | null, swatchId: TPrimaryKey | null) => {
-      if (paletteId === null || swatchId === null) {
+    () => (paletteUid: TPrimaryKey | null, swatchUid: TPrimaryKey | null) => {
+      if (paletteUid === null || swatchUid === null) {
         return TRANSPARENT_COLOR;
       }
 
-      const palette = palettes.value[paletteId];
-      const swatch = palette.swatches[swatchId];
+      const palette = palettes.value[paletteUid];
+      const swatch = palette.swatches[swatchUid];
       return swatch.swatch;
     }
   );
@@ -87,24 +93,24 @@ export const useCoreStore = defineStore("core", () => {
 
     const res = processGraphqlData(data.value);
     for (let i = 0; i < res.myRooms.length; i += 1) {
-      const { pk, bookshelfOrder, updatedAt, createdAt } = res.myRooms[i];
-      rooms.value[pk] = { pk, bookshelfOrder, updatedAt, createdAt };
+      const { uid, bookshelfOrder, updatedAt, createdAt } = res.myRooms[i];
+      rooms.value[uid] = { uid, bookshelfOrder, updatedAt, createdAt };
     }
 
     for (let i = 0; i < res.bookshelves.length; i += 1) {
-      const { pk, notebookOrder, updatedAt, createdAt, room } = res.bookshelves[i];
-      bookshelves.value[pk] = { pk, notebookOrder, updatedAt, createdAt, room: room.pk };
+      const { uid, notebookOrder, updatedAt, createdAt, room } = res.bookshelves[i];
+      bookshelves.value[uid] = { uid, notebookOrder, updatedAt, createdAt, roomUid: room.uid };
     }
 
     for (let i = 0; i < res.notebooks.length; i += 1) {
-      const { pk, title, pageOrder, updatedAt, createdAt, bookshelf } = res.notebooks[i];
-      notebooks.value[pk] = {
-        pk,
+      const { uid, title, pageOrder, updatedAt, createdAt, bookshelf } = res.notebooks[i];
+      notebooks.value[uid] = {
+        uid,
         title,
         pageOrder,
         updatedAt,
         createdAt,
-        bookshelf: bookshelf.pk,
+        bookshelfUid: bookshelf.uid,
       };
     }
   }
@@ -113,7 +119,7 @@ export const useCoreStore = defineStore("core", () => {
     for (let i = 0; i < res.length; i += 1) {
       const paletteRes = res[i];
       const palette: IPalette = {
-        pk: paletteRes.pk,
+        uid: paletteRes.uid,
         updatedAt: paletteRes.updatedAt,
         createdAt: paletteRes.createdAt,
         title: paletteRes.title,
@@ -127,24 +133,24 @@ export const useCoreStore = defineStore("core", () => {
       for (let j = 0; j < paletteRes.swatches.length; j += 1) {
         const swatchRes = paletteRes.swatches[j];
         const swatch: IPaletteSwatch = {
-          pk: swatchRes.pk,
+          uid: swatchRes.uid,
           isDefault: swatchRes.isDefault,
           swatch: JSON.parse(swatchRes.swatch),
         };
 
         if (swatch.isDefault) {
-          defaultSwatch = swatch.pk;
+          defaultSwatch = swatch.uid;
         }
 
-        palette.swatches[swatch.pk] = swatch;
-        palette.swatchOrder.push(swatch.pk);
+        palette.swatches[swatch.uid] = swatch;
+        palette.swatchOrder.push(swatch.uid);
       }
 
       defaultSwatch = defaultSwatch || palette.swatchOrder[0];
 
       if (palette.isPublic) {
         builtinPalettes.value[palette.paletteType as PALETTE_TYPES] = {
-          palette: palette.pk,
+          palette: palette.uid,
           swatch: defaultSwatch,
         };
       }
@@ -152,12 +158,12 @@ export const useCoreStore = defineStore("core", () => {
       if (paletteRes.collections.length > 0) {
         for (let k = 0; k < paletteRes.collections.length; k += 1) {
           const collectionRes = paletteRes.collections[k];
-          const collectionPk = collectionRes.pk;
-          paletteCollections.value[collectionPk] = [...collectionRes.paletteOrder];
+          const collectionUid = collectionRes.uid;
+          paletteCollections.value[collectionUid] = [...collectionRes.paletteOrder];
         }
       }
 
-      palettes.value[palette.pk] = palette;
+      palettes.value[palette.uid] = palette;
     }
   }
 
@@ -181,24 +187,25 @@ export const useCoreStore = defineStore("core", () => {
     storePalettes([res]);
   }
 
-  async function updateSwatchColor(paletteId: TPrimaryKey, swatchId: TPrimaryKey, color: TColor) {
+  async function updateSwatchColor(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey, color: TColor) {
     const { execute, data } = useMutation(UpdatePaletteSwatchDocument);
-    await execute({ pk: swatchId, swatch: JSON.stringify(color) });
+    await execute({ uid: swatchUid, swatch: JSON.stringify(color) });
 
     const swatch = data.value.updatePaletteSwatch?.swatch;
     if (swatch) {
-      const palettePk = swatch.palette.pk;
-      const swatchPk = swatch.pk;
-      palettes.value[palettePk].swatches[swatchPk].swatch = JSON.parse(swatch.swatch);
+      const paletteUid = swatch.palette.uid;
+      const swatchUid = swatch.uid;
+      palettes.value[paletteUid].swatches[swatchUid].swatch = JSON.parse(swatch.swatch);
     }
   }
 
-  async function fetchNotebook(pk: TPrimaryKey) {
+  async function fetchNotebook(uid: TPrimaryKey) {
     const { data } = await useQuery({
       query: MyNotebooksDocument,
-      variables: { pk },
+      variables: { uid },
       cachePolicy: "network-only",
     });
+
     const res = processGraphqlData(data.value);
 
     if (
@@ -210,67 +217,67 @@ export const useCoreStore = defineStore("core", () => {
     }
 
     const rawNotebook = res.myNotebooks[0];
-    notebooks.value[pk] = merge(notebooks.value[pk], {
-      pk: rawNotebook.pk,
+    notebooks.value[uid] = merge(notebooks.value[uid], {
+      uid: rawNotebook.uid,
       updatedAt: rawNotebook.updatedAt,
       createdAt: rawNotebook.createdAt,
       title: rawNotebook.title,
       pageOrder: rawNotebook.pageOrder,
-      bookshelf: rawNotebook.bookshelf.pk,
+      bookshelfUid: rawNotebook.bookshelf.uid,
     });
 
     for (let i = 0; i < res.pages.length; i += 1) {
-      const { pk, updatedAt, createdAt, notebook } = res.pages[i];
-      pages.value[pk] = { pk, updatedAt, createdAt, notebook: notebook.pk } as IPage;
+      const { uid, updatedAt, createdAt, notebook } = res.pages[i];
+      pages.value[uid] = { uid, updatedAt, createdAt, notebookUid: notebook.uid } as IPage;
     }
 
-    return notebooks.value[pk];
+    return notebooks.value[uid];
   }
 
-  async function createNotebook(bookshelfPk: TPrimaryKey, title = "Untitled") {
+  async function createNotebook(bookshelfUid: TPrimaryKey, title = "Untitled") {
     const { execute, data } = useMutation(CreateNotebookDocument);
-    await execute({ bookshelfPk, title });
+    await execute({ bookshelfUid, title });
 
     const notebook = data.value.createNotebook?.notebook;
     if (typeof notebook === "undefined" || notebook === null) {
       throw new Error("Failed to create notebook");
     }
 
-    notebooks.value[notebook.pk] = {
-      pk: notebook.pk,
+    notebooks.value[notebook.uid] = {
+      uid: notebook.uid,
       title: notebook.title,
       pageOrder: notebook.pageOrder,
       updatedAt: notebook.updatedAt,
       createdAt: notebook.createdAt,
-      bookshelf: notebook.bookshelf.pk,
+      bookshelfUid: notebook.bookshelf.uid,
     };
 
-    bookshelves.value[notebook.bookshelf.pk] = merge(
-      bookshelves.value[notebook.bookshelf.pk],
+    bookshelves.value[notebook.bookshelf.uid] = merge(
+      bookshelves.value[notebook.bookshelf.uid],
       notebook.bookshelf
     );
 
-    return notebooks.value[notebook.pk];
+    return notebooks.value[notebook.uid];
   }
 
   function storePage(page: any) {
-    const currPage = pages.value[page.pk];
+    const currPage = pages.value[page.uid];
     const formattedPage: Partial<IPage> = {
-      pk: page.pk,
+      uid: page.uid,
       updatedAt: page.updatedAt,
       createdAt: page.createdAt,
-      notebook: page.notebook.pk,
-      paperSwatch: page.paperSwatch
-        ? page.paperSwatch.pk
+      notebookUid: page.notebook.uid,
+      paperSwatchUid: page.paperSwatch
+        ? page.paperSwatch.uid
         : builtinPalettes.value[PALETTE_TYPES.PAPER]?.swatch,
-      paperPalette: page.paperSwatch
-        ? page.paperSwatch.palette.pk
+      paperPaletteUid: page.paperSwatch
+        ? page.paperSwatch.palette.uid
         : builtinPalettes.value[PALETTE_TYPES.PAPER]?.palette,
-      patternSwatch: page.patternSwatch
-        ? page.patternSwatch.pk
+      patternSwatchUid: page.patternSwatch
+        ? page.patternSwatch.uid
         : builtinPalettes.value[PALETTE_TYPES.PATTERN]?.swatch,
-      patternPalette: page.patternSwatch
-        ? page.patternSwatch.palette.pk
+      patternPaletteUid: page.patternSwatch
+        ? page.patternSwatch.palette.uid
         : builtinPalettes.value[PALETTE_TYPES.PATTERN]?.palette,
       patternType: page.patternType ? page.patternType : DEFAULT_PATTERN_TYPE,
       patternSize: typeof page.patternSize !== "undefined" ? page.patternSize : null,
@@ -278,17 +285,17 @@ export const useCoreStore = defineStore("core", () => {
       patternOpacity: page.patternOpacity ? page.patternOpacity : DEFAULT_PATTERN_OPACITY,
     };
 
-    pages.value[page.pk] = merge(currPage, formattedPage);
+    pages.value[page.uid] = merge(currPage, formattedPage);
 
-    notebooks.value[page.notebook.pk] = merge(notebooks.value[page.notebook.pk], page.notebook);
+    notebooks.value[page.notebook.uid] = merge(notebooks.value[page.notebook.uid], page.notebook);
 
-    return pages.value[page.pk];
+    return pages.value[page.uid];
   }
 
-  async function fetchPage(pk: TPrimaryKey) {
+  async function fetchPage(uid: TPrimaryKey) {
     const { data } = await useQuery({
       query: MyPagesDocument,
-      variables: { pk },
+      variables: { uid },
       cachePolicy: "network-only",
     });
     const res = processGraphqlData(data.value);
@@ -303,9 +310,9 @@ export const useCoreStore = defineStore("core", () => {
 
   async function createPage(notebook: TPrimaryKey) {
     const { execute, data } = useMutation(CreatePageDocument);
-    const paperSwatch = builtinPalettes.value[PALETTE_TYPES.PAPER].swatch;
+    const paperSwatchUid = builtinPalettes.value[PALETTE_TYPES.PAPER].swatch;
 
-    await execute({ notebook, paperSwatch });
+    await execute({ notebook, paperSwatchUid });
 
     const page = data.value.createPage?.page;
     if (typeof page === "undefined" || page === null) {
@@ -315,9 +322,9 @@ export const useCoreStore = defineStore("core", () => {
     return storePage(page);
   }
 
-  async function updatePage(pk: TPrimaryKey, page: Partial<IPage>) {
+  async function updatePage(uid: TPrimaryKey, page: Partial<IPage>) {
     const { execute, data } = useMutation(UpdatePageDocument);
-    await execute({ pk, ...page });
+    await execute({ uid, ...page });
 
     const updatedPage = data.value.updatePage?.page;
     if (typeof updatedPage === "undefined" || updatedPage === null) {
@@ -325,6 +332,43 @@ export const useCoreStore = defineStore("core", () => {
     }
 
     return storePage(updatedPage);
+  }
+
+  async function fetchElements(pageUid: TPrimaryKey) {
+    console.log("fetching elements for pageUid", pageUid);
+    const { data } = await useQuery({
+      query: MyElementsDocument,
+      variables: { pageUid },
+      cachePolicy: "network-only",
+    });
+
+    const res = processGraphqlData(data.value);
+    console.log(res, data.value);
+
+    // if (
+    //   typeof res.myElements === "undefined" ||
+    //   res.myElements === null ||
+    //   res.myElements.length === 0
+    // ) {
+    //   return;
+    // }
+  }
+
+  async function createElement(page: TPrimaryKey, { tool, render, options }: Partial<IElement>) {
+    const { execute, data } = useMutation(CreateElementDocument);
+    await execute({
+      page,
+      tool: tool as number,
+      render: JSON.stringify(render),
+      options: JSON.stringify(options),
+    });
+
+    const createdElement = data.value.createElement?.element;
+    if (typeof createdElement === "undefined" || createdElement === null) {
+      throw new Error("Failed to create element");
+    }
+
+    // return storeElement(element);
   }
 
   return {
@@ -352,5 +396,9 @@ export const useCoreStore = defineStore("core", () => {
     fetchPage,
     createPage,
     updatePage,
+
+    elements,
+    fetchElements,
+    createElement,
   };
 });

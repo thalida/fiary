@@ -8,12 +8,12 @@ import type { TPrimaryKey } from "@/types/core";
 const authStore = useAuthStore();
 const coreStore = useCoreStore();
 const props = defineProps<{
-  pageId: TPrimaryKey;
+  pageUid: TPrimaryKey;
 }>();
 
 const isLoading = ref(true);
 const isAuthenticated = computed(() => authStore.isAuthenticated);
-const page = computed(() => coreStore.pages[props.pageId]);
+const page = computed(() => coreStore.pages[props.pageUid]);
 const isNotFound = computed(
   () => !isLoading.value && (typeof page.value === "undefined" || page.value === null)
 );
@@ -21,8 +21,11 @@ const isNotFound = computed(
 watchEffect(() => {
   if (isAuthenticated.value) {
     isLoading.value = true;
-    coreStore.fetchPage(props.pageId).then(() => {
-      isLoading.value = false;
+    coreStore.fetchPage(props.pageUid).then(() => {
+      coreStore.fetchElements(props.pageUid).then(() => {
+        isLoading.value = false;
+      });
+      // isLoading.value = false;
     });
   }
 });
@@ -35,6 +38,6 @@ watchEffect(() => {
       Loading...
     </div>
     <p v-else-if="isNotFound">Page not found.</p>
-    <PageScene v-else :pageId="props.pageId" />
+    <PageScene v-else :pageUid="props.pageUid" />
   </main>
 </template>

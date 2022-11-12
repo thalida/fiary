@@ -7,11 +7,9 @@ from .models import User
 
 
 class UserNode(IsAuthenticated, DjangoObjectType):
-    pk = graphene.UUID(source='id', required=True)
-
     class Meta():
         model = User
-        filter_fields = ["username"]
+        filter_fields = ["uid", "username"]
         exclude = ["email", "password"]
         interfaces = (graphene.relay.Node, )
 

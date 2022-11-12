@@ -1,7 +1,7 @@
 mutation CreatePage(
-  $notebook: UUID!
-  $paperSwatch: UUID!
-  $patternSwatch: UUID
+  $notebookUid: UUID!
+  $paperSwatchUid: UUID!
+  $patternSwatchUid: UUID
   $patternType: Int
   $patternSize: Float
   $patternSpacing: Float
@@ -9,9 +9,9 @@ mutation CreatePage(
 ) {
   createPage(
     input: {
-      notebookPk: $notebook
-      paperSwatchPk: $paperSwatch
-      patternSwatchPk: $patternSwatch
+      notebookUid: $notebookUid
+      paperSwatchUid: $paperSwatchUid
+      patternSwatchUid: $patternSwatchUid
       patternType: $patternType
       patternSize: $patternSize
       patternSpacing: $patternSpacing
@@ -20,28 +20,29 @@ mutation CreatePage(
   ) {
     page {
       notebook {
-        pk
+        uid
         pageOrder
       }
-      pk
+      uid
       updatedAt
       createdAt
       paperSwatch {
-        pk
+        uid
         palette {
-          pk
+          uid
         }
       }
       patternSwatch {
-        pk
+        uid
         palette {
-          pk
+          uid
         }
       }
       patternType
       patternSize
       patternSpacing
       patternOpacity
+      elementOrder
     }
   }
 }

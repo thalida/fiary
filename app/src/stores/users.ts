@@ -2,24 +2,25 @@ import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { useQuery } from "@/api";
 import { MeDocument } from "@/api/graphql-operations";
-import type { IUsers, IUser, TUserId } from "@/types/users";
+import type { TPrimaryKey } from "@/types/core";
+import type { IUsers, IUser } from "@/types/users";
 import { useAuthStore } from "./auth";
 
 export const useUsersStore = defineStore("users", () => {
   const authStore = useAuthStore();
-  const currentUserId = ref(null as TUserId | null);
+  const currentUserUid = ref(null as TPrimaryKey | null);
   const users = ref({} as IUsers);
 
   const me = computed(() => {
-    return currentUserId.value ? users.value[currentUserId.value] : null;
+    return currentUserUid.value ? users.value[currentUserUid.value] : null;
   });
 
   authStore.$subscribe((mutation, state) => {
     if (state.isAuthenticated) {
       fetchMe();
-    } else if (currentUserId.value !== null) {
-      delete users.value[currentUserId.value];
-      currentUserId.value = null;
+    } else if (currentUserUid.value !== null) {
+      delete users.value[currentUserUid.value];
+      currentUserUid.value = null;
     }
   });
 
@@ -27,13 +28,13 @@ export const useUsersStore = defineStore("users", () => {
     const { data } = await useQuery({ query: MeDocument, cachePolicy: "network-only" });
     if (data.value?.me) {
       const user = data.value.me as IUser;
-      currentUserId.value = user.id;
-      users.value[user.id] = user;
+      currentUserUid.value = user.uid;
+      users.value[user.uid] = user;
     }
   }
 
   return {
-    currentUserId,
+    currentUserUid,
     me,
     fetchMe,
   };

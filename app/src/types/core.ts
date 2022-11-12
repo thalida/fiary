@@ -1,4 +1,10 @@
-import type { LineEndSide, LineEndStyle, PALETTE_TYPES, PATTERN_TYPES } from "@/constants/core";
+import type {
+  ELEMENT_TYPE,
+  LineEndSide,
+  LineEndStyle,
+  PALETTE_TYPES,
+  PATTERN_TYPES,
+} from "@/constants/core";
 
 export type TPrimaryKey = string;
 
@@ -7,7 +13,7 @@ export interface IRooms {
 }
 
 export interface IRoom {
-  pk: TPrimaryKey;
+  uid: TPrimaryKey;
   updatedAt: string;
   createdAt: string;
   bookshelfOrder: TPrimaryKey[];
@@ -18,10 +24,10 @@ export interface IBookshelves {
 }
 
 export interface IBookshelf {
-  pk: TPrimaryKey;
+  uid: TPrimaryKey;
   updatedAt: string;
   createdAt: string;
-  room: TPrimaryKey;
+  roomUid: TPrimaryKey;
   notebookOrder: TPrimaryKey[];
 }
 
@@ -30,10 +36,10 @@ export interface INotebooks {
 }
 
 export interface INotebook {
-  pk: TPrimaryKey;
+  uid: TPrimaryKey;
   updatedAt: string;
   createdAt: string;
-  bookshelf: TPrimaryKey;
+  bookshelfUid: TPrimaryKey;
   pageOrder: TPrimaryKey[];
   title: string | null | undefined;
 }
@@ -43,25 +49,26 @@ export interface IPages {
 }
 
 export interface IPage {
-  pk: TPrimaryKey;
+  uid: TPrimaryKey;
   updatedAt: string;
   createdAt: string;
-  notebook: TPrimaryKey;
-  paperPalette: TPrimaryKey;
-  paperSwatch: TPrimaryKey;
-  patternPalette: TPrimaryKey;
-  patternSwatch: TPrimaryKey;
+  notebookUid: TPrimaryKey;
+  paperPaletteUid: TPrimaryKey;
+  paperSwatchUid: TPrimaryKey;
+  patternPaletteUid: TPrimaryKey;
+  patternSwatchUid: TPrimaryKey;
   patternType: PATTERN_TYPES;
   patternOpacity: number;
   patternSize: number | null;
   patternSpacing: number | null;
+  elementOrder: TPrimaryKey[];
 }
 
 export interface IPageOptions {
-  fillPaletteId: TPrimaryKey | null;
-  fillSwatchId: TPrimaryKey | null;
-  strokePaletteId: TPrimaryKey | null;
-  strokeSwatchId: TPrimaryKey | null;
+  fillPaletteUid: TPrimaryKey | null;
+  fillSwatchUid: TPrimaryKey | null;
+  strokePaletteUid: TPrimaryKey | null;
+  strokeSwatchUid: TPrimaryKey | null;
   selectedTool: number;
   selectedToolSize: number;
   selectedLineEndStyle: LineEndStyle;
@@ -101,14 +108,24 @@ export interface ITransformMatrix {
 }
 
 export interface IElements {
-  [key: string]: TElement;
+  [key: string]: IElement;
 }
 
 export type TElement = ICanvasElement & IInteractiveElement & IClearElement;
 
+export interface IElement {
+  uid: TPrimaryKey;
+  pageUid: TPrimaryKey;
+  createdAt: string;
+  updatedAt: string;
+  tool: ELEMENT_TYPE;
+  render: any;
+  options: any;
+}
+
 export interface IElementBase {
   id: TPrimaryKey;
-  pk?: TPrimaryKey;
+  uid: TPrimaryKey;
   updatedAt?: string;
   createdAt?: string;
   page?: TPrimaryKey;
@@ -181,7 +198,7 @@ export interface IPalettes {
 }
 
 export interface IPalette {
-  pk: TPrimaryKey;
+  uid: TPrimaryKey;
   updatedAt: string;
   createdAt: string;
   title: string;
@@ -192,7 +209,7 @@ export interface IPalette {
 }
 
 export interface IPaletteSwatch {
-  pk: TPrimaryKey;
+  uid: TPrimaryKey;
   swatch: TColor;
   isDefault: boolean;
 }

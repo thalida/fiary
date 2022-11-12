@@ -25,8 +25,8 @@ export type BookshelfNode = Node & {
   notebookOrder: Array<Scalars["UUID"]>;
   notebooks: NotebookNodeConnection;
   owner: UserNode;
-  pk: Scalars["UUID"];
   room: RoomNode;
+  uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
 
@@ -35,10 +35,9 @@ export type BookshelfNodeNotebooksArgs = {
   before?: InputMaybe<Scalars["String"]>;
   bookshelf?: InputMaybe<Scalars["ID"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type BookshelfNodeConnection = {
@@ -60,7 +59,7 @@ export type BookshelfNodeEdge = {
 
 export type CreateBookshelfInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  roomPk: Scalars["UUID"];
+  roomUid: Scalars["UUID"];
 };
 
 export type CreateBookshelfPayload = {
@@ -71,13 +70,9 @@ export type CreateBookshelfPayload = {
 
 export type CreateElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  fillColor: Scalars["String"];
-  isRulerLine: Scalars["Boolean"];
   options?: InputMaybe<Scalars["JSONString"]>;
-  pagePk: Scalars["UUID"];
-  points: Array<InputMaybe<Scalars["JSONString"]>>;
-  size: Scalars["Float"];
-  strokeColor: Scalars["String"];
+  pageUid: Scalars["UUID"];
+  render?: InputMaybe<Scalars["JSONString"]>;
   tool: Scalars["Int"];
 };
 
@@ -88,7 +83,7 @@ export type CreateElementPayload = {
 };
 
 export type CreateNotebookInput = {
-  bookshelfPk: Scalars["UUID"];
+  bookshelfUid: Scalars["UUID"];
   clientMutationId?: InputMaybe<Scalars["String"]>;
   title?: InputMaybe<Scalars["String"]>;
 };
@@ -101,12 +96,12 @@ export type CreateNotebookPayload = {
 
 export type CreatePageInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  notebookPk: Scalars["UUID"];
-  paperSwatchPk?: InputMaybe<Scalars["UUID"]>;
+  notebookUid: Scalars["UUID"];
+  paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternOpacity?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
-  patternSwatchPk?: InputMaybe<Scalars["UUID"]>;
+  patternSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
 };
 
@@ -130,7 +125,7 @@ export type CreatePalettePayload = {
 
 export type CreatePaletteSwatchInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  palettePk: Scalars["UUID"];
+  paletteUid: Scalars["UUID"];
   swatch: Scalars["JSONString"];
 };
 
@@ -142,7 +137,7 @@ export type CreatePaletteSwatchPayload = {
 
 export type DeleteElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
 };
 
 export type DeleteElementPayload = {
@@ -153,7 +148,7 @@ export type DeleteElementPayload = {
 
 export type DeleteNotebookInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
 };
 
 export type DeleteNotebookPayload = {
@@ -164,7 +159,7 @@ export type DeleteNotebookPayload = {
 
 export type DeletePageInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
 };
 
 export type DeletePagePayload = {
@@ -175,7 +170,7 @@ export type DeletePagePayload = {
 
 export type DeletePaletteInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
 };
 
 export type DeletePalettePayload = {
@@ -186,7 +181,7 @@ export type DeletePalettePayload = {
 
 export type DeletePaletteSwatchInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
 };
 
 export type DeletePaletteSwatchPayload = {
@@ -198,18 +193,14 @@ export type DeletePaletteSwatchPayload = {
 export type ElementNode = Node & {
   __typename?: "ElementNode";
   createdAt: Scalars["DateTime"];
-  fillColor?: Maybe<Scalars["String"]>;
   /** The ID of the object */
   id: Scalars["ID"];
-  isRulerLine: Scalars["Boolean"];
   options?: Maybe<Scalars["JSONString"]>;
   owner: UserNode;
   page: PageNode;
-  pk: Scalars["UUID"];
-  points: Array<Scalars["JSONString"]>;
-  size?: Maybe<Scalars["Float"]>;
-  strokeColor?: Maybe<Scalars["String"]>;
-  tool?: Maybe<Scalars["Int"]>;
+  render: Scalars["JSONString"];
+  tool: Scalars["Int"];
+  uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
 
@@ -365,8 +356,8 @@ export type NotebookNode = Node & {
   owner: UserNode;
   pageOrder: Array<Scalars["UUID"]>;
   pages: PageNodeConnection;
-  pk: Scalars["UUID"];
   title?: Maybe<Scalars["String"]>;
+  uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
 
@@ -374,11 +365,10 @@ export type NotebookNodePagesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   notebook?: InputMaybe<Scalars["ID"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type NotebookNodeConnection = {
@@ -429,6 +419,7 @@ export type PageInfo = {
 export type PageNode = Node & {
   __typename?: "PageNode";
   createdAt: Scalars["DateTime"];
+  elementOrder: Array<Scalars["UUID"]>;
   elements: ElementNodeConnection;
   /** The ID of the object */
   id: Scalars["ID"];
@@ -440,7 +431,7 @@ export type PageNode = Node & {
   patternSpacing?: Maybe<Scalars["Float"]>;
   patternSwatch?: Maybe<PaletteSwatchNode>;
   patternType: Scalars["Int"];
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
 
@@ -448,11 +439,10 @@ export type PageNodeElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
-  page?: InputMaybe<Scalars["ID"]>;
+  page_Uid?: InputMaybe<Scalars["UUID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type PageNodeConnection = {
@@ -480,7 +470,7 @@ export type PaletteCollectionNode = Node & {
   owner: UserNode;
   paletteOrder: Array<Scalars["UUID"]>;
   palettes: PaletteNodeConnection;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
 
@@ -488,10 +478,9 @@ export type PaletteCollectionNodePalettesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type PaletteCollectionNodeConnection = {
@@ -520,9 +509,9 @@ export type PaletteNode = Node & {
   isPublic: Scalars["Boolean"];
   owner: UserNode;
   paletteType: Scalars["Int"];
-  pk: Scalars["UUID"];
   swatches: PaletteSwatchNodeConnection;
   title?: Maybe<Scalars["String"]>;
+  uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
 
@@ -530,20 +519,18 @@ export type PaletteNodeCollectionsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type PaletteNodeSwatchesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type PaletteNodeConnection = {
@@ -573,8 +560,8 @@ export type PaletteSwatchNode = Node & {
   palette: PaletteNode;
   paperSwatch: PageNodeConnection;
   patternSwatch: PageNodeConnection;
-  pk: Scalars["UUID"];
   swatch: Scalars["JSONString"];
+  uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
 
@@ -582,22 +569,20 @@ export type PaletteSwatchNodePaperSwatchArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   notebook?: InputMaybe<Scalars["ID"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type PaletteSwatchNodePatternSwatchArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   notebook?: InputMaybe<Scalars["ID"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type PaletteSwatchNodeConnection = {
@@ -651,22 +636,20 @@ export type QueryMyBookshelvesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
   room?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type QueryMyElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
-  page?: InputMaybe<Scalars["ID"]>;
+  page_Uid?: InputMaybe<Scalars["UUID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type QueryMyNotebooksArgs = {
@@ -674,61 +657,55 @@ export type QueryMyNotebooksArgs = {
   before?: InputMaybe<Scalars["String"]>;
   bookshelf?: InputMaybe<Scalars["ID"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type QueryMyPagesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   notebook?: InputMaybe<Scalars["ID"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type QueryMyPaletteCollectionArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type QueryMyPaletteSwatchsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type QueryMyPalettesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type QueryMyRoomsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type QueryNotebookArgs = {
@@ -818,7 +795,7 @@ export type RoomNode = Node & {
   /** The ID of the object */
   id: Scalars["ID"];
   owner: UserNode;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
 
@@ -826,11 +803,10 @@ export type RoomNodeBookshelvesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
   room?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type RoomNodeConnection = {
@@ -853,7 +829,7 @@ export type RoomNodeEdge = {
 export type UpdateBookshelfInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookOrder?: InputMaybe<Array<InputMaybe<Scalars["UUID"]>>>;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
 };
 
 export type UpdateBookshelfPayload = {
@@ -864,14 +840,10 @@ export type UpdateBookshelfPayload = {
 
 export type UpdateElementInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  fillColor?: InputMaybe<Scalars["String"]>;
-  isRulerLine?: InputMaybe<Scalars["Boolean"]>;
   options?: InputMaybe<Scalars["JSONString"]>;
-  pk: Scalars["UUID"];
-  points?: InputMaybe<Array<InputMaybe<Scalars["JSONString"]>>>;
-  size?: InputMaybe<Scalars["Float"]>;
-  strokeColor?: InputMaybe<Scalars["String"]>;
+  render?: InputMaybe<Scalars["JSONString"]>;
   tool?: InputMaybe<Scalars["Int"]>;
+  uid: Scalars["UUID"];
 };
 
 export type UpdateElementPayload = {
@@ -881,11 +853,11 @@ export type UpdateElementPayload = {
 };
 
 export type UpdateNotebookInput = {
-  bookshelfPk?: InputMaybe<Scalars["UUID"]>;
+  bookshelfUid?: InputMaybe<Scalars["UUID"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   pageOrder?: InputMaybe<Array<InputMaybe<Scalars["UUID"]>>>;
-  pk: Scalars["UUID"];
   title?: InputMaybe<Scalars["String"]>;
+  uid: Scalars["UUID"];
 };
 
 export type UpdateNotebookPayload = {
@@ -896,14 +868,14 @@ export type UpdateNotebookPayload = {
 
 export type UpdatePageInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  notebookPk?: InputMaybe<Scalars["UUID"]>;
-  paperSwatchPk?: InputMaybe<Scalars["UUID"]>;
+  notebookUid?: InputMaybe<Scalars["UUID"]>;
+  paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternOpacity?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
-  patternSwatchPk?: InputMaybe<Scalars["UUID"]>;
+  patternSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
 };
 
 export type UpdatePagePayload = {
@@ -914,8 +886,8 @@ export type UpdatePagePayload = {
 
 export type UpdatePaletteInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  pk: Scalars["UUID"];
   title?: InputMaybe<Scalars["String"]>;
+  uid: Scalars["UUID"];
 };
 
 export type UpdatePalettePayload = {
@@ -926,8 +898,8 @@ export type UpdatePalettePayload = {
 
 export type UpdatePaletteSwatchInput = {
   clientMutationId?: InputMaybe<Scalars["String"]>;
-  pk: Scalars["UUID"];
   swatch?: InputMaybe<Scalars["JSONString"]>;
+  uid: Scalars["UUID"];
 };
 
 export type UpdatePaletteSwatchPayload = {
@@ -957,8 +929,8 @@ export type UserNode = Node & {
   paletteCollection?: Maybe<PaletteCollectionNode>;
   paletteSwatches: PaletteSwatchNodeConnection;
   palettes: PaletteNodeConnection;
-  pk: Scalars["UUID"];
   rooms: RoomNodeConnection;
+  uid: Scalars["UUID"];
   /** Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
   username: Scalars["String"];
 };
@@ -967,22 +939,20 @@ export type UserNodeBookshelvesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
   room?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type UserNodeElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
-  page?: InputMaybe<Scalars["ID"]>;
+  page_Uid?: InputMaybe<Scalars["UUID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type UserNodeNotebooksArgs = {
@@ -990,51 +960,46 @@ export type UserNodeNotebooksArgs = {
   before?: InputMaybe<Scalars["String"]>;
   bookshelf?: InputMaybe<Scalars["ID"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type UserNodePagesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   notebook?: InputMaybe<Scalars["ID"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type UserNodePaletteSwatchesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type UserNodePalettesArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type UserNodeRoomsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
-  id?: InputMaybe<Scalars["ID"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
-  owner?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type VerifyInput = {
@@ -1049,13 +1014,9 @@ export type VerifyPayload = {
 };
 
 export type CreateElementMutationVariables = Exact<{
-  pagePk: Scalars["UUID"];
+  pageUid: Scalars["UUID"];
   tool: Scalars["Int"];
-  fillColor: Scalars["String"];
-  strokeColor: Scalars["String"];
-  size: Scalars["Float"];
-  isRulerLine: Scalars["Boolean"];
-  points: Array<InputMaybe<Scalars["JSONString"]>> | InputMaybe<Scalars["JSONString"]>;
+  render?: InputMaybe<Scalars["JSONString"]>;
   options?: InputMaybe<Scalars["JSONString"]>;
 }>;
 
@@ -1065,23 +1026,19 @@ export type CreateElementMutation = {
     __typename?: "CreateElementPayload";
     element?: {
       __typename?: "ElementNode";
-      pk: any;
+      uid: any;
       updatedAt: any;
       createdAt: any;
-      tool?: number | null;
-      fillColor?: string | null;
-      strokeColor?: string | null;
-      size?: number | null;
-      isRulerLine: boolean;
-      points: Array<any>;
+      tool: number;
+      render: any;
       options?: any | null;
-      page: { __typename?: "PageNode"; pk: any };
+      page: { __typename?: "PageNode"; uid: any };
     } | null;
   } | null;
 };
 
 export type CreateNotebookMutationVariables = Exact<{
-  bookshelfPk: Scalars["UUID"];
+  bookshelfUid: Scalars["UUID"];
   title?: InputMaybe<Scalars["String"]>;
 }>;
 
@@ -1091,20 +1048,20 @@ export type CreateNotebookMutation = {
     __typename?: "CreateNotebookPayload";
     notebook?: {
       __typename?: "NotebookNode";
-      pk: any;
+      uid: any;
       updatedAt: any;
       createdAt: any;
       title?: string | null;
       pageOrder: Array<any>;
-      bookshelf: { __typename?: "BookshelfNode"; pk: any; notebookOrder: Array<any> };
+      bookshelf: { __typename?: "BookshelfNode"; uid: any; notebookOrder: Array<any> };
     } | null;
   } | null;
 };
 
 export type CreatePageMutationVariables = Exact<{
-  notebook: Scalars["UUID"];
-  paperSwatch: Scalars["UUID"];
-  patternSwatch?: InputMaybe<Scalars["UUID"]>;
+  notebookUid: Scalars["UUID"];
+  paperSwatchUid: Scalars["UUID"];
+  patternSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
@@ -1117,23 +1074,24 @@ export type CreatePageMutation = {
     __typename?: "CreatePagePayload";
     page?: {
       __typename?: "PageNode";
-      pk: any;
+      uid: any;
       updatedAt: any;
       createdAt: any;
       patternType: number;
       patternSize?: number | null;
       patternSpacing?: number | null;
       patternOpacity?: number | null;
-      notebook: { __typename?: "NotebookNode"; pk: any; pageOrder: Array<any> };
+      elementOrder: Array<any>;
+      notebook: { __typename?: "NotebookNode"; uid: any; pageOrder: Array<any> };
       paperSwatch?: {
         __typename?: "PaletteSwatchNode";
-        pk: any;
-        palette: { __typename?: "PaletteNode"; pk: any };
+        uid: any;
+        palette: { __typename?: "PaletteNode"; uid: any };
       } | null;
       patternSwatch?: {
         __typename?: "PaletteSwatchNode";
-        pk: any;
-        palette: { __typename?: "PaletteNode"; pk: any };
+        uid: any;
+        palette: { __typename?: "PaletteNode"; uid: any };
       } | null;
     } | null;
   } | null;
@@ -1152,7 +1110,7 @@ export type CreatePaletteMutation = {
     __typename?: "CreatePalettePayload";
     palette?: {
       __typename?: "PaletteNode";
-      pk: any;
+      uid: any;
       updatedAt: any;
       createdAt: any;
       title?: string | null;
@@ -1162,7 +1120,11 @@ export type CreatePaletteMutation = {
         __typename?: "PaletteCollectionNodeConnection";
         edges: Array<{
           __typename?: "PaletteCollectionNodeEdge";
-          node?: { __typename?: "PaletteCollectionNode"; pk: any; paletteOrder: Array<any> } | null;
+          node?: {
+            __typename?: "PaletteCollectionNode";
+            uid: any;
+            paletteOrder: Array<any>;
+          } | null;
         } | null>;
       };
       swatches: {
@@ -1171,7 +1133,7 @@ export type CreatePaletteMutation = {
           __typename?: "PaletteSwatchNodeEdge";
           node?: {
             __typename?: "PaletteSwatchNode";
-            pk: any;
+            uid: any;
             swatch: any;
             isDefault: boolean;
           } | null;
@@ -1182,7 +1144,7 @@ export type CreatePaletteMutation = {
 };
 
 export type CreatePaletteSwatchMutationVariables = Exact<{
-  palette_pk: Scalars["UUID"];
+  paletteUid: Scalars["UUID"];
   swatch: Scalars["JSONString"];
 }>;
 
@@ -1192,19 +1154,19 @@ export type CreatePaletteSwatchMutation = {
     __typename?: "CreatePaletteSwatchPayload";
     swatch?: {
       __typename?: "PaletteSwatchNode";
-      pk: any;
+      uid: any;
       swatch: any;
       isDefault: boolean;
-      palette: { __typename?: "PaletteNode"; pk: any };
+      palette: { __typename?: "PaletteNode"; uid: any };
     } | null;
   } | null;
 };
 
 export type UpdatePageMutationVariables = Exact<{
-  pk: Scalars["UUID"];
-  notebook?: InputMaybe<Scalars["UUID"]>;
-  paperSwatch?: InputMaybe<Scalars["UUID"]>;
-  patternSwatch?: InputMaybe<Scalars["UUID"]>;
+  uid: Scalars["UUID"];
+  notebookUid?: InputMaybe<Scalars["UUID"]>;
+  paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
+  patternSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
@@ -1217,30 +1179,31 @@ export type UpdatePageMutation = {
     __typename?: "UpdatePagePayload";
     page?: {
       __typename?: "PageNode";
-      pk: any;
+      uid: any;
       updatedAt: any;
       createdAt: any;
       patternType: number;
       patternSize?: number | null;
       patternSpacing?: number | null;
       patternOpacity?: number | null;
-      notebook: { __typename?: "NotebookNode"; pk: any; pageOrder: Array<any> };
+      elementOrder: Array<any>;
+      notebook: { __typename?: "NotebookNode"; uid: any; pageOrder: Array<any> };
       paperSwatch?: {
         __typename?: "PaletteSwatchNode";
-        pk: any;
-        palette: { __typename?: "PaletteNode"; pk: any };
+        uid: any;
+        palette: { __typename?: "PaletteNode"; uid: any };
       } | null;
       patternSwatch?: {
         __typename?: "PaletteSwatchNode";
-        pk: any;
-        palette: { __typename?: "PaletteNode"; pk: any };
+        uid: any;
+        palette: { __typename?: "PaletteNode"; uid: any };
       } | null;
     } | null;
   } | null;
 };
 
 export type UpdatePaletteSwatchMutationVariables = Exact<{
-  pk: Scalars["UUID"];
+  uid: Scalars["UUID"];
   swatch?: InputMaybe<Scalars["JSONString"]>;
 }>;
 
@@ -1250,16 +1213,41 @@ export type UpdatePaletteSwatchMutation = {
     __typename?: "UpdatePaletteSwatchPayload";
     swatch?: {
       __typename?: "PaletteSwatchNode";
-      pk: any;
+      uid: any;
       swatch: any;
       isDefault: boolean;
-      palette: { __typename?: "PaletteNode"; pk: any };
+      palette: { __typename?: "PaletteNode"; uid: any };
     } | null;
   } | null;
 };
 
+export type MyElementsQueryVariables = Exact<{
+  uid?: InputMaybe<Scalars["UUID"]>;
+  pageUid?: InputMaybe<Scalars["UUID"]>;
+}>;
+
+export type MyElementsQuery = {
+  __typename?: "Query";
+  myElements?: {
+    __typename?: "ElementNodeConnection";
+    edges: Array<{
+      __typename?: "ElementNodeEdge";
+      node?: {
+        __typename?: "ElementNode";
+        uid: any;
+        updatedAt: any;
+        createdAt: any;
+        tool: number;
+        render: any;
+        options?: any | null;
+        page: { __typename?: "PageNode"; uid: any };
+      } | null;
+    } | null>;
+  } | null;
+};
+
 export type MyNotebooksQueryVariables = Exact<{
-  pk?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 }>;
 
 export type MyNotebooksQuery = {
@@ -1270,22 +1258,22 @@ export type MyNotebooksQuery = {
       __typename?: "NotebookNodeEdge";
       node?: {
         __typename?: "NotebookNode";
-        pk: any;
+        uid: any;
         updatedAt: any;
         createdAt: any;
         title?: string | null;
         pageOrder: Array<any>;
-        bookshelf: { __typename?: "BookshelfNode"; pk: any };
+        bookshelf: { __typename?: "BookshelfNode"; uid: any };
         pages: {
           __typename?: "PageNodeConnection";
           edges: Array<{
             __typename?: "PageNodeEdge";
             node?: {
               __typename?: "PageNode";
-              pk: any;
+              uid: any;
               updatedAt: any;
               createdAt: any;
-              notebook: { __typename?: "NotebookNode"; pk: any };
+              notebook: { __typename?: "NotebookNode"; uid: any };
             } | null;
           } | null>;
         };
@@ -1295,7 +1283,7 @@ export type MyNotebooksQuery = {
 };
 
 export type MyPagesQueryVariables = Exact<{
-  pk?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 }>;
 
 export type MyPagesQuery = {
@@ -1306,23 +1294,24 @@ export type MyPagesQuery = {
       __typename?: "PageNodeEdge";
       node?: {
         __typename?: "PageNode";
-        pk: any;
+        uid: any;
         updatedAt: any;
         createdAt: any;
         patternType: number;
         patternSize?: number | null;
         patternSpacing?: number | null;
         patternOpacity?: number | null;
-        notebook: { __typename?: "NotebookNode"; pk: any };
+        elementOrder: Array<any>;
+        notebook: { __typename?: "NotebookNode"; uid: any };
         paperSwatch?: {
           __typename?: "PaletteSwatchNode";
-          pk: any;
-          palette: { __typename?: "PaletteNode"; pk: any };
+          uid: any;
+          palette: { __typename?: "PaletteNode"; uid: any };
         } | null;
         patternSwatch?: {
           __typename?: "PaletteSwatchNode";
-          pk: any;
-          palette: { __typename?: "PaletteNode"; pk: any };
+          uid: any;
+          palette: { __typename?: "PaletteNode"; uid: any };
         } | null;
       } | null;
     } | null>;
@@ -1330,7 +1319,7 @@ export type MyPagesQuery = {
 };
 
 export type MyPaletteCollectionQueryVariables = Exact<{
-  pk?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 }>;
 
 export type MyPaletteCollectionQuery = {
@@ -1341,7 +1330,7 @@ export type MyPaletteCollectionQuery = {
       __typename?: "PaletteCollectionNodeEdge";
       node?: {
         __typename?: "PaletteCollectionNode";
-        pk: any;
+        uid: any;
         paletteOrder: Array<any>;
         palettes: {
           __typename?: "PaletteNodeConnection";
@@ -1349,7 +1338,7 @@ export type MyPaletteCollectionQuery = {
             __typename?: "PaletteNodeEdge";
             node?: {
               __typename?: "PaletteNode";
-              pk: any;
+              uid: any;
               updatedAt: any;
               createdAt: any;
               title?: string | null;
@@ -1361,7 +1350,7 @@ export type MyPaletteCollectionQuery = {
                   __typename?: "PaletteSwatchNodeEdge";
                   node?: {
                     __typename?: "PaletteSwatchNode";
-                    pk: any;
+                    uid: any;
                     swatch: any;
                     isDefault: boolean;
                   } | null;
@@ -1376,7 +1365,7 @@ export type MyPaletteCollectionQuery = {
 };
 
 export type MyPalettesQueryVariables = Exact<{
-  pk?: InputMaybe<Scalars["ID"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 }>;
 
 export type MyPalettesQuery = {
@@ -1387,7 +1376,7 @@ export type MyPalettesQuery = {
       __typename?: "PaletteNodeEdge";
       node?: {
         __typename?: "PaletteNode";
-        pk: any;
+        uid: any;
         updatedAt: any;
         createdAt: any;
         title?: string | null;
@@ -1399,7 +1388,7 @@ export type MyPalettesQuery = {
             __typename?: "PaletteCollectionNodeEdge";
             node?: {
               __typename?: "PaletteCollectionNode";
-              pk: any;
+              uid: any;
               paletteOrder: Array<any>;
             } | null;
           } | null>;
@@ -1410,7 +1399,7 @@ export type MyPalettesQuery = {
             __typename?: "PaletteSwatchNodeEdge";
             node?: {
               __typename?: "PaletteSwatchNode";
-              pk: any;
+              uid: any;
               swatch: any;
               isDefault: boolean;
             } | null;
@@ -1431,7 +1420,7 @@ export type MyRoomsQuery = {
       __typename?: "RoomNodeEdge";
       node?: {
         __typename?: "RoomNode";
-        pk: any;
+        uid: any;
         updatedAt: any;
         createdAt: any;
         bookshelfOrder: Array<any>;
@@ -1441,23 +1430,23 @@ export type MyRoomsQuery = {
             __typename?: "BookshelfNodeEdge";
             node?: {
               __typename?: "BookshelfNode";
-              pk: any;
+              uid: any;
               updatedAt: any;
               createdAt: any;
               notebookOrder: Array<any>;
-              room: { __typename?: "RoomNode"; pk: any };
+              room: { __typename?: "RoomNode"; uid: any };
               notebooks: {
                 __typename?: "NotebookNodeConnection";
                 edges: Array<{
                   __typename?: "NotebookNodeEdge";
                   node?: {
                     __typename?: "NotebookNode";
-                    pk: any;
+                    uid: any;
                     updatedAt: any;
                     createdAt: any;
                     title?: string | null;
                     pageOrder: Array<any>;
-                    bookshelf: { __typename?: "BookshelfNode"; pk: any };
+                    bookshelf: { __typename?: "BookshelfNode"; uid: any };
                   } | null;
                 } | null>;
               };
@@ -1513,7 +1502,7 @@ export type MeQueryVariables = Exact<{ [key: string]: never }>;
 
 export type MeQuery = {
   __typename?: "Query";
-  me?: { __typename?: "UserNode"; username: string; pk: any; id: string } | null;
+  me?: { __typename?: "UserNode"; uid: any; username: string } | null;
 };
 
 export const CreateElementDocument = {
@@ -1526,7 +1515,7 @@ export const CreateElementDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "pagePk" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "pageUid" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -1542,46 +1531,8 @@ export const CreateElementDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "fillColor" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "strokeColor" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "size" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "isRulerLine" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
-          },
-        },
-        {
-          kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "points" } },
-          type: {
-            kind: "NonNullType",
-            type: {
-              kind: "ListType",
-              type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
-            },
-          },
+          variable: { kind: "Variable", name: { kind: "Name", value: "render" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
         },
         {
           kind: "VariableDefinition",
@@ -1604,8 +1555,8 @@ export const CreateElementDocument = {
                   fields: [
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "pagePk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "pagePk" } },
+                      name: { kind: "Name", value: "pageUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "pageUid" } },
                     },
                     {
                       kind: "ObjectField",
@@ -1614,28 +1565,8 @@ export const CreateElementDocument = {
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "fillColor" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "fillColor" } },
-                    },
-                    {
-                      kind: "ObjectField",
-                      name: { kind: "Name", value: "strokeColor" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "strokeColor" } },
-                    },
-                    {
-                      kind: "ObjectField",
-                      name: { kind: "Name", value: "size" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "size" } },
-                    },
-                    {
-                      kind: "ObjectField",
-                      name: { kind: "Name", value: "isRulerLine" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "isRulerLine" } },
-                    },
-                    {
-                      kind: "ObjectField",
-                      name: { kind: "Name", value: "points" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "points" } },
+                      name: { kind: "Name", value: "render" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "render" } },
                     },
                     {
                       kind: "ObjectField",
@@ -1660,18 +1591,14 @@ export const CreateElementDocument = {
                         name: { kind: "Name", value: "page" },
                         selectionSet: {
                           kind: "SelectionSet",
-                          selections: [{ kind: "Field", name: { kind: "Name", value: "pk" } }],
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "uid" } }],
                         },
                       },
-                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                       { kind: "Field", name: { kind: "Name", value: "tool" } },
-                      { kind: "Field", name: { kind: "Name", value: "fillColor" } },
-                      { kind: "Field", name: { kind: "Name", value: "strokeColor" } },
-                      { kind: "Field", name: { kind: "Name", value: "size" } },
-                      { kind: "Field", name: { kind: "Name", value: "isRulerLine" } },
-                      { kind: "Field", name: { kind: "Name", value: "points" } },
+                      { kind: "Field", name: { kind: "Name", value: "render" } },
                       { kind: "Field", name: { kind: "Name", value: "options" } },
                     ],
                   },
@@ -1694,7 +1621,7 @@ export const CreateNotebookDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "bookshelfPk" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "bookshelfUid" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -1721,8 +1648,8 @@ export const CreateNotebookDocument = {
                   fields: [
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "bookshelfPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "bookshelfPk" } },
+                      name: { kind: "Name", value: "bookshelfUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "bookshelfUid" } },
                     },
                     {
                       kind: "ObjectField",
@@ -1748,12 +1675,12 @@ export const CreateNotebookDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "notebookOrder" } },
                           ],
                         },
                       },
-                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                       { kind: "Field", name: { kind: "Name", value: "title" } },
@@ -1779,7 +1706,7 @@ export const CreatePageDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "notebook" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "notebookUid" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -1787,7 +1714,7 @@ export const CreatePageDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatch" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatchUid" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -1795,7 +1722,7 @@ export const CreatePageDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternSwatch" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSwatchUid" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
@@ -1834,18 +1761,21 @@ export const CreatePageDocument = {
                   fields: [
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "notebookPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "notebook" } },
+                      name: { kind: "Name", value: "notebookUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "notebookUid" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "paperSwatchPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "paperSwatch" } },
+                      name: { kind: "Name", value: "paperSwatchUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "paperSwatchUid" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternSwatchPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternSwatch" } },
+                      name: { kind: "Name", value: "patternSwatchUid" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "patternSwatchUid" },
+                      },
                     },
                     {
                       kind: "ObjectField",
@@ -1886,12 +1816,12 @@ export const CreatePageDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "pageOrder" } },
                           ],
                         },
                       },
-                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                       {
@@ -1900,14 +1830,14 @@ export const CreatePageDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "palette" },
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
                                 ],
                               },
                             },
@@ -1920,14 +1850,14 @@ export const CreatePageDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "palette" },
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
                                 ],
                               },
                             },
@@ -1938,6 +1868,7 @@ export const CreatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "patternSize" } },
                       { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                       { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
+                      { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
                     ],
                   },
                 },
@@ -2007,7 +1938,7 @@ export const CreatePaletteDocument = {
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
-                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                       { kind: "Field", name: { kind: "Name", value: "title" } },
@@ -2031,7 +1962,7 @@ export const CreatePaletteDocument = {
                                     selectionSet: {
                                       kind: "SelectionSet",
                                       selections: [
-                                        { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                        { kind: "Field", name: { kind: "Name", value: "uid" } },
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "paletteOrder" },
@@ -2063,7 +1994,7 @@ export const CreatePaletteDocument = {
                                     selectionSet: {
                                       kind: "SelectionSet",
                                       selections: [
-                                        { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                        { kind: "Field", name: { kind: "Name", value: "uid" } },
                                         { kind: "Field", name: { kind: "Name", value: "swatch" } },
                                         {
                                           kind: "Field",
@@ -2099,7 +2030,7 @@ export const CreatePaletteSwatchDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "palette_pk" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "paletteUid" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -2129,8 +2060,8 @@ export const CreatePaletteSwatchDocument = {
                   fields: [
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "palettePk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "palette_pk" } },
+                      name: { kind: "Name", value: "paletteUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "paletteUid" } },
                     },
                     {
                       kind: "ObjectField",
@@ -2150,7 +2081,7 @@ export const CreatePaletteSwatchDocument = {
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
-                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "swatch" } },
                       { kind: "Field", name: { kind: "Name", value: "isDefault" } },
                       {
@@ -2158,7 +2089,7 @@ export const CreatePaletteSwatchDocument = {
                         name: { kind: "Name", value: "palette" },
                         selectionSet: {
                           kind: "SelectionSet",
-                          selections: [{ kind: "Field", name: { kind: "Name", value: "pk" } }],
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "uid" } }],
                         },
                       },
                     ],
@@ -2182,7 +2113,7 @@ export const UpdatePageDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "uid" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -2190,17 +2121,17 @@ export const UpdatePageDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "notebook" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "notebookUid" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatch" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatchUid" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternSwatch" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternSwatchUid" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
@@ -2239,23 +2170,26 @@ export const UpdatePageDocument = {
                   fields: [
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "pk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+                      name: { kind: "Name", value: "uid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "uid" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "notebookPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "notebook" } },
+                      name: { kind: "Name", value: "notebookUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "notebookUid" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "paperSwatchPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "paperSwatch" } },
+                      name: { kind: "Name", value: "paperSwatchUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "paperSwatchUid" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternSwatchPk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternSwatch" } },
+                      name: { kind: "Name", value: "patternSwatchUid" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "patternSwatchUid" },
+                      },
                     },
                     {
                       kind: "ObjectField",
@@ -2296,12 +2230,12 @@ export const UpdatePageDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "pageOrder" } },
                           ],
                         },
                       },
-                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                       {
@@ -2310,14 +2244,14 @@ export const UpdatePageDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "palette" },
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
                                 ],
                               },
                             },
@@ -2330,14 +2264,14 @@ export const UpdatePageDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "palette" },
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
                                 ],
                               },
                             },
@@ -2348,6 +2282,7 @@ export const UpdatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "patternSize" } },
                       { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                       { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
+                      { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
                     ],
                   },
                 },
@@ -2369,7 +2304,7 @@ export const UpdatePaletteSwatchDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "uid" } },
           type: {
             kind: "NonNullType",
             type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
@@ -2396,8 +2331,8 @@ export const UpdatePaletteSwatchDocument = {
                   fields: [
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "pk" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+                      name: { kind: "Name", value: "uid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "uid" } },
                     },
                     {
                       kind: "ObjectField",
@@ -2417,7 +2352,7 @@ export const UpdatePaletteSwatchDocument = {
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
-                      { kind: "Field", name: { kind: "Name", value: "pk" } },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "swatch" } },
                       { kind: "Field", name: { kind: "Name", value: "isDefault" } },
                       {
@@ -2425,7 +2360,7 @@ export const UpdatePaletteSwatchDocument = {
                         name: { kind: "Name", value: "palette" },
                         selectionSet: {
                           kind: "SelectionSet",
-                          selections: [{ kind: "Field", name: { kind: "Name", value: "pk" } }],
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "uid" } }],
                         },
                       },
                     ],
@@ -2439,6 +2374,88 @@ export const UpdatePaletteSwatchDocument = {
     },
   ],
 } as unknown as DocumentNode<UpdatePaletteSwatchMutation, UpdatePaletteSwatchMutationVariables>;
+export const MyElementsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "MyElements" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "uid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "pageUid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "myElements" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "uid" },
+                value: { kind: "Variable", name: { kind: "Name", value: "uid" } },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "page_Uid" },
+                value: { kind: "Variable", name: { kind: "Name", value: "pageUid" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "page" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                ],
+                              },
+                            },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
+                            { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                            { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                            { kind: "Field", name: { kind: "Name", value: "tool" } },
+                            { kind: "Field", name: { kind: "Name", value: "render" } },
+                            { kind: "Field", name: { kind: "Name", value: "options" } },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<MyElementsQuery, MyElementsQueryVariables>;
 export const MyNotebooksDocument = {
   kind: "Document",
   definitions: [
@@ -2449,8 +2466,8 @@ export const MyNotebooksDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "uid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
       ],
       selectionSet: {
@@ -2462,8 +2479,8 @@ export const MyNotebooksDocument = {
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+                name: { kind: "Name", value: "uid" },
+                value: { kind: "Variable", name: { kind: "Name", value: "uid" } },
               },
             ],
             selectionSet: {
@@ -2487,11 +2504,11 @@ export const MyNotebooksDocument = {
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
                                 ],
                               },
                             },
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                             { kind: "Field", name: { kind: "Name", value: "title" } },
@@ -2516,7 +2533,7 @@ export const MyNotebooksDocument = {
                                             selections: [
                                               {
                                                 kind: "Field",
-                                                name: { kind: "Name", value: "pk" },
+                                                name: { kind: "Name", value: "uid" },
                                               },
                                               {
                                                 kind: "Field",
@@ -2534,7 +2551,7 @@ export const MyNotebooksDocument = {
                                                   selections: [
                                                     {
                                                       kind: "Field",
-                                                      name: { kind: "Name", value: "pk" },
+                                                      name: { kind: "Name", value: "uid" },
                                                     },
                                                   ],
                                                 },
@@ -2572,8 +2589,8 @@ export const MyPagesDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "uid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
       ],
       selectionSet: {
@@ -2585,8 +2602,8 @@ export const MyPagesDocument = {
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+                name: { kind: "Name", value: "uid" },
+                value: { kind: "Variable", name: { kind: "Name", value: "uid" } },
               },
             ],
             selectionSet: {
@@ -2610,11 +2627,11 @@ export const MyPagesDocument = {
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
                                 ],
                               },
                             },
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                             {
@@ -2623,14 +2640,14 @@ export const MyPagesDocument = {
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "palette" },
                                     selectionSet: {
                                       kind: "SelectionSet",
                                       selections: [
-                                        { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                        { kind: "Field", name: { kind: "Name", value: "uid" } },
                                       ],
                                     },
                                   },
@@ -2643,14 +2660,14 @@ export const MyPagesDocument = {
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
-                                  { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "palette" },
                                     selectionSet: {
                                       kind: "SelectionSet",
                                       selections: [
-                                        { kind: "Field", name: { kind: "Name", value: "pk" } },
+                                        { kind: "Field", name: { kind: "Name", value: "uid" } },
                                       ],
                                     },
                                   },
@@ -2661,6 +2678,7 @@ export const MyPagesDocument = {
                             { kind: "Field", name: { kind: "Name", value: "patternSize" } },
                             { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                             { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
+                            { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
                           ],
                         },
                       },
@@ -2685,8 +2703,8 @@ export const MyPaletteCollectionDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "uid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
       ],
       selectionSet: {
@@ -2698,8 +2716,8 @@ export const MyPaletteCollectionDocument = {
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+                name: { kind: "Name", value: "uid" },
+                value: { kind: "Variable", name: { kind: "Name", value: "uid" } },
               },
             ],
             selectionSet: {
@@ -2717,7 +2735,7 @@ export const MyPaletteCollectionDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "paletteOrder" } },
                             {
                               kind: "Field",
@@ -2739,7 +2757,7 @@ export const MyPaletteCollectionDocument = {
                                             selections: [
                                               {
                                                 kind: "Field",
-                                                name: { kind: "Name", value: "pk" },
+                                                name: { kind: "Name", value: "uid" },
                                               },
                                               {
                                                 kind: "Field",
@@ -2783,7 +2801,7 @@ export const MyPaletteCollectionDocument = {
                                                                   kind: "Field",
                                                                   name: {
                                                                     kind: "Name",
-                                                                    value: "pk",
+                                                                    value: "uid",
                                                                   },
                                                                 },
                                                                 {
@@ -2842,8 +2860,8 @@ export const MyPalettesDocument = {
       variableDefinitions: [
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "pk" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "uid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
       ],
       selectionSet: {
@@ -2855,8 +2873,8 @@ export const MyPalettesDocument = {
             arguments: [
               {
                 kind: "Argument",
-                name: { kind: "Name", value: "id" },
-                value: { kind: "Variable", name: { kind: "Name", value: "pk" } },
+                name: { kind: "Name", value: "uid" },
+                value: { kind: "Variable", name: { kind: "Name", value: "uid" } },
               },
             ],
             selectionSet: {
@@ -2874,7 +2892,7 @@ export const MyPalettesDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                             { kind: "Field", name: { kind: "Name", value: "title" } },
@@ -2900,7 +2918,7 @@ export const MyPalettesDocument = {
                                             selections: [
                                               {
                                                 kind: "Field",
-                                                name: { kind: "Name", value: "pk" },
+                                                name: { kind: "Name", value: "uid" },
                                               },
                                               {
                                                 kind: "Field",
@@ -2935,7 +2953,7 @@ export const MyPalettesDocument = {
                                             selections: [
                                               {
                                                 kind: "Field",
-                                                name: { kind: "Name", value: "pk" },
+                                                name: { kind: "Name", value: "uid" },
                                               },
                                               {
                                                 kind: "Field",
@@ -2996,7 +3014,7 @@ export const MyRoomsDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
-                            { kind: "Field", name: { kind: "Name", value: "pk" } },
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
                             { kind: "Field", name: { kind: "Name", value: "bookshelfOrder" } },
@@ -3026,14 +3044,14 @@ export const MyRoomsDocument = {
                                                   selections: [
                                                     {
                                                       kind: "Field",
-                                                      name: { kind: "Name", value: "pk" },
+                                                      name: { kind: "Name", value: "uid" },
                                                     },
                                                   ],
                                                 },
                                               },
                                               {
                                                 kind: "Field",
-                                                name: { kind: "Name", value: "pk" },
+                                                name: { kind: "Name", value: "uid" },
                                               },
                                               {
                                                 kind: "Field",
@@ -3078,7 +3096,7 @@ export const MyRoomsDocument = {
                                                                         kind: "Field",
                                                                         name: {
                                                                           kind: "Name",
-                                                                          value: "pk",
+                                                                          value: "uid",
                                                                         },
                                                                       },
                                                                     ],
@@ -3088,7 +3106,7 @@ export const MyRoomsDocument = {
                                                                   kind: "Field",
                                                                   name: {
                                                                     kind: "Name",
-                                                                    value: "pk",
+                                                                    value: "uid",
                                                                   },
                                                                 },
                                                                 {
@@ -3415,9 +3433,8 @@ export const MeDocument = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [
+                { kind: "Field", name: { kind: "Name", value: "uid" } },
                 { kind: "Field", name: { kind: "Name", value: "username" } },
-                { kind: "Field", name: { kind: "Name", value: "pk" } },
-                { kind: "Field", name: { kind: "Name", value: "id" } },
               ],
             },
           },

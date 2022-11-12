@@ -18,11 +18,11 @@ import { useCoreStore } from "@/stores/core";
 import patterns, { patternOrder } from "@/components/PagePatterns";
 import type { TPrimaryKey } from "@/types/core";
 
-const props = defineProps<{ pageId: TPrimaryKey }>();
+const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
-const page = computed(() => coreStore.pages[props.pageId]);
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
+const page = computed(() => coreStore.pages[props.pageUid]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const colorPickerRefs: any[] = [];
 
 const isDrawingTool = computed(() => {
@@ -76,29 +76,29 @@ function closeAllColorPickers() {
   }
 }
 
-function handleFillColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
-  pageOptions.value.fillPaletteId = paletteId;
-  pageOptions.value.fillSwatchId = swatchId;
+function handleFillColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
+  pageOptions.value.fillPaletteUid = paletteUid;
+  pageOptions.value.fillSwatchUid = swatchUid;
 }
 
-function handleStrokeColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
-  pageOptions.value.strokePaletteId = paletteId;
-  pageOptions.value.strokeSwatchId = swatchId;
+function handleStrokeColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
+  pageOptions.value.strokePaletteUid = paletteUid;
+  pageOptions.value.strokeSwatchUid = swatchUid;
 }
 
-function handlePaperColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
-  page.value.paperPalette = paletteId;
-  page.value.paperSwatch = swatchId;
-  coreStore.updatePage(props.pageId, {
-    paperSwatch: swatchId,
+function handlePaperColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
+  page.value.paperPaletteUid = paletteUid;
+  page.value.paperSwatchUid = swatchUid;
+  coreStore.updatePage(props.pageUid, {
+    paperSwatchUid: swatchUid,
   });
 }
 
-function handlePatternColorChange(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
-  page.value.patternPalette = paletteId;
-  page.value.patternSwatch = swatchId;
-  coreStore.updatePage(props.pageId, {
-    patternSwatch: swatchId,
+function handlePatternColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
+  page.value.patternPaletteUid = paletteUid;
+  page.value.patternSwatchUid = swatchUid;
+  coreStore.updatePage(props.pageUid, {
+    patternSwatchUid: swatchUid,
   });
 }
 
@@ -114,7 +114,7 @@ function handlePatternTypeChange() {
     ? patterns[page.value.patternType].DEFAULT_PROPS.spacing
     : null;
 
-  coreStore.updatePage(props.pageId, {
+  coreStore.updatePage(props.pageUid, {
     patternType: page.value.patternType,
     patternSize: page.value.patternSize,
     patternSpacing: page.value.patternSpacing,
@@ -122,19 +122,19 @@ function handlePatternTypeChange() {
 }
 
 function handlePatternOpacityChange() {
-  coreStore.updatePage(props.pageId, {
+  coreStore.updatePage(props.pageUid, {
     patternOpacity: page.value.patternOpacity,
   });
 }
 
 function handlePatternSizeChange() {
-  coreStore.updatePage(props.pageId, {
+  coreStore.updatePage(props.pageUid, {
     patternSize: page.value.patternSize,
   });
 }
 
 function handlePatternSpacingChange() {
-  coreStore.updatePage(props.pageId, {
+  coreStore.updatePage(props.pageUid, {
     patternSpacing: page.value.patternSpacing,
   });
 }
@@ -200,8 +200,9 @@ defineExpose({
       v-if="isDrawingTool"
       style="display: inline"
       :ref="addColorPickerRef"
-      :paletteId="pageOptions.fillPaletteId"
-      :swatchId="pageOptions.fillSwatchId"
+      :pageUid="props.pageUid"
+      :paletteUid="pageOptions.fillPaletteUid"
+      :swatchUid="pageOptions.fillSwatchUid"
       :paletteType="PALETTE_TYPES.TOOL_FILL"
       @update="handleFillColorChange"
     />
@@ -209,8 +210,9 @@ defineExpose({
       v-if="isDrawingTool"
       style="display: inline"
       :ref="addColorPickerRef"
-      :paletteId="pageOptions.strokePaletteId"
-      :swatchId="pageOptions.strokeSwatchId"
+      :pageUid="props.pageUid"
+      :paletteUid="pageOptions.strokePaletteUid"
+      :swatchUid="pageOptions.strokeSwatchUid"
       :paletteType="PALETTE_TYPES.TOOL_STROKE"
       @update="handleStrokeColorChange"
     />
@@ -224,8 +226,9 @@ defineExpose({
       v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       style="display: inline"
       :ref="addColorPickerRef"
-      :paletteId="page.paperPalette"
-      :swatchId="page.paperSwatch"
+      :pageUid="props.pageUid"
+      :paletteUid="page.paperPaletteUid"
+      :swatchUid="page.paperSwatchUid"
       :paletteType="PALETTE_TYPES.PAPER"
       @update="handlePaperColorChange"
     />
@@ -233,8 +236,9 @@ defineExpose({
       v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
       style="display: inline"
       :ref="addColorPickerRef"
-      :paletteId="page.patternPalette"
-      :swatchId="page.patternSwatch"
+      :pageUid="props.pageUid"
+      :paletteUid="page.patternPaletteUid"
+      :swatchUid="page.patternSwatchUid"
       :paletteType="PALETTE_TYPES.PATTERN"
       @update="handlePatternColorChange"
     />

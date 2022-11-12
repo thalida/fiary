@@ -27,45 +27,45 @@ export const useCanvasStore = defineStore("canvas", () => {
     dpi: window.devicePixelRatio,
   });
 
-  const selectedFillColor = computed(() => (pageId: TPrimaryKey) => {
-    const options = pageOptions.value[pageId];
-    if (options.fillPaletteId === null || options.fillSwatchId === null) {
+  const selectedFillColor = computed(() => (pageUid: TPrimaryKey) => {
+    const options = pageOptions.value[pageUid];
+    if (options.fillPaletteUid === null || options.fillSwatchUid === null) {
       return TRANSPARENT_COLOR;
     }
-    return coreStore.getSwatchColor(options.fillPaletteId, options.fillSwatchId);
+    return coreStore.getSwatchColor(options.fillPaletteUid, options.fillSwatchUid);
   });
 
-  const selectedStrokeColor = computed(() => (pageId: TPrimaryKey) => {
-    const options = pageOptions.value[pageId];
-    if (options.strokeSwatchId === null || options.strokePaletteId === null) {
+  const selectedStrokeColor = computed(() => (pageUid: TPrimaryKey) => {
+    const options = pageOptions.value[pageUid];
+    if (options.strokeSwatchUid === null || options.strokePaletteUid === null) {
       return TRANSPARENT_COLOR;
     }
-    return coreStore.getSwatchColor(options.strokePaletteId, options.strokeSwatchId);
+    return coreStore.getSwatchColor(options.strokePaletteUid, options.strokeSwatchUid);
   });
 
-  const activeElementsStartIdx = computed(() => (pageId: TPrimaryKey) => {
-    const options = pageOptions.value[pageId];
+  const activeElementsStartIdx = computed(() => (pageUid: TPrimaryKey) => {
+    const options = pageOptions.value[pageUid];
     return options.clearAllElementIndexes.length > 0
       ? options.clearAllElementIndexes[options.clearAllElementIndexes.length - 1]
       : 0;
   });
-  const activeElements = computed(() => (pageId: TPrimaryKey) => {
-    const options = pageOptions.value[pageId];
-    const startIdx = activeElementsStartIdx.value(pageId);
+  const activeElements = computed(() => (pageUid: TPrimaryKey) => {
+    const options = pageOptions.value[pageUid];
+    const startIdx = activeElementsStartIdx.value(pageUid);
     const postClear = options.elementOrder.slice(startIdx);
-    return postClear.filter((id) => !options.elements[id].isDeleted);
+    return postClear.filter((uid) => !options.elements[uid].isDeleted);
   });
-  const lastActiveElementId = computed(() => (pageId: TPrimaryKey) => {
-    const elements = activeElements.value(pageId);
+  const lastActiveElementUid = computed(() => (pageUid: TPrimaryKey) => {
+    const elements = activeElements.value(pageUid);
     return elements[elements.length - 1];
   });
-  const elementById = computed(() => (pageId: TPrimaryKey, elementId: TPrimaryKey) => {
-    const options = pageOptions.value[pageId];
-    return options.elements[elementId];
+  const elementByUid = computed(() => (pageUid: TPrimaryKey, elementUid: TPrimaryKey) => {
+    const options = pageOptions.value[pageUid];
+    return options.elements[elementUid];
   });
 
-  function initPageOptions(pageId: TPrimaryKey, matrix: ITransformMatrix) {
-    if (typeof pageOptions.value[pageId] === "undefined") {
+  function initPageOptions(pageUid: TPrimaryKey, matrix: ITransformMatrix) {
+    if (typeof pageOptions.value[pageUid] === "undefined") {
       const matrixAsObj = {
         a: matrix.a,
         b: matrix.b,
@@ -79,10 +79,10 @@ export const useCanvasStore = defineStore("canvas", () => {
         elementOrder: [],
         clearAllElementIndexes: [],
 
-        fillPaletteId: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_FILL]?.palette,
-        fillSwatchId: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_FILL]?.swatch,
-        strokePaletteId: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_STROKE]?.palette,
-        strokeSwatchId: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_STROKE]?.swatch,
+        fillPaletteUid: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_FILL]?.palette,
+        fillSwatchUid: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_FILL]?.swatch,
+        strokePaletteUid: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_STROKE]?.palette,
+        strokeSwatchUid: coreStore.builtinPalettes[PALETTE_TYPES.TOOL_STROKE]?.swatch,
 
         selectedTool: ELEMENT_TYPE.PEN,
         selectedToolSize: DEFAULT_PEN_SIZE,
@@ -110,56 +110,56 @@ export const useCanvasStore = defineStore("canvas", () => {
         transformMatrix: clone(matrixAsObj),
       };
 
-      pageOptions.value[pageId] = options;
+      pageOptions.value[pageUid] = options;
     }
 
-    return pageOptions.value[pageId];
+    return pageOptions.value[pageUid];
   }
 
-  function setElement(pageId: TPrimaryKey, element: any) {
-    const options = pageOptions.value[pageId];
-    options.elements[element.id] = element;
-    options.elementOrder.push(element.id);
+  function setElement(pageUid: TPrimaryKey, element: any) {
+    const options = pageOptions.value[pageUid];
+    options.elements[element.uid] = element;
+    options.elementOrder.push(element.uid);
 
-    return options.elements[element.id];
+    return options.elements[element.uid];
   }
 
-  function createElement(pageId: TPrimaryKey, element: any) {
-    setElement(pageId, element);
+  function createElement(pageUid: TPrimaryKey, element: any) {
+    setElement(pageUid, element);
 
-    const updatedElement = showElement(pageId, element.id);
+    const updatedElement = showElement(pageUid, element.uid);
     const historyEvent: any = {
       type: PageHistoryEvent.ADD_CANVAS_ELEMENT,
-      elementId: element.id,
+      elementUid: element.uid,
     };
 
     if (element.tool === ELEMENT_TYPE.IMAGE) {
       historyEvent.image = (element.toolOptions as IImageElementOptions).image;
     }
-    addHistoryEvent(pageId, historyEvent);
+    addHistoryEvent(pageUid, historyEvent);
 
     return updatedElement;
   }
 
-  function deleteElement(pageId: TPrimaryKey, elementId: TPrimaryKey, trackHistory = true) {
-    const updatedElement = hideElement(pageId, elementId);
+  function deleteElement(pageUid: TPrimaryKey, elementUid: TPrimaryKey, trackHistory = true) {
+    const updatedElement = hideElement(pageUid, elementUid);
 
     if (trackHistory) {
-      addHistoryEvent(pageId, {
+      addHistoryEvent(pageUid, {
         type: PageHistoryEvent.REMOVE_CANVAS_ELEMENT,
-        elementId: elementId,
+        elementUid: elementUid,
       });
     }
     return updatedElement;
   }
 
-  function showElement(pageId: TPrimaryKey, elementId: TPrimaryKey) {
-    const options = pageOptions.value[pageId];
-    const element = elementById.value(pageId, elementId);
+  function showElement(pageUid: TPrimaryKey, elementUid: TPrimaryKey) {
+    const options = pageOptions.value[pageUid];
+    const element = elementByUid.value(pageUid, elementUid);
     element.isDeleted = false;
 
     if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
-      const elementIndex = options.elementOrder.indexOf(elementId);
+      const elementIndex = options.elementOrder.indexOf(elementUid);
       options.clearAllElementIndexes.push(elementIndex);
       options.clearAllElementIndexes.sort((a, b) => a - b);
     }
@@ -167,13 +167,13 @@ export const useCanvasStore = defineStore("canvas", () => {
     return element;
   }
 
-  function hideElement(pageId: TPrimaryKey, elementId: TPrimaryKey) {
-    const options = pageOptions.value[pageId];
-    const element = elementById.value(pageId, elementId);
+  function hideElement(pageUid: TPrimaryKey, elementUid: TPrimaryKey) {
+    const options = pageOptions.value[pageUid];
+    const element = elementByUid.value(pageUid, elementUid);
     element.isDeleted = true;
 
     if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
-      const elementIndex = options.elementOrder.indexOf(elementId);
+      const elementIndex = options.elementOrder.indexOf(elementUid);
       options.clearAllElementIndexes = options.clearAllElementIndexes.filter(
         (i) => i !== elementIndex
       );
@@ -182,22 +182,22 @@ export const useCanvasStore = defineStore("canvas", () => {
     return element;
   }
 
-  function setIsStylus(pageId: TPrimaryKey, event: MouseEvent | TouchEvent) {
-    const options = pageOptions.value[pageId];
+  function setIsStylus(pageUid: TPrimaryKey, event: MouseEvent | TouchEvent) {
+    const options = pageOptions.value[pageUid];
     const force = (event as TouchEvent).touches ? (event as TouchEvent).touches[0]["force"] : 0;
     options.isStylus = force > 0;
     options.detectedStylus = options.detectedStylus || options.isStylus;
   }
 
-  function addHistoryEvent(pageId: TPrimaryKey, event: any) {
-    const options = pageOptions.value[pageId];
+  function addHistoryEvent(pageUid: TPrimaryKey, event: any) {
+    const options = pageOptions.value[pageUid];
     options.history.splice(options.historyIndex + 1);
     options.history.push(event);
     options.historyIndex = options.history.length - 1;
   }
 
-  function popHistoryEvent(pageId: TPrimaryKey) {
-    const options = pageOptions.value[pageId];
+  function popHistoryEvent(pageUid: TPrimaryKey) {
+    const options = pageOptions.value[pageUid];
     if (options.historyIndex < 0) return;
     options.history.pop();
     options.historyIndex -= 1;
@@ -211,8 +211,8 @@ export const useCanvasStore = defineStore("canvas", () => {
     selectedStrokeColor,
     activeElementsStartIdx,
     activeElements,
-    lastActiveElementId,
-    elementById,
+    lastActiveElementUid,
+    elementByUid,
     setElement,
     createElement,
     deleteElement,

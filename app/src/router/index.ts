@@ -35,13 +35,13 @@ const router = createRouter({
       alias: "/bookshelf",
     },
     {
-      path: "/n/:notebookId",
+      path: "/n/:notebookUid",
       props: true,
       name: "Notebook",
       component: Notebook,
     },
     {
-      path: "/p/:pageId",
+      path: "/p/:pageUid",
       props: true,
       name: "Page",
       component: Page,

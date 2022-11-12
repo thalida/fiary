@@ -11,23 +11,27 @@ import type { PALETTE_TYPES } from "@/constants/core";
 import { randomInteger } from "@/utils/math";
 
 const props = defineProps<{
-  paletteId: TPrimaryKey | null;
-  swatchId: TPrimaryKey | null;
+  pageUid: TPrimaryKey;
+  paletteUid: TPrimaryKey | null;
+  swatchUid: TPrimaryKey | null;
   paletteType: PALETTE_TYPES;
 }>();
 const emits = defineEmits<{
-  (e: "update", paletteId: TPrimaryKey, swatchId: TPrimaryKey): void;
+  (e: "update", paletteUid: TPrimaryKey, swatchUid: TPrimaryKey): void;
 }>();
 const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
+const pageOptions = computed(() => {
+  return canvasStore.pageOptions[props.pageUid];
+});
 
 const builtinPalette = computed(() => {
-  const paletteId = coreStore.builtinPalettes[props.paletteType]?.palette;
-  return coreStore.palettes[paletteId];
+  const paletteUid = coreStore.builtinPalettes[props.paletteType]?.palette;
+  return coreStore.palettes[paletteUid];
 });
 
 const color = computed(() => {
-  const swatch = coreStore.getSwatchColor(props.paletteId, props.swatchId);
+  const swatch = coreStore.getSwatchColor(props.paletteUid, props.swatchUid);
   return swatch;
 });
 const isGradient = computed(() => {
@@ -55,38 +59,38 @@ const isDropdownOpen = ref(false);
 const debouncedUpdateSwatchColor = debounce(coreStore.updateSwatchColor, 100);
 
 watchEffect(() => {
-  canvasStore.isSwatchOpen = showModal.value || isDropdownOpen.value;
+  pageOptions.value.isSwatchOpen = showModal.value || isDropdownOpen.value;
 });
 
 function handleCreatePalette() {
   coreStore.createPalette();
 }
 
-async function handleSwatchClick(paletteId: TPrimaryKey, swatchId: TPrimaryKey) {
-  const selectedColor = coreStore.getSwatchColor(paletteId, swatchId);
+async function handleSwatchClick(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
+  const selectedColor = coreStore.getSwatchColor(paletteUid, swatchUid);
   const isTransparentColor = isTransparent(selectedColor);
-  const isAlreadySelected = props.paletteId === paletteId && props.swatchId === swatchId;
-  const isPublicPalette = coreStore.palettes[paletteId].isPublic;
+  const isAlreadySelected = props.paletteUid === paletteUid && props.swatchUid === swatchUid;
+  const isPublicPalette = coreStore.palettes[paletteUid].isPublic;
   showModal.value = (isTransparentColor || isAlreadySelected) && !isPublicPalette;
 
-  emits("update", paletteId, swatchId);
+  emits("update", paletteUid, swatchUid);
 }
 
 function handleColorChange({ color }: { color: TColor }) {
-  const paletteId: TPrimaryKey | null = props.paletteId;
-  const swatchId: TPrimaryKey | null = props.swatchId;
+  const paletteUid: TPrimaryKey | null = props.paletteUid;
+  const swatchUid: TPrimaryKey | null = props.swatchUid;
   if (
-    typeof paletteId === "undefined" ||
-    paletteId === null ||
-    typeof swatchId === "undefined" ||
-    swatchId === null
+    typeof paletteUid === "undefined" ||
+    paletteUid === null ||
+    typeof swatchUid === "undefined" ||
+    swatchUid === null
   ) {
     return;
   }
 
-  coreStore.palettes[paletteId].swatches[swatchId].swatch = color;
+  coreStore.palettes[paletteUid].swatches[swatchUid].swatch = color;
 
-  debouncedUpdateSwatchColor(paletteId, swatchId, color);
+  debouncedUpdateSwatchColor(paletteUid, swatchUid, color);
 }
 
 function closeDropdown() {
@@ -135,33 +139,33 @@ defineExpose({
     <div class="color-dropdown" v-if="!showModal && isDropdownOpen">
       <div
         class="swatch"
-        :class="{ selected: props.paletteId === paletteId }"
-        v-for="paletteId in coreStore.defaultPaletteCollection"
-        :key="paletteId"
+        :class="{ selected: props.paletteUid === paletteUid }"
+        v-for="paletteUid in coreStore.defaultPaletteCollection"
+        :key="paletteUid"
       >
         <div
           class="swatch__color"
-          v-for="swatchId in coreStore.palettes[paletteId].swatchOrder"
-          :key="swatchId"
+          v-for="swatchUid in coreStore.palettes[paletteUid].swatchOrder"
+          :key="swatchUid"
           :style="{
-            background: getColorAsCss(coreStore.palettes[paletteId].swatches[swatchId].swatch),
+            background: getColorAsCss(coreStore.palettes[paletteUid].swatches[swatchUid].swatch),
           }"
           :class="{
-            selected: props.swatchId === swatchId,
+            selected: props.swatchUid === swatchUid,
           }"
-          @click="handleSwatchClick(paletteId, swatchId)"
+          @click="handleSwatchClick(paletteUid, swatchUid)"
         ></div>
       </div>
       <div class="swatch">
         <div
           class="swatch__color"
-          v-for="swatchId in builtinPalette.swatchOrder"
-          :key="swatchId"
-          :style="{ background: getColorAsCss(builtinPalette.swatches[swatchId].swatch) }"
+          v-for="swatchUid in builtinPalette.swatchOrder"
+          :key="swatchUid"
+          :style="{ background: getColorAsCss(builtinPalette.swatches[swatchUid].swatch) }"
           :class="{
-            selected: props.paletteId === builtinPalette.pk && props.swatchId === swatchId,
+            selected: props.paletteUid === builtinPalette.uid && props.swatchUid === swatchUid,
           }"
-          @click="handleSwatchClick(builtinPalette.pk, swatchId)"
+          @click="handleSwatchClick(builtinPalette.uid, swatchUid)"
         ></div>
       </div>
       <button @click="handleCreatePalette">Add Swatch</button>

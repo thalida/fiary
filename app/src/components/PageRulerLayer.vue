@@ -4,9 +4,9 @@ import MoveableVue from "vue3-moveable";
 import { useCanvasStore } from "@/stores/canvas";
 import type { TPrimaryKey } from "@/types/core";
 
-const props = defineProps<{ pageId: TPrimaryKey }>();
+const props = defineProps<{ pageUid: TPrimaryKey }>();
 const canvasStore = useCanvasStore();
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const rulerEl = ref();
 const moveableEl = ref();
@@ -26,8 +26,8 @@ const ruler = ref({
 const showRulerControls = computed(() => {
   return !pageOptions.value.isDrawing && !pageOptions.value.isPanning;
 });
-const lastActiveElementId = computed(() => {
-  return canvasStore.lastActiveElementId(props.pageId);
+const lastActiveElementUid = computed(() => {
+  return canvasStore.lastActiveElementUid(props.pageUid);
 });
 
 watchPostEffect(() => {
@@ -114,13 +114,13 @@ defineExpose({
       <div class="ruler__label">
         {{ Math.round(ruler.transform.rotate) }}&deg;
         <span v-if="pageOptions.elementOrder.length > 0 && pageOptions.isDrawing">
-          <span v-if="pageOptions.elements[lastActiveElementId].dimensions.lineLength">
-            {{ Math.round(pageOptions.elements[lastActiveElementId].dimensions.lineLength) }}px
+          <span v-if="pageOptions.elements[lastActiveElementUid].dimensions.lineLength">
+            {{ Math.round(pageOptions.elements[lastActiveElementUid].dimensions.lineLength) }}px
           </span>
           <span v-else>
-            {{ Math.round(pageOptions.elements[lastActiveElementId].dimensions.outerWidth) }}
+            {{ Math.round(pageOptions.elements[lastActiveElementUid].dimensions.outerWidth) }}
             x
-            {{ Math.round(pageOptions.elements[lastActiveElementId].dimensions.outerHeight) }}
+            {{ Math.round(pageOptions.elements[lastActiveElementUid].dimensions.outerHeight) }}
           </span>
         </span>
       </div>

@@ -1,7 +1,7 @@
 mutation CreatePalette($title: String, $swatches: [JSONString]) {
   createPalette(input: { title: $title, swatches: $swatches }) {
     palette {
-      pk
+      uid
       updatedAt
       createdAt
       title
@@ -10,7 +10,7 @@ mutation CreatePalette($title: String, $swatches: [JSONString]) {
       collections {
         edges {
           node {
-            pk
+            uid
             paletteOrder
           }
         }
@@ -18,7 +18,7 @@ mutation CreatePalette($title: String, $swatches: [JSONString]) {
       swatches {
         edges {
           node {
-            pk
+            uid
             swatch
             isDefault
           }

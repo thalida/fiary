@@ -1,29 +1,30 @@
-query MyPages($pk: ID) {
-  myPages(id: $pk) {
+query MyPages($uid: UUID) {
+  myPages(uid: $uid) {
     edges {
       node {
         notebook {
-          pk
+          uid
         }
-        pk
+        uid
         updatedAt
         createdAt
         paperSwatch {
-          pk
+          uid
           palette {
-            pk
+            uid
           }
         }
         patternSwatch {
-          pk
+          uid
           palette {
-            pk
+            uid
           }
         }
         patternType
         patternSize
         patternSpacing
         patternOpacity
+        elementOrder
       }
     }
   }

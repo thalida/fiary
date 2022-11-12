@@ -11,20 +11,20 @@ admin.site.register(PaletteCollection)
 
 @admin.register(Notebook)
 class NotebookAdmin(admin.ModelAdmin):
-    list_display = ('title', 'id', 'owner', 'bookshelf',
+    list_display = ('title', 'uid', 'owner', 'bookshelf',
                     'created_at', 'updated_at')
     list_filter = ('owner', 'bookshelf')
 
 
 @admin.register(Palette)
 class PaletteAdmin(admin.ModelAdmin):
-    list_display = ('title', 'id', 'palette_type', 'created_at', 'updated_at')
+    list_display = ('title', 'uid', 'palette_type', 'created_at', 'updated_at')
     list_filter = ('owner', 'palette_type')
 
 
 @admin.register(PaletteSwatch)
 class PaletteSwatchAdmin(admin.ModelAdmin):
-    list_display = ('id', 'palette_title', 'is_default', 'created_at', 'updated_at')
+    list_display = ('uid', 'palette_title', 'is_default', 'created_at', 'updated_at')
     list_filter = ('palette',)
 
     def palette_title(self, obj):

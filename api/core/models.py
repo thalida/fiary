@@ -6,7 +6,7 @@ from .choices import PaletteTypes, PatternTypes, SwatchDefaultUsages, Tools
 
 
 class Room(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -36,7 +36,7 @@ def setup_room(sender, instance, created, **kwargs):
 
 
 class Bookshelf(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -72,7 +72,7 @@ def setup_bookshelf(sender, instance, created, **kwargs):
 
 
 class Notebook(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -115,7 +115,7 @@ def setup_notebook(sender, instance, created, **kwargs):
 
 
 class Page(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -164,6 +164,11 @@ class Page(models.Model):
         blank=True,
         null=True
     )
+    element_order = ArrayField(
+        models.UUIDField(),
+        default=list,
+        blank=True
+    )
 
     def __str__(self):
         return f"{self.owner.username}'s page {self.id}"
@@ -181,7 +186,7 @@ def setup_page(sender, instance, created, **kwargs):
 
 
 class Element(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -198,36 +203,8 @@ class Element(models.Model):
 
     tool = models.IntegerField(
         choices=Tools.choices,
-        default=None,
-        null=True,
-        blank=True
     )
-    fill_color = models.CharField(
-        max_length=32,
-        default=None,
-        null=True,
-        blank=True
-    )
-    stroke_color = models.CharField(
-        max_length=32,
-        default=None,
-        null=True,
-        blank=True
-    )
-    size = models.FloatField(
-        default=None,
-        null=True,
-        blank=True
-    )
-    is_ruler_line = models.BooleanField(
-        default=False
-    )
-    points = ArrayField(
-        models.JSONField(),
-        default=list,
-        blank=True
-    )
-
+    render = models.JSONField()
     options = models.JSONField(
         default=None,
         null=True,
@@ -238,8 +215,20 @@ class Element(models.Model):
         return f'{self.id}-tool:{self.tool}'
 
 
+
+@receiver(models.signals.post_save, sender=Element)
+def setup_element(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    element = instance
+    page = element.page
+    page.element_order.append(element.id)
+    page.save()
+
+
 class PaletteCollection(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -260,7 +249,7 @@ class PaletteCollection(models.Model):
 
 
 class Palette(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -316,7 +305,7 @@ def teardown_palette(sender, instance, **kwargs):
 
 
 class PaletteSwatch(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

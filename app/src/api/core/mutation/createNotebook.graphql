@@ -1,11 +1,11 @@
-mutation CreateNotebook($bookshelfPk: UUID!, $title: String) {
-  createNotebook(input: {bookshelfPk: $bookshelfPk, title: $title}) {
+mutation CreateNotebook($bookshelfUid: UUID!, $title: String) {
+  createNotebook(input: {bookshelfUid: $bookshelfUid, title: $title}) {
     notebook {
       bookshelf {
-        pk
+        uid
         notebookOrder
       }
-      pk
+      uid
       updatedAt
       createdAt
       title

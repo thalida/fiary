@@ -4,7 +4,7 @@ import Quill from "quill";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import { getColorAsCss, isTransparent } from "@/utils/color";
-import type { IPaletteSwatch, ISolidColor, TColor } from "@/types/core";
+import type { IPaletteSwatch } from "@/types/core";
 import { useCoreStore } from "@/stores/core";
 import { filter } from "lodash";
 import { PALETTE_TYPES } from "@/constants/core";
@@ -38,8 +38,8 @@ const supportedPalettes = computed(() => {
   }
 
   const solidColors: IPaletteSwatch[][] = [];
-  for (const paletteId of paletteOrder) {
-    const palette = coreStore.palettes[paletteId];
+  for (const paletteUid of paletteOrder) {
+    const palette = coreStore.palettes[paletteUid];
     if (typeof palette === "undefined" || palette === null) {
       continue;
     }
@@ -71,16 +71,16 @@ onMounted(() => {
 
   quill.on("text-change", () => {
     emit("change", {
-      elementId: props.element.id,
+      elementUid: props.element.uid,
       textContents: quill.getContents(),
     });
   });
 
   quill.on("selection-change", (range) => {
     if (range) {
-      emit("focus", { elementId: props.element.id });
+      emit("focus", { elementUid: props.element.uid });
     } else {
-      emit("blur", { elementId: props.element.id });
+      emit("blur", { elementUid: props.element.uid });
     }
   });
 
@@ -106,7 +106,7 @@ onMounted(() => {
           <optgroup v-for="(palette, index) in supportedPalettes" :key="index">
             <option
               v-for="swatch in palette"
-              :key="swatch.pk"
+              :key="swatch.uid"
               :value="getColorAsCss(swatch.swatch)"
               :label="getColorAsCss(swatch.swatch)"
             ></option>
@@ -116,7 +116,7 @@ onMounted(() => {
           <optgroup v-for="(palette, index) in supportedPalettes" :key="index">
             <option
               v-for="swatch in palette"
-              :key="swatch.pk"
+              :key="swatch.uid"
               :value="getColorAsCss(swatch.swatch)"
               :label="getColorAsCss(swatch.swatch)"
             ></option>

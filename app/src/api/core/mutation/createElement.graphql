@@ -1,38 +1,26 @@
 mutation CreateElement(
-  $pagePk: UUID!
+  $pageUid: UUID!
   $tool: Int!
-  $fillColor: String!
-  $strokeColor: String!
-  $size: Float!
-  $isRulerLine: Boolean!
-  $points: [JSONString]!
+  $render: JSONString
   $options: JSONString
 ) {
   createElement(
     input: {
-      pagePk: $pagePk
+      pageUid: $pageUid
       tool: $tool
-      fillColor: $fillColor
-      strokeColor: $strokeColor
-      size: $size
-      isRulerLine: $isRulerLine
-      points: $points
+      render: $render
       options: $options
     }
   ) {
     element {
       page {
-        pk
+        uid
       }
-      pk
+      uid
       updatedAt
       createdAt
       tool
-      fillColor
-      strokeColor
-      size
-      isRulerLine
-      points
+      render
       options
     }
   }

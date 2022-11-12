@@ -27,9 +27,9 @@ watchEffect(() => {
 
 function handleNotebookCreate() {
   if (typeof myBookshelf.value === "undefined" || myBookshelf.value === null) return;
-  coreStore.createNotebook(myBookshelf.value.pk).then((notebook) => {
+  coreStore.createNotebook(myBookshelf.value.uid).then((notebook) => {
     if (notebook) {
-      router.push({ name: "Notebook", params: { notebookId: notebook.pk } });
+      router.push({ name: "Notebook", params: { notebookUid: notebook.uid } });
     }
   });
 }
@@ -42,9 +42,9 @@ function handleNotebookCreate() {
       <button @click="handleNotebookCreate">Create Notebook</button>
       <p v-if="isLoading">Loading...</p>
       <ul v-else-if="myBookshelf && numNotebooks > 0">
-        <li v-for="notebookPk in myBookshelf.notebookOrder" :key="notebookPk">
-          <RouterLink :to="{ name: 'Notebook', params: { notebookId: notebookPk } }">
-            {{ notebooks[notebookPk].title }}
+        <li v-for="notebookUid in myBookshelf.notebookOrder" :key="notebookUid">
+          <RouterLink :to="{ name: 'Notebook', params: { notebookUid: notebookUid } }">
+            {{ notebooks[notebookUid].title }}
           </RouterLink>
         </li>
       </ul>

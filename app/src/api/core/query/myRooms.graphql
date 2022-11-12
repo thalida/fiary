@@ -2,7 +2,7 @@ query MyRooms {
   myRooms {
     edges {
       node {
-        pk
+        uid
         updatedAt
         createdAt
         bookshelfOrder
@@ -10,9 +10,9 @@ query MyRooms {
           edges {
             node {
             	room {
-                pk
+                uid
               }
-              pk
+              uid
               updatedAt
               createdAt
               notebookOrder
@@ -20,9 +20,9 @@ query MyRooms {
                 edges {
                   node {
                     bookshelf {
-                      pk
+                      uid
                     }
-                    pk
+                    uid
                     updatedAt
                     createdAt
                     title

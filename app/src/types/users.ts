@@ -1,10 +1,11 @@
-export type TUserId = string;
+import type { TPrimaryKey } from "./core";
+
 export type TAuthToken = string;
 export interface IUsers {
-  [id: TUserId]: IUser;
+  [key: TPrimaryKey]: IUser;
 }
 export interface IUser {
-  id: TUserId;
+  uid: TPrimaryKey;
   pk: string;
   username: string;
 }

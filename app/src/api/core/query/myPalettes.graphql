@@ -1,8 +1,8 @@
-query MyPalettes($pk: ID) {
-  myPalettes(id: $pk) {
+query MyPalettes($uid: UUID) {
+  myPalettes(uid: $uid) {
     edges {
       node {
-        pk
+        uid
         updatedAt
         createdAt
         title
@@ -11,7 +11,7 @@ query MyPalettes($pk: ID) {
         collections {
           edges {
             node {
-              pk
+              uid
               paletteOrder
             }
           }
@@ -19,7 +19,7 @@ query MyPalettes($pk: ID) {
         swatches {
           edges {
             node {
-              pk
+              uid
               swatch
               isDefault
             }

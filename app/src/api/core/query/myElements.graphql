@@ -1,0 +1,17 @@
+query MyElements($uid:UUID, $pageUid:UUID) {
+  myElements(uid: $uid, page_Uid: $pageUid) {
+    edges {
+      node {
+        page {
+          uid
+        }
+        uid
+        updatedAt
+        createdAt
+        tool
+        render
+        options
+      }
+    }
+  }
+}

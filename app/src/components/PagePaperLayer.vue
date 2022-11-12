@@ -7,22 +7,22 @@ import { useCoreStore } from "@/stores/core";
 import { PATTERN_TYPES } from "@/constants/core";
 import patterns from "@/components/PagePatterns";
 
-const props = defineProps<{ pageId: TPrimaryKey }>();
+const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 
-const page = computed(() => coreStore.pages[props.pageId]);
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageId]);
+const page = computed(() => coreStore.pages[props.pageUid]);
+const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 
 const selectedPatternComponent = computed(() => {
   return page.value.patternType !== PATTERN_TYPES.SOLID ? patterns[page.value.patternType] : null;
 });
 const paperColor = computed(() =>
-  coreStore.getSwatchColor(page.value.paperPalette, page.value.paperSwatch)
+  coreStore.getSwatchColor(page.value.paperPaletteUid, page.value.paperSwatchUid)
 );
 const patternColor = computed(() =>
-  coreStore.getSwatchColor(page.value.patternPalette, page.value.patternSwatch)
+  coreStore.getSwatchColor(page.value.patternPaletteUid, page.value.patternSwatchUid)
 );
 
 function setPaperTransforms() {
