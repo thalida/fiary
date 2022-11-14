@@ -106,19 +106,39 @@ export interface IElements {
 }
 
 export interface IElement {
+  uid: TPrimaryKey | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  pageUid: TPrimaryKey;
+  tool: ELEMENT_TYPE;
+  points: IElementPoint[];
+  settings: TElementSettings | null;
+  transform: IElementTransform | null;
+  dimensions: IElementDimensions | null;
+  canvasSettings: ICanvasSettings | null;
+  imageRender: string | null;
+  isCached: boolean;
+  isHtmlElement: boolean;
+  isHidden: boolean;
+
+  transformStr?: string | null;
+  loadedImage?: HTMLImageElement | null;
+}
+
+export interface IAPIElement {
   uid: TPrimaryKey;
   pageUid: TPrimaryKey;
   createdAt: string;
   updatedAt: string;
-  tool: ELEMENT_TYPE;
-  points: IElementPoint[];
-  settings: TElementSettings;
-  transform: IElementTransform;
-  dimensions: IElementDimensions;
-  canvasSettings: ICanvasSettings;
+  tool: number;
+  points: string[];
+  settings: string | null;
+  transform: string | null;
+  dimensions: string | null;
+  canvasSettings: string | null;
   imageRender: string | null;
   isCached: boolean;
-  isHTMLElement: boolean;
+  isHtmlElement: boolean;
   isHidden: boolean;
 }
 
@@ -151,9 +171,9 @@ export interface IElementDimensions {
 }
 
 export interface IElementTransform {
-  translate: [number, number];
-  rotate: [number, number];
-  scale: [number, number];
+  translate: number[];
+  scale: number[];
+  rotate: number;
 }
 
 export type TElementSettings =
@@ -161,7 +181,8 @@ export type TElementSettings =
   | IImageElementSettings
   | ICheckboxElementSettings
   | ITextboxElementSettings
-  | ICutElementSettings;
+  | ICutElementSettings
+  | IPasteElementSettings;
 
 export interface ILineElementSettings {
   lineEndStyle: number;
@@ -170,6 +191,7 @@ export interface ILineElementSettings {
 
 export interface IImageElementSettings {
   image: any;
+  imageRect: { left: number; top: number; width: number; height: number };
 }
 
 export interface ICheckboxElementSettings {
@@ -182,6 +204,10 @@ export interface ITextboxElementSettings {
 
 export interface ICutElementSettings {
   isCompletedCut: boolean | null;
+}
+
+export interface IPasteElementSettings {
+  cutRect: { left: number; top: number; width: number; height: number };
 }
 
 export interface IElementPoint {

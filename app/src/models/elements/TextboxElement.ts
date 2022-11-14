@@ -1,10 +1,10 @@
-import type { ITextboxElementOptions } from "@/types/core";
+import type { ITextboxElementSettings } from "@/types/core";
 import { ELEMENT_TYPE } from "@/constants/core";
 import BaseInteractiveElement from "@/models/BaseInteractiveElement";
 
 export default class TextboxElement extends BaseInteractiveElement {
   tool = ELEMENT_TYPE.TEXTBOX;
-  toolOptions: ITextboxElementOptions = {
+  settings: ITextboxElementSettings = {
     textContents: null,
   };
 }

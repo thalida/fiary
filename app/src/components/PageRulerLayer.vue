@@ -3,9 +3,12 @@ import { computed, ref, watchPostEffect } from "vue";
 import MoveableVue from "vue3-moveable";
 import { useCanvasStore } from "@/stores/canvas";
 import type { TPrimaryKey } from "@/types/core";
+import { useCoreStore } from "@/stores/core";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
+const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
+const page = computed(() => coreStore.pages[props.pageUid]);
 const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const rulerEl = ref();
@@ -27,7 +30,11 @@ const showRulerControls = computed(() => {
   return !pageOptions.value.isDrawing && !pageOptions.value.isPanning;
 });
 const lastActiveElementUid = computed(() => {
-  return canvasStore.lastActiveElementUid(props.pageUid);
+  return coreStore.lastActiveElementUid(props.pageUid);
+});
+const lasElementDimensions = computed(() => {
+  const lastElement = coreStore.elements[lastActiveElementUid.value];
+  return lastElement ? lastElement.dimensions : null;
 });
 
 watchPostEffect(() => {
@@ -113,14 +120,18 @@ defineExpose({
     <div class="ruler" ref="rulerEl" :style="{ width: rulerWidth + 'px' }">
       <div class="ruler__label">
         {{ Math.round(ruler.transform.rotate) }}&deg;
-        <span v-if="pageOptions.elementOrder.length > 0 && pageOptions.isDrawing">
-          <span v-if="pageOptions.elements[lastActiveElementUid].dimensions.lineLength">
-            {{ Math.round(pageOptions.elements[lastActiveElementUid].dimensions.lineLength) }}px
+        <span
+          v-if="
+            page.elementOrder.length > 0 && pageOptions.isDrawing && lasElementDimensions !== null
+          "
+        >
+          <span v-if="lasElementDimensions.lineLength">
+            {{ Math.round(lasElementDimensions.lineLength) }}px
           </span>
           <span v-else>
-            {{ Math.round(pageOptions.elements[lastActiveElementUid].dimensions.outerWidth) }}
+            {{ Math.round(lasElementDimensions.outerWidth) }}
             x
-            {{ Math.round(pageOptions.elements[lastActiveElementUid].dimensions.outerHeight) }}
+            {{ Math.round(lasElementDimensions.outerHeight) }}
           </span>
         </span>
       </div>

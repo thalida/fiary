@@ -2,12 +2,14 @@
 import { computed, nextTick, ref } from "vue";
 import Moveable from "moveable";
 import { useCanvasStore } from "@/stores/canvas";
-import type { TPrimaryKey } from "@/types/core";
+import type { ICanvasSettings, TPrimaryKey } from "@/types/core";
 import { clearCanvas } from "@/utils/canvas";
-import { ELEMENT_TYPE, PageHistoryEvent } from "@/constants/core";
+import { ELEMENT_TYPE, PageHistoryEvent, TRANSPARENT_COLOR } from "@/constants/core";
 import { ELEMENT_MAP } from "@/models/elements";
+import { useCoreStore } from "@/stores/core";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
+const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
@@ -111,7 +113,7 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
     .on("clip", onImageClip);
 
   if (trackHistory) {
-    canvasStore.addHistoryEvent(props.pageUid, {
+    coreStore.addHistoryEvent(props.pageUid, {
       type: PageHistoryEvent.ADD_IMAGE_START,
       image,
     });
@@ -124,7 +126,18 @@ function handleAddImageEnd() {
   }
 
   const moveableRect = moveableEl.getRect();
-  const imageElement = new ELEMENT_MAP[ELEMENT_TYPE.IMAGE](activeImage.value, moveableRect);
+  const imageElement = new ELEMENT_MAP[ELEMENT_TYPE.IMAGE]({
+    pageUid: props.pageUid,
+    tool: ELEMENT_TYPE.IMAGE,
+    settings: {
+      image: activeImage.value,
+      imageRect: moveableRect,
+    },
+    canvasSettings: {
+      strokeColor: TRANSPARENT_COLOR,
+      fillColor: { r: 255, g: 255, b: 255, a: 1 },
+    } as ICanvasSettings,
+  });
 
   const imageCacheCanvas = document.createElement("canvas");
   const ctx = imageCacheCanvas.getContext("2d");
@@ -134,8 +147,6 @@ function handleAddImageEnd() {
   }
 
   const dpi = canvasStore.canvasConfig.dpi;
-  const minX = imageElement.dimensions.outerMinX;
-  const minY = imageElement.dimensions.outerMinY;
   const width = imageElement.dimensions.outerWidth;
   const height = imageElement.dimensions.outerHeight;
   const centerX = width / 2;
@@ -184,20 +195,18 @@ function handleAddImageEnd() {
   );
   ctx.restore();
 
-  imageElement.isDrawingCached = true;
-  imageElement.cache.drawing = {
-    x: minX,
-    y: minY,
-    width,
-    height,
-    dpi,
-    canvas: imageCacheCanvas,
-  };
+  imageElement.isCached = true;
+  imageElement.imageRender = imageCacheCanvas.toDataURL();
 
-  canvasStore.createElement(props.pageUid, imageElement);
-  emit("redraw");
-  activeImage.value = null;
-  pageOptions.value.isAddImageMode = false;
+  const img = new Image();
+  img.onload = () => {
+    imageElement.loadedImage = img;
+    coreStore.createElement(props.pageUid, imageElement);
+    emit("redraw");
+    activeImage.value = null;
+    pageOptions.value.isAddImageMode = false;
+  };
+  img.src = imageElement.imageRender;
 }
 
 function handleCancelAddImage() {

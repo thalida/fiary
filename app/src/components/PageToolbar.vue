@@ -32,10 +32,10 @@ const isPaperTool = computed(() => {
   return CANVAS_PAPER_TOOLS.includes(pageOptions.value.selectedTool);
 });
 const hasUndo = computed(() => {
-  return pageOptions.value.historyIndex >= 0;
+  return coreStore.historyIndex[props.pageUid] >= 0;
 });
 const hasRedo = computed(() => {
-  return pageOptions.value.historyIndex < pageOptions.value.history.length - 1;
+  return coreStore.historyIndex[props.pageUid] < coreStore.history[props.pageUid].length - 1;
 });
 const zoomPercent = computed(() => {
   const percent = Math.round(pageOptions.value.transformMatrix.a * 100);

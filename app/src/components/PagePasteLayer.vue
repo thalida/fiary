@@ -3,12 +3,16 @@ import { computed, nextTick, ref } from "vue";
 import { cloneDeep } from "lodash";
 import Moveable from "moveable";
 import { useCanvasStore } from "@/stores/canvas";
-import type { TPrimaryKey } from "@/types/core";
+import type { ICanvasSettings, TPrimaryKey } from "@/types/core";
 import { clearCanvas } from "@/utils/canvas";
-import { ELEMENT_TYPE } from "@/constants/core";
+import { ELEMENT_TYPE, TRANSPARENT_COLOR } from "@/constants/core";
 import { ELEMENT_MAP } from "@/models/elements";
+import { useCoreStore } from "@/stores/core";
+import type CutElement from "@/models/elements/CutElement";
+import type BaseCanvasElement from "@/models/BaseCanvasElement";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
+const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
@@ -43,24 +47,26 @@ async function handlePasteStart() {
     return;
   }
 
-  let activeElements = canvasStore.activeElements(props.pageUid);
+  let activeElements = coreStore.activeElements(props.pageUid);
   const cutSelectionUid = activeElements[activeElements.length - 1];
-  const cutSelection = canvasStore.elementByUid(props.pageUid, cutSelectionUid);
+  const cutSelection = coreStore.elements[cutSelectionUid] as CutElement;
 
-  if (!cutSelection.isDrawingCached) {
-    cutSelection.isCompletedCut = true;
-    cutSelection.composition = "destination-out";
+  if (!cutSelection.isCached) {
+    cutSelection.settings.isCompletedCut = true;
+    cutSelection.canvasSettings.composition = "destination-out";
     cutSelection.cacheElement();
   }
 
   emit("redraw");
 
-  pasteTransform.value.translate = [cutSelection.cache.drawing.x, cutSelection.cache.drawing.y];
-  setPasteTransform(canvas.value, pasteTransform.value);
+  const dpi = cutSelection.canvasSettings.dpi;
+  const minX = cutSelection.dimensions.outerMinX;
+  const minY = cutSelection.dimensions.outerMinY;
+  const width = cutSelection.dimensions.outerWidth;
+  const height = cutSelection.dimensions.outerHeight;
 
-  const dpi = cutSelection.cache.drawing.dpi;
-  const width = cutSelection.cache.drawing.width;
-  const height = cutSelection.cache.drawing.height;
+  pasteTransform.value.translate = [minX, minY];
+  setPasteTransform(canvas.value, pasteTransform.value);
 
   canvas.value.width = width * dpi;
   canvas.value.height = height * dpi;
@@ -70,17 +76,18 @@ async function handlePasteStart() {
   ctx.scale(dpi, dpi);
 
   clearCanvas(canvas.value);
-  ctx.translate(-cutSelection.cache.drawing.x, -cutSelection.cache.drawing.y);
-  activeElements = canvasStore.activeElements(props.pageUid);
+  ctx.translate(-minX, -minY);
+  activeElements = coreStore.activeElements(props.pageUid);
   for (let i = 0; i < activeElements.length - 1; i += 1) {
     const elementUid = activeElements[i];
-    const element = canvasStore.elementByUid(props.pageUid, elementUid);
+    const element = coreStore.elements[elementUid] as BaseCanvasElement;
     element.drawElement(canvas.value);
   }
   const cutSelectionClip = cloneDeep(cutSelection);
-  cutSelectionClip.isDrawingCached = false;
-  cutSelectionClip.cache = {};
-  cutSelectionClip.composition = "destination-in";
+  cutSelectionClip.isCached = false;
+  cutSelectionClip.imageRender = null;
+  cutSelectionClip.loadedImage = null;
+  cutSelectionClip.canvasSettings.composition = "destination-in";
   cutSelectionClip.drawElement(canvas.value);
 
   moveableEl = new Moveable(rootEl.value, {
@@ -96,9 +103,9 @@ async function handlePasteStart() {
 }
 
 function handleCancelPaste() {
-  const activeElements = canvasStore.activeElements(props.pageUid);
+  const activeElements = coreStore.activeElements(props.pageUid);
   const cutSelectionUid = activeElements[activeElements.length - 1];
-  canvasStore.deleteElement(props.pageUid, cutSelectionUid, false);
+  coreStore.deleteElement(cutSelectionUid, false);
   pageOptions.value.isPasteMode = false;
 }
 
@@ -107,22 +114,32 @@ function handlePasteEnd() {
     return;
   }
 
-  const activeElements = canvasStore.activeElements(props.pageUid);
+  const activeElements = coreStore.activeElements(props.pageUid);
   const cutSelectionUid = activeElements[activeElements.length - 1];
-  const cutSelection = canvasStore.elementByUid(props.pageUid, cutSelectionUid);
+  const cutSelection = coreStore.elements[cutSelectionUid] as CutElement;
   const moveableRect = moveableEl.getRect();
-  const pasteElement = new ELEMENT_MAP[ELEMENT_TYPE.PASTE](moveableRect);
+  const pasteElement = new ELEMENT_MAP[ELEMENT_TYPE.PASTE]({
+    pageUid: props.pageUid,
+    tool: ELEMENT_TYPE.PASTE,
+    settings: {
+      cutRect: moveableRect,
+    },
+    canvasSettings: {
+      strokeColor: TRANSPARENT_COLOR,
+      fillColor: { r: 255, g: 255, b: 255, a: 1 },
+    } as ICanvasSettings,
+  });
 
   if (
     pasteTransform.value.rotate === 0 &&
-    cutSelection.cache.drawing.x === pasteElement.dimensions.outerMinX &&
-    cutSelection.cache.drawing.y === pasteElement.dimensions.outerMinY &&
-    cutSelection.cache.drawing.width === pasteElement.dimensions.outerWidth &&
-    cutSelection.cache.drawing.height === pasteElement.dimensions.outerHeight
+    cutSelection.dimensions.outerMinX === pasteElement.dimensions.outerMinX &&
+    cutSelection.dimensions.outerMinY === pasteElement.dimensions.outerMinY &&
+    cutSelection.dimensions.outerWidth === pasteElement.dimensions.outerWidth &&
+    cutSelection.dimensions.outerHeight === pasteElement.dimensions.outerHeight
   ) {
     handleCancelPaste();
     emit("redraw");
-    canvasStore.popHistoryEvent(props.pageUid);
+    coreStore.popHistoryEvent(props.pageUid);
     return;
   }
 
@@ -158,19 +175,16 @@ function handlePasteEnd() {
   ctx.drawImage(canvas.value, -imageWidth / 2, -imageHeight / 2, imageWidth, imageHeight);
   ctx.restore();
 
-  pasteElement.isDrawingCached = true;
-  pasteElement.cache.drawing = {
-    x: minX,
-    y: minY,
-    width,
-    height,
-    dpi,
-    canvas: pasteCacheCanvas,
+  pasteElement.isCached = true;
+  pasteElement.imageRender = pasteCacheCanvas.toDataURL();
+  const img = new Image();
+  img.onload = () => {
+    pasteElement.loadedImage = img;
+    coreStore.createElement(props.pageUid, pasteElement);
+    emit("redraw");
+    pageOptions.value.isPasteMode = false;
   };
-
-  canvasStore.createElement(props.pageUid, pasteElement);
-  emit("redraw");
-  pageOptions.value.isPasteMode = false;
+  img.src = pasteElement.imageRender;
 }
 
 function handlePasteDelete() {

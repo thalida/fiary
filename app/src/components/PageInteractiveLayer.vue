@@ -3,21 +3,24 @@ import { computed, ref } from "vue";
 import Selecto from "selecto";
 import Moveable from "moveable";
 import { useCanvasStore } from "@/stores/canvas";
-import type { TPrimaryKey, ICheckboxElementOptions, ITextboxElementOptions } from "@/types/core";
+import type { TPrimaryKey, ICheckboxElementSettings, ITextboxElementSettings } from "@/types/core";
 import { ELEMENT_TYPE, PageHistoryEvent } from "@/constants/core";
 import PageTextarea from "@/components/PageTextarea.vue";
 import cloneDeep from "lodash/cloneDeep";
+import { useCoreStore } from "@/stores/core";
+import type BaseInteractiveElement from "@/models/BaseInteractiveElement";
+import type TextboxElement from "@/models/elements/TextboxElement";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
+const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const rootEl = ref(null as HTMLElement | null);
 const activeElementUid = ref(null as TPrimaryKey | null);
 const activeHtmlElements = computed(() => {
-  const activeElements = canvasStore.activeElements(props.pageUid);
+  const activeElements = coreStore.activeElements(props.pageUid);
   return activeElements.filter(
-    (uid: TPrimaryKey) =>
-      pageOptions.value.elements[uid].isHTMLElement && !pageOptions.value.elements[uid].isDeleted
+    (uid: TPrimaryKey) => coreStore.elements[uid].isHtmlElement && !coreStore.elements[uid].isHidden
   );
 });
 
@@ -111,13 +114,9 @@ function setInteractiveElementStyles(
   if (elementUid === null) {
     return;
   }
-  const element = canvasStore.elementByUid(props.pageUid, elementUid);
-  element.setTransform(
-    pageOptions.value.initTransformMatrix,
-    pageOptions.value.transformMatrix,
-    transform
-  );
-  target.style.transform = element.style.transformStr;
+  const element = coreStore.elements[elementUid] as BaseInteractiveElement;
+  element.setTransform(pageOptions.value.transformMatrix, transform);
+  target.style.transform = element.transformStr ? element.transformStr : "";
 }
 
 function handleInteractiveDrag({
@@ -148,8 +147,8 @@ function handleInteractiveStart(target: HTMLElement | SVGElement) {
     return;
   }
 
-  const element = canvasStore.elementByUid(props.pageUid, elementUid);
-  element.tmpFromStyle = cloneDeep(element.style);
+  const element = coreStore.elements[elementUid] as BaseInteractiveElement;
+  element.tmpFromTransfrom = cloneDeep(element.transform);
 }
 
 function handleInteractiveEnd(target: HTMLElement | SVGElement) {
@@ -157,15 +156,15 @@ function handleInteractiveEnd(target: HTMLElement | SVGElement) {
   if (elementUid === null) {
     return;
   }
-  const element = canvasStore.elementByUid(props.pageUid, elementUid);
-  canvasStore.addHistoryEvent(props.pageUid, {
+  const element = coreStore.elements[elementUid] as BaseInteractiveElement;
+  coreStore.addHistoryEvent(props.pageUid, {
     type: PageHistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES,
     elementUid: element.uid,
-    to: cloneDeep(element.style),
-    from: cloneDeep(element.tmpFromStyle),
+    to: cloneDeep(element.transform),
+    from: cloneDeep(element.tmpFromTransfrom),
   });
 
-  delete element.tmpFromStyle;
+  element.tmpFromTransfrom = null;
 }
 
 function handleInteractiveElementDelete() {
@@ -174,7 +173,7 @@ function handleInteractiveElementDelete() {
     if (elementUid === null) {
       continue;
     }
-    canvasStore.deleteElement(props.pageUid, elementUid);
+    coreStore.deleteElement(elementUid);
   }
   moveableElements = [];
   moveableInteractive.target = [];
@@ -187,8 +186,8 @@ function handleTextboxChange({
   elementUid: TPrimaryKey;
   textContents: string;
 }) {
-  const element = canvasStore.elementByUid(props.pageUid, elementUid);
-  (element.toolOptions as ITextboxElementOptions).textContents = textContents;
+  const element = coreStore.elements[elementUid] as TextboxElement;
+  element.settings.textContents = textContents;
 }
 
 function handleTextboxFocus({ elementUid }: { elementUid: TPrimaryKey }) {
@@ -214,7 +213,7 @@ function handleInteractiveElementEvent(e: Event) {
 function setInteractiveElementTransforms() {
   for (let i = 0; i < activeHtmlElements.value.length; i += 1) {
     const elementUid = activeHtmlElements.value[i];
-    const element = pageOptions.value.elements[elementUid];
+    const element = coreStore.elements[elementUid] as BaseInteractiveElement;
     element.setTransform(pageOptions.value.initTransformMatrix, pageOptions.value.transformMatrix);
   }
 }
@@ -246,14 +245,14 @@ defineExpose({
   >
     <template v-for="elementUid in activeHtmlElements" :key="elementUid">
       <input
-        v-if="pageOptions.elements[elementUid].tool === ELEMENT_TYPE.CHECKBOX"
+        v-if="coreStore.elements[elementUid].tool === ELEMENT_TYPE.CHECKBOX"
         class="interactiveElement"
-        v-model="(pageOptions.elements[elementUid].toolOptions as ICheckboxElementOptions).isChecked"
-        :data-element-uid="pageOptions.elements[elementUid].id"
+        v-model="(coreStore.elements[elementUid].settings as ICheckboxElementSettings).isChecked"
+        :data-element-uid="coreStore.elements[elementUid].uid"
         type="checkbox"
         :style="{
           position: 'absolute',
-          transform: pageOptions.elements[elementUid].style.transformStr,
+          transform: (coreStore.elements[elementUid].transformStr as any)
         }"
         @mousedown="handleInteractiveElementEvent"
         @touchstart="handleInteractiveElementEvent"
@@ -263,15 +262,15 @@ defineExpose({
         @touchmove="handleInteractiveElementEvent"
       />
       <PageTextarea
-        v-else-if="pageOptions.elements[elementUid].tool === ELEMENT_TYPE.TEXTBOX"
-        :data-element-uid="pageOptions.elements[elementUid].id"
+        v-else-if="coreStore.elements[elementUid].tool === ELEMENT_TYPE.TEXTBOX"
+        :data-element-uid="coreStore.elements[elementUid].uid"
         class="interactiveElement"
         :style="{
           position: 'absolute',
-          transform: pageOptions.elements[elementUid].style.transformStr,
+          transform: coreStore.elements[elementUid].transformStr,
         }"
-        :element="pageOptions.elements[elementUid]"
-        :is-active="pageOptions.elements[elementUid].id === activeElementUid"
+        :element="coreStore.elements[elementUid]"
+        :is-active="coreStore.elements[elementUid].uid === activeElementUid"
         @change="handleTextboxChange"
         @focus="handleTextboxFocus"
         @blur="handleTextboxBlur"

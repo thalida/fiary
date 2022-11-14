@@ -13,7 +13,7 @@ import {
   CANVAS_INTERACTIVE_TOOLS,
   CANVAS_NONDRAWING_TOOLS,
 } from "@/constants/core";
-import type { IElementPoint, TPrimaryKey } from "@/types/core";
+import type { ICanvasSettings, IElement, IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
 import PageInteractiveLayer from "@/components/PageInteractiveLayer.vue";
 import PagePaperLayer from "@/components/PagePaperLayer.vue";
@@ -23,6 +23,9 @@ import PageAddImageLayer from "@/components/PageAddImageLayer.vue";
 import PageRulerLayer from "@/components/PageRulerLayer.vue";
 import PageToolbar from "@/components/PageToolbar.vue";
 import { useCoreStore } from "@/stores/core";
+import type LineElement from "@/models/elements/LineElement";
+import type BaseCanvasElement from "@/models/BaseCanvasElement";
+import type BaseElement from "@/models/BaseElement";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageUid: TPrimaryKey }>();
@@ -97,21 +100,42 @@ function handleToolChange() {
 }
 
 function handleAddCheckbox(pos: IElementPoint) {
-  const checkboxElement = new ELEMENT_MAP[ELEMENT_TYPE.CHECKBOX]({
-    pos,
-    initMatrix: pageOptions.value.initTransformMatrix,
-    matrix: pageOptions.value.transformMatrix,
-  });
-  canvasStore.createElement(props.pageUid, checkboxElement);
+  const checkboxElement = new ELEMENT_MAP[ELEMENT_TYPE.CHECKBOX](
+    {
+      pageUid: props.pageUid,
+      tool: ELEMENT_TYPE.CHECKBOX,
+    },
+    {
+      pos,
+      initMatrix: pageOptions.value.initTransformMatrix,
+      matrix: pageOptions.value.transformMatrix,
+    }
+  );
+
+  coreStore.createElement(props.pageUid, checkboxElement);
 }
 
 function handleAddTextbox(pos: IElementPoint) {
-  const textboxElement = new ELEMENT_MAP[ELEMENT_TYPE.TEXTBOX]({
-    pos,
-    initMatrix: pageOptions.value.initTransformMatrix,
-    matrix: pageOptions.value.transformMatrix,
-  });
-  canvasStore.createElement(props.pageUid, textboxElement);
+  const textboxElement = new ELEMENT_MAP[ELEMENT_TYPE.TEXTBOX](
+    {
+      pageUid: props.pageUid,
+      tool: ELEMENT_TYPE.TEXTBOX,
+    },
+    {
+      pos,
+      initMatrix: pageOptions.value.initTransformMatrix,
+      matrix: pageOptions.value.transformMatrix,
+    }
+  );
+  coreStore.createElement(props.pageUid, textboxElement);
+}
+
+function getPressure(event: MouseEvent | TouchEvent, tool: ELEMENT_TYPE): number {
+  if (tool === ELEMENT_TYPE.PEN) {
+    return pageOptions.value.isStylus ? (event as TouchEvent).touches[0]["force"] : 1;
+  }
+
+  return 0.5;
 }
 
 function getMousePos(
@@ -228,23 +252,35 @@ function getDrawPos(
 }
 
 function handleClearAll() {
-  const lastElementUid = canvasStore.lastActiveElementUid(props.pageUid);
-  const lastElement = canvasStore.elementByUid(props.pageUid, lastElementUid);
+  const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
+  const lastElement = coreStore.elements[lastElementUid];
   if (
-    pageOptions.value.elementOrder.length === 0 ||
-    (pageOptions.value.elementOrder.length > 0 && lastElement.tool === ELEMENT_TYPE.CLEAR_ALL)
+    page.value.elementOrder.length === 0 ||
+    (page.value.elementOrder.length > 0 && lastElement.tool === ELEMENT_TYPE.CLEAR_ALL)
   ) {
     return;
   }
 
   const clearElement = new ELEMENT_MAP[ELEMENT_TYPE.CLEAR_ALL]({
-    pos: {
-      x: canvasStore.canvasConfig.width,
-      y: canvasStore.canvasConfig.height,
-    },
+    pageUid: props.pageUid,
+    tool: ELEMENT_TYPE.CLEAR_ALL,
+    points: [
+      {
+        x: 0,
+        y: 0,
+      },
+      {
+        x: canvasStore.canvasConfig.width,
+        y: canvasStore.canvasConfig.height,
+      },
+    ],
+    canvasSettings: {
+      strokeColor: TRANSPARENT_COLOR,
+      fillColor: { r: 255, g: 255, b: 255, a: 1 },
+    } as ICanvasSettings,
   });
   clearElement.cacheElement();
-  canvasStore.createElement(props.pageUid, clearElement);
+  coreStore.createElement(props.pageUid, clearElement);
   drawingLayer.value?.drawElements();
   pageOptions.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
@@ -319,7 +355,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   }
 
   const selectedTool = pageOptions.value.selectedTool as ELEMENT_TYPE;
-  const activeElements = canvasStore.activeElements(props.pageUid);
+  const activeElements = coreStore.activeElements(props.pageUid);
 
   if (
     activeElements.length === 0 &&
@@ -353,52 +389,52 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   const strokeColor =
     selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
   const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
-
-  const newElement = new ELEMENT_MAP[selectedTool]({
-    tool: selectedTool,
-    strokeColor,
-    fillColor,
-  });
-
   const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
-  newElement.isRulerLine = pos.isRulerLine;
-  newElement.size = selectedTool === ELEMENT_TYPE.CUT ? 0 : pageOptions.value.selectedToolSize;
-  newElement.toolOptions = {
-    lineEndSide: pageOptions.value.selectedLineEndSide,
-    lineEndStyle: pageOptions.value.selectedLineEndStyle,
-  };
-  newElement.freehandOptions = {
-    size: pageOptions.value.selectedToolSize,
-    simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !pageOptions.value.isStylus,
-    thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.95 : 0,
-    streamline: newElement.isRulerLine ? 1 : 0.32,
-    smoothing: newElement.isRulerLine ? 1 : 0.32,
-    last: false,
-  };
+  const isRulerLine = pos.isRulerLine;
 
-  const pressure = newElement.getPressure(event, pageOptions.value.isStylus);
-  newElement.points = [{ x: pos.x, y: pos.y, pressure }];
+  const elementProps = {
+    pageUid: props.pageUid,
+    tool: selectedTool,
+    canvasSettings: {
+      strokeColor,
+      fillColor,
+      isRulerLine,
+      lineSize: selectedTool === ELEMENT_TYPE.CUT ? 0 : pageOptions.value.selectedToolSize,
+      freehandOptions: {
+        size: pageOptions.value.selectedToolSize,
+        simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !pageOptions.value.isStylus,
+        thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.95 : 0,
+        streamline: isRulerLine ? 1 : 0.32,
+        smoothing: isRulerLine ? 1 : 0.32,
+        last: false,
+      },
+    } as Partial<ICanvasSettings>,
+  } as Partial<IElement>;
+
+  const pressure = getPressure(event, selectedTool);
+  elementProps.points = [{ x: pos.x, y: pos.y, pressure }];
+
+  if (selectedTool === ELEMENT_TYPE.LINE) {
+    elementProps.settings = {
+      lineEndSide: pageOptions.value.selectedLineEndSide,
+      lineEndStyle: pageOptions.value.selectedLineEndStyle,
+    };
+  }
 
   if (
-    newElement.tool === ELEMENT_TYPE.CIRCLE ||
-    newElement.tool === ELEMENT_TYPE.RECTANGLE ||
-    newElement.tool === ELEMENT_TYPE.BLOB ||
-    newElement.tool === ELEMENT_TYPE.ERASER
+    elementProps.tool === ELEMENT_TYPE.CIRCLE ||
+    elementProps.tool === ELEMENT_TYPE.RECTANGLE ||
+    elementProps.tool === ELEMENT_TYPE.BLOB ||
+    elementProps.tool === ELEMENT_TYPE.ERASER
   ) {
-    newElement.points.push({ x: pos.x, y: pos.y, pressure });
-  } else if (newElement.tool === ELEMENT_TYPE.TRIANGLE) {
-    newElement.points.push({ x: pos.x, y: pos.y, pressure });
-    newElement.points.push({ x: pos.x, y: pos.y, pressure });
-  } else if (newElement.tool === ELEMENT_TYPE.LINE) {
-    newElement.points = newElement.calculateLinePoints(pos);
+    elementProps.points.push({ x: pos.x, y: pos.y, pressure });
+  } else if (elementProps.tool === ELEMENT_TYPE.TRIANGLE) {
+    elementProps.points.push({ x: pos.x, y: pos.y, pressure });
+    elementProps.points.push({ x: pos.x, y: pos.y, pressure });
   }
 
-  if (CANVAS_LINE_TOOLS.includes(newElement.tool)) {
-    newElement.smoothPoints = newElement.getSmoothPoints();
-  }
-
-  newElement.dimensions = newElement.calculateDimensions();
-  canvasStore.createElement(props.pageUid, newElement);
+  const newElement = new ELEMENT_MAP[selectedTool](elementProps as any);
+  coreStore.createElement(props.pageUid, newElement);
   drawingLayer.value?.drawElements();
 }
 
@@ -418,11 +454,13 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  const lastElementUid = pageOptions.value.elementOrder[pageOptions.value.elementOrder.length - 1];
-  const lastElement = canvasStore.elementByUid(props.pageUid, lastElementUid);
-  const followRuler = lastElement.isRulerLine || !CANVAS_LINE_TOOLS.includes(lastElement.tool);
+  // const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
+  const lastElementUid = page.value.elementOrder[page.value.elementOrder.length - 1];
+  const lastElement = coreStore.elements[lastElementUid] as BaseCanvasElement;
+  const isntLineTool = !CANVAS_LINE_TOOLS.includes(lastElement.tool);
+  const followRuler = lastElement.canvasSettings.isRulerLine || isntLineTool;
   const pos = getDrawPos(drawingCanvas.value, event, followRuler, rulerLayer.value?.moveableEl);
-  const pressure = lastElement.getPressure(event, pageOptions.value.isStylus);
+  const pressure = getPressure(event, lastElement.tool);
 
   if (lastElement.tool === ELEMENT_TYPE.CIRCLE || lastElement.tool === ELEMENT_TYPE.RECTANGLE) {
     lastElement.points[1] = { x: pos.x, y: pos.y, pressure };
@@ -443,15 +481,15 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
     lastElement.points[1] = p2;
     lastElement.points[2] = p3;
   } else if (lastElement.tool === ELEMENT_TYPE.LINE) {
-    lastElement.points = lastElement.calculateLinePoints(pos);
+    lastElement.points = (lastElement as LineElement).calculateLinePoints(pos);
   } else {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
 
-  lastElement.isRulerLine = pos.isRulerLine;
+  lastElement.canvasSettings.isRulerLine = pos.isRulerLine;
 
   if (CANVAS_LINE_TOOLS.includes(lastElement.tool)) {
-    lastElement.smoothPoints = lastElement.getSmoothPoints();
+    lastElement.canvasSettings.smoothPoints = lastElement.getSmoothPoints();
   }
 
   lastElement.dimensions = lastElement.calculateDimensions();
@@ -489,13 +527,14 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  const lastElementUid = pageOptions.value.elementOrder[pageOptions.value.elementOrder.length - 1];
-  const lastElement = canvasStore.elementByUid(props.pageUid, lastElementUid);
-  lastElement.freehandOptions.last = true;
+  // const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
+  const lastElementUid = page.value.elementOrder[page.value.elementOrder.length - 1];
+  const lastElement = coreStore.elements[lastElementUid] as BaseCanvasElement;
+  lastElement.canvasSettings.freehandOptions.last = true;
   lastElement.dimensions = lastElement.calculateDimensions();
 
   if (lastElement.dimensions.outerWidth === 0 || lastElement.dimensions.outerHeight === 0) {
-    pageOptions.value.elementOrder.pop();
+    page.value.elementOrder.pop();
     pageOptions.value.isDrawing = false;
     return;
   }
@@ -505,16 +544,11 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   } else {
     lastElement.cacheElement();
     drawingLayer.value?.drawElements();
-    coreStore.createElement(props.pageUid, {
-      tool: lastElement.tool,
-      render: lastElement.cache.drawing,
-      options: lastElement.toolOptions,
-    });
   }
   pageOptions.value.isDrawing = false;
 }
 function handleUndo() {
-  const action = pageOptions.value.history[pageOptions.value.historyIndex];
+  const action = coreStore.history[props.pageUid][coreStore.historyIndex[props.pageUid]];
   let redoPaste = false;
   let redoAddImage = false;
 
@@ -523,18 +557,18 @@ function handleUndo() {
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     addImageLayer.value?.handleCancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = canvasStore.elementByUid(props.pageUid, action.elementUid);
+    const element = coreStore.elements[action.elementUid] as BaseElement;
     redoPaste = element.tool === ELEMENT_TYPE.PASTE;
     redoAddImage = element.tool === ELEMENT_TYPE.IMAGE;
-    canvasStore.hideElement(props.pageUid, action.elementUid);
+    coreStore.hideElement(action.elementUid);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    canvasStore.showElement(props.pageUid, action.elementUid);
+    coreStore.showElement(action.elementUid);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = canvasStore.elementByUid(props.pageUid, action.elementUid);
-    element.style = cloneDeep(action.from);
+    const element = coreStore.elements[action.elementUid] as BaseElement;
+    element.transform = cloneDeep(action.from);
   }
 
-  pageOptions.value.historyIndex -= 1;
+  coreStore.historyIndex[props.pageUid] -= 1;
 
   if (redoPaste) {
     pasteLayer.value?.handlePasteStart();
@@ -547,24 +581,24 @@ function handleUndo() {
 }
 
 function handleRedo() {
-  const action = pageOptions.value.history[pageOptions.value.historyIndex + 1];
+  const action = coreStore.history[props.pageUid][coreStore.historyIndex[props.pageUid] + 1];
   let redoPaste = false;
   let redoAddImage = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = canvasStore.elementByUid(props.pageUid, action.elementUid);
+    const element = coreStore.elements[action.elementUid] as BaseElement;
     redoPaste = element.tool === ELEMENT_TYPE.CUT;
-    canvasStore.showElement(props.pageUid, action.elementUid);
+    coreStore.showElement(action.elementUid);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    canvasStore.hideElement(props.pageUid, action.elementUid);
+    coreStore.hideElement(action.elementUid);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = canvasStore.elementByUid(props.pageUid, action.elementUid);
-    element.style = cloneDeep(action.to);
+    const element = coreStore.elements[action.elementUid] as BaseElement;
+    element.transform = cloneDeep(action.to);
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     redoAddImage = true;
   }
 
-  pageOptions.value.historyIndex += 1;
+  coreStore.historyIndex[props.pageUid] += 1;
 
   if (redoPaste) {
     pasteLayer.value?.handlePasteStart();

@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import merge from "lodash/merge";
@@ -39,13 +40,14 @@ import {
   PALETTE_TYPES,
   TRANSPARENT_COLOR,
 } from "@/constants/core";
+import type BaseElement from "@/models/BaseElement";
 
 export const useCoreStore = defineStore("core", () => {
   const rooms = ref({} as IRooms);
   const bookshelves = ref({} as IBookshelves);
   const notebooks = ref({} as INotebooks);
   const pages = ref({} as IPages);
-  const elements = ref({} as IElements);
+  const elements = ref({} as { [key: TPrimaryKey]: BaseElement });
   const clearAllElementIndexes = ref({} as { [key: TPrimaryKey]: number[] });
   const history = ref({} as { [key: TPrimaryKey]: any[] });
   const historyIndex = ref({} as { [key: TPrimaryKey]: number });
@@ -98,7 +100,7 @@ export const useCoreStore = defineStore("core", () => {
   const activeElements = computed(() => (pageUid: TPrimaryKey) => {
     const startIdx = activeElementsStartIdx.value(pageUid);
     const postClear = pages.value[pageUid].elementOrder.slice(startIdx);
-    return postClear.filter((uid) => !elements.value[uid].isDeleted);
+    return postClear.filter((uid) => !elements.value[uid].isHidden);
   });
   const lastActiveElementUid = computed(() => (pageUid: TPrimaryKey) => {
     const elements = activeElements.value(pageUid);
@@ -309,6 +311,19 @@ export const useCoreStore = defineStore("core", () => {
 
     notebooks.value[page.notebook.uid] = merge(notebooks.value[page.notebook.uid], page.notebook);
 
+    if (typeof pages.value[page.uid].elementOrder === "undefined") {
+      pages.value[page.uid].elementOrder = [];
+    }
+
+    if (typeof history.value[page.uid] === "undefined") {
+      history.value[page.uid] = [];
+      historyIndex.value[page.uid] = -1;
+    }
+
+    if (typeof clearAllElementIndexes.value[page.uid] === "undefined") {
+      clearAllElementIndexes.value[page.uid] = [];
+    }
+
     return pages.value[page.uid];
   }
 
@@ -354,25 +369,6 @@ export const useCoreStore = defineStore("core", () => {
     return storePage(updatedPage);
   }
 
-  function storeElement(element: any) {
-    const currElement = elements.value[element.uid];
-    const formattedElement: Partial<IElement> = {
-      uid: element.uid,
-      updatedAt: element.updatedAt,
-      createdAt: element.createdAt,
-      pageUid: element.page.uid,
-      tool: element.tool,
-      renderImage: element.renderImage,
-      renderRect: element.renderRect,
-    };
-
-    elements.value[element.uid] = merge(currElement, formattedElement);
-
-    pages.value[element.page.uid] = merge(pages.value[element.page.uid], element.page);
-
-    return elements.value[element.uid];
-  }
-
   async function fetchElements(pageUid: TPrimaryKey) {
     const { data } = await useQuery({
       query: MyElementsDocument,
@@ -390,46 +386,73 @@ export const useCoreStore = defineStore("core", () => {
       return;
     }
 
-    for (let i = 0; i < res.myElements.length; i += 1) {
-      const element = res.myElements[i];
-      storeElement(element);
-    }
+    // for (let i = 0; i < res.myElements.length; i += 1) {
+    //   const element = res.myElements[i];
+    //   storeElement(element);
+    // }
 
+    console.log(res);
     console.log("elements", elements.value);
   }
 
-  async function createElement(pageUid: TPrimaryKey, element: Partial<IElement>) {
-    const { execute, data } = useMutation(CreateElementDocument);
-    const params = {
-      pageUid,
-      ...element,
-      tool: element.tool as number,
-      points: JSON.stringify(element.points),
-      settings: JSON.stringify(element.settings),
-      styles: JSON.stringify(element.styles),
-    };
-    await execute(params);
+  function setElement(element: BaseElement) {
+    const page = pages.value[element.pageUid];
+    elements.value[element.uid as string] = element;
+    page.elementOrder.push(element.uid as string);
 
-    const createdElement = data.value.createElement?.element;
-    if (typeof createdElement === "undefined" || createdElement === null) {
-      throw new Error("Failed to create element");
-    }
+    return elements.value[element.uid as string];
+  }
 
-    const savedElement = storeElement(createdElement);
+  async function createElement(pageUid: TPrimaryKey, element: BaseElement) {
+    element.uid = uuidv4() as TPrimaryKey;
+    setElement(element);
 
-    showElement(savedElement.uid);
-
+    const updatedElement = showElement(element.uid);
     const historyEvent: any = {
       type: PageHistoryEvent.ADD_CANVAS_ELEMENT,
-      elementUid: savedElement.uid,
+      elementUid: element.uid,
     };
+
     if (element.tool === ELEMENT_TYPE.IMAGE) {
       historyEvent.image = (element.settings as IImageElementSettings).image;
     }
     addHistoryEvent(pageUid, historyEvent);
 
-    return elements.value[createdElement.uid];
+    return updatedElement;
+
+    // const { execute, data } = useMutation(CreateElementDocument);
+    // const params = {
+    //   pageUid,
+    //   ...element,
+    //   tool: element.tool as number,
+    //   points: JSON.stringify(element.points),
+    //   settings: JSON.stringify(element.settings),
+    //   styles: JSON.stringify(element.styles),
+    // };
+    // await execute(params);
+
+    // const createdElement = data.value.createElement?.element;
+    // if (typeof createdElement === "undefined" || createdElement === null) {
+    //   throw new Error("Failed to create element");
+    // }
+
+    // element.uid = uuidv4() as TPrimaryKey;
+
+    // showElement(element.uid);
+
+    // const historyEvent: any = {
+    //   type: PageHistoryEvent.ADD_CANVAS_ELEMENT,
+    //   elementUid: element.uid,
+    // };
+    // if (element.tool === ELEMENT_TYPE.IMAGE) {
+    //   historyEvent.image = (element.settings as IImageElementSettings).image;
+    // }
+    // addHistoryEvent(pageUid, historyEvent);
+
+    // return elements.value[element.uid];
   }
+
+  function updateElement(element: BaseElement) {}
 
   function deleteElement(elementUid: TPrimaryKey, trackHistory = true) {
     hideElement(elementUid);
@@ -446,7 +469,7 @@ export const useCoreStore = defineStore("core", () => {
 
   function showElement(elementUid: TPrimaryKey) {
     const element = elements.value[elementUid];
-    element.isDeleted = false;
+    element.isHidden = false;
 
     if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
       const page = pages.value[element.pageUid];
@@ -460,7 +483,7 @@ export const useCoreStore = defineStore("core", () => {
 
   function hideElement(elementUid: TPrimaryKey) {
     const element = elements.value[elementUid];
-    element.isDeleted = true;
+    element.isHidden = true;
 
     if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
       const page = pages.value[element.pageUid];
@@ -517,9 +540,12 @@ export const useCoreStore = defineStore("core", () => {
     fetchElements,
     createElement,
     deleteElement,
+    updateElement,
     showElement,
     hideElement,
 
+    history,
+    historyIndex,
     addHistoryEvent,
     popHistoryEvent,
   };

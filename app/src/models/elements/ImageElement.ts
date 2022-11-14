@@ -1,41 +1,26 @@
-import { ELEMENT_TYPE, TRANSPARENT_COLOR } from "@/constants/core";
-import type { TColor } from "@/types/core";
+import { ELEMENT_TYPE } from "@/constants/core";
+import type { IImageElementSettings } from "@/types/core";
 import BaseCanvasElement from "@/models/BaseCanvasElement";
 
 export default class ImageElement extends BaseCanvasElement {
-  imageRect: { left: number; top: number; width: number; height: number };
-  constructor(
-    image: HTMLImageElement,
-    imageRect: { left: number; top: number; width: number; height: number }
-  ) {
-    const tool = ELEMENT_TYPE.IMAGE;
-    const strokeColor: TColor = TRANSPARENT_COLOR;
-    const fillColor: TColor = { r: 255, g: 255, b: 255, a: 1 };
-
-    super({ tool, strokeColor, fillColor });
-
-    this.toolOptions = {
-      image,
-    };
-    this.imageRect = imageRect;
-    this.dimensions = this.calculateDimensions();
-  }
+  tool = ELEMENT_TYPE.IMAGE;
+  declare settings: IImageElementSettings;
 
   calculateDimensions() {
     return {
-      minX: this.imageRect.left,
-      minY: this.imageRect.top,
-      maxX: this.imageRect.left + this.imageRect.width,
-      maxY: this.imageRect.top + this.imageRect.height,
-      outerMaxX: this.imageRect.left + this.imageRect.width,
-      outerMaxY: this.imageRect.top + this.imageRect.height,
-      width: this.imageRect.width,
-      height: this.imageRect.height,
+      minX: this.settings.imageRect.left,
+      minY: this.settings.imageRect.top,
+      maxX: this.settings.imageRect.left + this.settings.imageRect.width,
+      maxY: this.settings.imageRect.top + this.settings.imageRect.height,
+      outerMaxX: this.settings.imageRect.left + this.settings.imageRect.width,
+      outerMaxY: this.settings.imageRect.top + this.settings.imageRect.height,
+      width: this.settings.imageRect.width,
+      height: this.settings.imageRect.height,
       lineLength: null,
-      outerMinX: this.imageRect.left,
-      outerMinY: this.imageRect.top,
-      outerWidth: this.imageRect.width,
-      outerHeight: this.imageRect.height,
+      outerMinX: this.settings.imageRect.left,
+      outerMinY: this.settings.imageRect.top,
+      outerWidth: this.settings.imageRect.width,
+      outerHeight: this.settings.imageRect.height,
     };
   }
 }

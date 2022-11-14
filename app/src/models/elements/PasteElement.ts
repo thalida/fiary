@@ -1,35 +1,26 @@
-import { ELEMENT_TYPE, TRANSPARENT_COLOR } from "@/constants/core";
-import type { TColor } from "@/types/core";
+import { ELEMENT_TYPE } from "@/constants/core";
+import type { IPasteElementSettings } from "@/types/core";
 import BaseCanvasElement from "@/models/BaseCanvasElement";
 
 export default class PasteElement extends BaseCanvasElement {
-  cutRect: { left: number; top: number; width: number; height: number };
-  constructor(cutRect: { left: number; top: number; width: number; height: number }) {
-    const tool = ELEMENT_TYPE.PASTE;
-    const strokeColor: TColor = TRANSPARENT_COLOR;
-    const fillColor: TColor = { r: 255, g: 255, b: 255, a: 1 };
-
-    super({ tool, strokeColor, fillColor });
-
-    this.cutRect = cutRect;
-    this.dimensions = this.calculateDimensions();
-  }
+  tool = ELEMENT_TYPE.PASTE;
+  declare settings: IPasteElementSettings;
 
   calculateDimensions() {
     return {
-      minX: this.cutRect.left,
-      minY: this.cutRect.top,
-      maxX: this.cutRect.left + this.cutRect.width,
-      maxY: this.cutRect.top + this.cutRect.height,
-      outerMaxX: this.cutRect.left + this.cutRect.width,
-      outerMaxY: this.cutRect.top + this.cutRect.height,
-      width: this.cutRect.width,
-      height: this.cutRect.height,
+      minX: this.settings.cutRect.left,
+      minY: this.settings.cutRect.top,
+      maxX: this.settings.cutRect.left + this.settings.cutRect.width,
+      maxY: this.settings.cutRect.top + this.settings.cutRect.height,
+      outerMaxX: this.settings.cutRect.left + this.settings.cutRect.width,
+      outerMaxY: this.settings.cutRect.top + this.settings.cutRect.height,
+      width: this.settings.cutRect.width,
+      height: this.settings.cutRect.height,
       lineLength: null,
-      outerMinX: this.cutRect.left,
-      outerMinY: this.cutRect.top,
-      outerWidth: this.cutRect.width,
-      outerHeight: this.cutRect.height,
+      outerMinX: this.settings.cutRect.left,
+      outerMinY: this.settings.cutRect.top,
+      outerWidth: this.settings.cutRect.width,
+      outerHeight: this.settings.cutRect.height,
     };
   }
 }

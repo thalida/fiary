@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type BaseCanvasElement from "@/models/BaseCanvasElement";
 import { useCanvasStore } from "@/stores/canvas";
+import { useCoreStore } from "@/stores/core";
 import type { TPrimaryKey } from "@/types/core";
 import { computed, onMounted, ref } from "vue";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
+const coreStore = useCoreStore();
 const canvasStore = useCanvasStore();
 const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
 const drawingCanvas = ref<HTMLCanvasElement>();
@@ -48,10 +51,10 @@ function drawElements() {
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
   ctx.setTransform(pageOptions.value.transformMatrix);
 
-  const drawElementUids = canvasStore.activeElements(props.pageUid);
+  const drawElementUids = coreStore.activeElements(props.pageUid);
   for (let i = 0; i < drawElementUids.length; i += 1) {
     const elementUid = drawElementUids[i];
-    const element = canvasStore.elementByUid(props.pageUid, elementUid);
+    const element = coreStore.elements[elementUid] as BaseCanvasElement;
     if (typeof element.drawElement === "undefined") {
       continue;
     }
