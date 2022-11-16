@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import type BaseCanvasElement from "@/models/BaseCanvasElement";
-import { useCanvasStore } from "@/stores/canvas";
 import { useCoreStore } from "@/stores/core";
 import type { TPrimaryKey } from "@/types/core";
 import { computed, onMounted, ref } from "vue";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
+const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const drawingCanvas = ref<HTMLCanvasElement>();
 const emits = defineEmits<{
   (event: "ready", canvas: HTMLCanvasElement): void;
@@ -25,12 +23,12 @@ onMounted(() => {
     return;
   }
 
-  const dpi = canvasStore.canvasConfig.dpi;
-  drawingCanvas.value.width = canvasStore.canvasConfig.width * dpi;
-  drawingCanvas.value.height = canvasStore.canvasConfig.height * dpi;
+  const dpi = coreStore.canvasConfig.dpi;
+  drawingCanvas.value.width = coreStore.canvasConfig.width * dpi;
+  drawingCanvas.value.height = coreStore.canvasConfig.height * dpi;
 
-  drawingCanvas.value.style.width = `${canvasStore.canvasConfig.width}px`;
-  drawingCanvas.value.style.height = `${canvasStore.canvasConfig.height}px`;
+  drawingCanvas.value.style.width = `${coreStore.canvasConfig.width}px`;
+  drawingCanvas.value.style.height = `${coreStore.canvasConfig.height}px`;
 
   ctx.scale(dpi, dpi);
   emits("ready", drawingCanvas.value);
@@ -70,8 +68,8 @@ defineExpose({
   <canvas
     class="drawing-layer"
     ref="drawingCanvas"
-    :width="canvasStore.canvasConfig.width"
-    :height="canvasStore.canvasConfig.height"
+    :width="coreStore.canvasConfig.width"
+    :height="coreStore.canvasConfig.height"
   >
   </canvas>
 </template>

@@ -2,19 +2,18 @@
 import { computed, ref } from "vue";
 import Selecto from "selecto";
 import Moveable from "moveable";
-import { useCanvasStore } from "@/stores/canvas";
-import type { TPrimaryKey, ICheckboxElementSettings, ITextboxElementSettings } from "@/types/core";
+import type { TPrimaryKey, ICheckboxElementSettings, ITransformMatrix } from "@/types/core";
 import { ELEMENT_TYPE, PageHistoryEvent } from "@/constants/core";
 import PageTextarea from "@/components/PageTextarea.vue";
 import cloneDeep from "lodash/cloneDeep";
 import { useCoreStore } from "@/stores/core";
 import type BaseInteractiveElement from "@/models/BaseInteractiveElement";
 import type TextboxElement from "@/models/elements/TextboxElement";
+import { merge } from "lodash";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
+const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const rootEl = ref(null as HTMLElement | null);
 const activeElementUid = ref(null as TPrimaryKey | null);
 const activeHtmlElements = computed(() => {
@@ -106,6 +105,32 @@ function handleEndInteractiveEdit() {
   moveableInteractive.destroy();
 }
 
+function getRelativeTransformStr(
+  elementUid: TPrimaryKey,
+  transformMatrix: ITransformMatrix
+): string {
+  const element = coreStore.elements[elementUid] as BaseInteractiveElement;
+  const initMatrixA = pageOptions.value.initTransformMatrix.a;
+  const currMatrixA = transformMatrix.a;
+  const currMatrixE = transformMatrix.e;
+  const currMatrixF = transformMatrix.f;
+  const htmlRelativeZoom = currMatrixA / initMatrixA;
+  const newOrigin = {
+    x: currMatrixE / initMatrixA,
+    y: currMatrixF / initMatrixA,
+  };
+  const translate = `translate(${
+    newOrigin.x + element.transform.translate[0] * htmlRelativeZoom
+  }px, ${newOrigin.y + element.transform.translate[1] * htmlRelativeZoom}px)`;
+  const scale = `scale(${element.transform.scale[0] * htmlRelativeZoom}, ${
+    element.transform.scale[1] * htmlRelativeZoom
+  })`;
+  const rotate = `rotate(${element.transform.rotate}deg)`;
+
+  const transformStr = `${translate} ${scale} ${rotate}`;
+  return transformStr;
+}
+
 function setInteractiveElementStyles(
   target: HTMLElement,
   transform: { [key: string]: number | number[] }
@@ -115,7 +140,8 @@ function setInteractiveElementStyles(
     return;
   }
   const element = coreStore.elements[elementUid] as BaseInteractiveElement;
-  element.setTransform(pageOptions.value.transformMatrix, transform);
+  element.transform = merge(element.transform, transform);
+  element.transformStr = getRelativeTransformStr(elementUid, pageOptions.value.transformMatrix);
   target.style.transform = element.transformStr ? element.transformStr : "";
 }
 
@@ -173,7 +199,8 @@ function handleInteractiveElementDelete() {
     if (elementUid === null) {
       continue;
     }
-    coreStore.deleteElement(elementUid);
+    const element = coreStore.elements[elementUid] as BaseInteractiveElement;
+    coreStore.removeElement(element);
   }
   moveableElements = [];
   moveableInteractive.target = [];
@@ -214,7 +241,7 @@ function setInteractiveElementTransforms() {
   for (let i = 0; i < activeHtmlElements.value.length; i += 1) {
     const elementUid = activeHtmlElements.value[i];
     const element = coreStore.elements[elementUid] as BaseInteractiveElement;
-    element.setTransform(pageOptions.value.initTransformMatrix, pageOptions.value.transformMatrix);
+    element.transformStr = getRelativeTransformStr(elementUid, pageOptions.value.transformMatrix);
   }
 }
 
@@ -238,8 +265,8 @@ defineExpose({
     v-if="pageOptions"
     ref="rootEl"
     :style="{
-      width: canvasStore.canvasConfig.width + 'px',
-      height: canvasStore.canvasConfig.height + 'px',
+      width: coreStore.canvasConfig.width + 'px',
+      height: coreStore.canvasConfig.height + 'px',
       transform: `matrix(1, 0, 0, 1, 0, 0)`,
     }"
   >

@@ -1,0 +1,29 @@
+mutation BatchSaveElements(
+  $elements: [JSONString]!,
+) {
+  batchSaveElements(
+    input: {
+      elements: $elements,
+    }
+  ) {
+    elements {
+      page {
+        uid
+        elementOrder
+      }
+      uid
+      updatedAt
+      createdAt
+      tool
+      points
+      settings
+      transform
+      dimensions
+      canvasSettings
+      canvasDataUrl
+      isCached
+      isHtmlElement
+      isHidden
+    }
+  }
+}

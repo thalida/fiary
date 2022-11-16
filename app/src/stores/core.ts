@@ -15,39 +15,51 @@ import {
   UpdatePageDocument,
   CreateElementDocument,
   MyElementsDocument,
+  UpdateElementDocument,
+  BatchSaveElementsDocument,
 } from "@/api/graphql-operations";
 import type {
+  IAPIElement,
   IBookshelves,
-  IElement,
-  IElements,
   IImageElementSettings,
   INotebooks,
   IPage,
+  IPageOptions,
   IPages,
   IPalette,
   IPalettes,
   IPaletteSwatch,
   IRooms,
+  ITransformMatrix,
   TColor,
   TPrimaryKey,
 } from "@/types/core";
 import {
   DEFAULT_PATTERN_OPACITY,
   DEFAULT_PATTERN_TYPE,
+  DEFAULT_PEN_SIZE,
   ELEMENT_TYPE,
+  LineEndSide,
+  LineEndStyle,
   MAX_SWATCH_COLORS,
   PageHistoryEvent,
   PALETTE_TYPES,
   TRANSPARENT_COLOR,
 } from "@/constants/core";
 import type BaseElement from "@/models/BaseElement";
+import { ELEMENT_MAP } from "@/models/elements";
+import { clone } from "lodash";
 
 export const useCoreStore = defineStore("core", () => {
   const rooms = ref({} as IRooms);
   const bookshelves = ref({} as IBookshelves);
   const notebooks = ref({} as INotebooks);
   const pages = ref({} as IPages);
+  const pageOptions = ref({} as { [key: TPrimaryKey]: IPageOptions });
+  const isSavingElements = ref(false);
+  const autoSaveInterval = ref(null as NodeJS.Timer | null);
   const elements = ref({} as { [key: TPrimaryKey]: BaseElement });
+  const dirtyElements = ref([] as TPrimaryKey[]);
   const clearAllElementIndexes = ref({} as { [key: TPrimaryKey]: number[] });
   const history = ref({} as { [key: TPrimaryKey]: any[] });
   const historyIndex = ref({} as { [key: TPrimaryKey]: number });
@@ -100,12 +112,87 @@ export const useCoreStore = defineStore("core", () => {
   const activeElements = computed(() => (pageUid: TPrimaryKey) => {
     const startIdx = activeElementsStartIdx.value(pageUid);
     const postClear = pages.value[pageUid].elementOrder.slice(startIdx);
-    return postClear.filter((uid) => !elements.value[uid].isHidden);
+    return postClear.filter((uid) => {
+      return !elements.value[uid].isHidden;
+    });
   });
   const lastActiveElementUid = computed(() => (pageUid: TPrimaryKey) => {
     const elements = activeElements.value(pageUid);
     return elements[elements.length - 1];
   });
+  const canvasConfig = ref({
+    width: window.innerWidth,
+    height: window.innerHeight,
+    dpi: window.devicePixelRatio,
+  });
+
+  const selectedFillColor = computed(() => (pageUid: TPrimaryKey) => {
+    const options = pageOptions.value[pageUid];
+    if (options.fillPaletteUid === null || options.fillSwatchUid === null) {
+      return TRANSPARENT_COLOR;
+    }
+    return getSwatchColor.value(options.fillPaletteUid, options.fillSwatchUid);
+  });
+
+  const selectedStrokeColor = computed(() => (pageUid: TPrimaryKey) => {
+    const options = pageOptions.value[pageUid];
+    if (options.strokeSwatchUid === null || options.strokePaletteUid === null) {
+      return TRANSPARENT_COLOR;
+    }
+    return getSwatchColor.value(options.strokePaletteUid, options.strokeSwatchUid);
+  });
+
+  function initPageOptions(pageUid: TPrimaryKey, matrix: ITransformMatrix) {
+    if (typeof pageOptions.value[pageUid] === "undefined") {
+      const matrixAsObj = {
+        a: matrix.a,
+        b: matrix.b,
+        c: matrix.c,
+        d: matrix.d,
+        e: matrix.e,
+        f: matrix.f,
+      };
+      const options = {
+        fillPaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.palette,
+        fillSwatchUid: builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.swatch,
+        strokePaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.palette,
+        strokeSwatchUid: builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.swatch,
+
+        selectedTool: ELEMENT_TYPE.PEN,
+        selectedToolSize: DEFAULT_PEN_SIZE,
+        selectedLineEndSide: LineEndSide.NONE,
+        selectedLineEndStyle: LineEndStyle.NONE,
+
+        isDebugMode: false,
+        isPasteMode: false,
+        isAddImageMode: false,
+        isInteractiveEditMode: false,
+        isTextboxEditMode: false,
+        isRulerMode: false,
+        isPanning: false,
+        isMovingRuler: false,
+        isDrawing: false,
+        isSwatchOpen: false,
+        isStylus: false,
+        detectedStylus: false,
+        allowFingerDrawing: true,
+
+        initTransformMatrix: clone(matrixAsObj),
+        transformMatrix: clone(matrixAsObj),
+      };
+
+      pageOptions.value[pageUid] = options;
+    }
+
+    return pageOptions.value[pageUid];
+  }
+
+  function setIsStylus(pageUid: TPrimaryKey, event: MouseEvent | TouchEvent) {
+    const options = pageOptions.value[pageUid];
+    const force = (event as TouchEvent).touches ? (event as TouchEvent).touches[0]["force"] : 0;
+    options.isStylus = force > 0;
+    options.detectedStylus = options.detectedStylus || options.isStylus;
+  }
 
   async function fetchMyRooms() {
     const { data } = await useQuery({
@@ -369,6 +456,13 @@ export const useCoreStore = defineStore("core", () => {
     return storePage(updatedPage);
   }
 
+  function markDirtyElement(elementUid: TPrimaryKey) {
+    if (!dirtyElements.value.includes(elementUid)) {
+      elements.value[elementUid].isDirty = true;
+      dirtyElements.value.push(elementUid);
+    }
+  }
+
   async function fetchElements(pageUid: TPrimaryKey) {
     const { data } = await useQuery({
       query: MyElementsDocument,
@@ -386,113 +480,144 @@ export const useCoreStore = defineStore("core", () => {
       return;
     }
 
-    // for (let i = 0; i < res.myElements.length; i += 1) {
-    //   const element = res.myElements[i];
-    //   storeElement(element);
-    // }
+    console.log("fetchElements", res.myElements);
+
+    const page = pages.value[pageUid];
+    for (let i = 0; i < res.myElements.length; i += 1) {
+      const rawElement = res.myElements[i];
+      rawElement.pageUid = pageUid;
+      const element = new ELEMENT_MAP[rawElement.tool as ELEMENT_TYPE](rawElement, true);
+      elements.value[element.uid] = element;
+      page.elementOrder = rawElement.page.elementOrder;
+
+      if (element.tool === ELEMENT_TYPE.CLEAR_ALL && !element.isHidden) {
+        const elementIndex = page.elementOrder.indexOf(element.uid);
+        clearAllElementIndexes.value[pageUid].push(elementIndex);
+      }
+    }
+    clearAllElementIndexes.value[pageUid].sort((a, b) => a - b);
 
     console.log(res);
     console.log("elements", elements.value);
   }
 
-  function setElement(element: BaseElement) {
-    const page = pages.value[element.pageUid];
-    elements.value[element.uid as string] = element;
-    page.elementOrder.push(element.uid as string);
-
-    return elements.value[element.uid as string];
-  }
-
-  async function createElement(pageUid: TPrimaryKey, element: BaseElement) {
-    element.uid = uuidv4() as TPrimaryKey;
-    setElement(element);
-
-    const updatedElement = showElement(element.uid);
-    const historyEvent: any = {
-      type: PageHistoryEvent.ADD_CANVAS_ELEMENT,
-      elementUid: element.uid,
-    };
-
-    if (element.tool === ELEMENT_TYPE.IMAGE) {
-      historyEvent.image = (element.settings as IImageElementSettings).image;
+  async function startAutoSave() {
+    if (autoSaveInterval.value) {
+      return;
     }
-    addHistoryEvent(pageUid, historyEvent);
 
-    return updatedElement;
+    const interval = 1000 * 60 * 5; // 5 minutes
 
-    // const { execute, data } = useMutation(CreateElementDocument);
-    // const params = {
-    //   pageUid,
-    //   ...element,
-    //   tool: element.tool as number,
-    //   points: JSON.stringify(element.points),
-    //   settings: JSON.stringify(element.settings),
-    //   styles: JSON.stringify(element.styles),
-    // };
-    // await execute(params);
-
-    // const createdElement = data.value.createElement?.element;
-    // if (typeof createdElement === "undefined" || createdElement === null) {
-    //   throw new Error("Failed to create element");
-    // }
-
-    // element.uid = uuidv4() as TPrimaryKey;
-
-    // showElement(element.uid);
-
-    // const historyEvent: any = {
-    //   type: PageHistoryEvent.ADD_CANVAS_ELEMENT,
-    //   elementUid: element.uid,
-    // };
-    // if (element.tool === ELEMENT_TYPE.IMAGE) {
-    //   historyEvent.image = (element.settings as IImageElementSettings).image;
-    // }
-    // addHistoryEvent(pageUid, historyEvent);
-
-    // return elements.value[element.uid];
+    autoSaveInterval.value = setInterval(async () => {
+      batchSaveElements();
+    }, interval);
   }
 
-  function updateElement(element: BaseElement) {}
-
-  function deleteElement(elementUid: TPrimaryKey, trackHistory = true) {
-    hideElement(elementUid);
-
-    if (trackHistory) {
-      const pageUid = elements.value[elementUid].pageUid;
-      addHistoryEvent(pageUid, {
-        type: PageHistoryEvent.REMOVE_CANVAS_ELEMENT,
-        elementUid: elementUid,
-      });
+  async function stopAutoSave() {
+    if (!autoSaveInterval.value) {
+      return;
     }
-    return elements.value[elementUid];
+
+    clearInterval(autoSaveInterval.value);
+    autoSaveInterval.value = null;
   }
 
-  function showElement(elementUid: TPrimaryKey) {
-    const element = elements.value[elementUid];
+  async function batchSaveElements() {
+    console.log(dirtyElements.value);
+    if (isSavingElements.value === true) {
+      return;
+    }
+
+    if (dirtyElements.value.length === 0) {
+      isSavingElements.value = false;
+      return;
+    }
+
+    isSavingElements.value = true;
+
+    const elementsToSave = dirtyElements.value.map((elementUid) => {
+      const element = elements.value[elementUid] as BaseElement;
+      const apiElement = element.toBatchApiFormat();
+      return apiElement;
+    });
+
+    const { execute, data } = useMutation(BatchSaveElementsDocument);
+    await execute({ elements: elementsToSave });
+
+    const savedElements = data.value.batchSaveElements?.elements;
+    if (typeof savedElements === "undefined" || savedElements === null) {
+      throw new Error("Failed to save elements");
+    }
+
+    console.log("savedElements", savedElements);
+    isSavingElements.value = false;
+  }
+
+  function addElement(element: BaseElement, trackHistory = true) {
+    const pageUid = element.pageUid;
+    const page = pages.value[pageUid];
+
     element.isHidden = false;
 
-    if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
-      const page = pages.value[element.pageUid];
-      const elementIndex = page.elementOrder.indexOf(elementUid);
+    if (typeof elements.value[element.uid] === "undefined") {
+      elements.value[element.uid] = element;
+    }
+
+    let elementIndex = page.elementOrder.indexOf(element.uid);
+    if (elementIndex === -1) {
+      page.elementOrder.push(element.uid);
+      elementIndex = page.elementOrder.length - 1;
+    }
+
+    if (
+      element.tool === ELEMENT_TYPE.CLEAR_ALL &&
+      clearAllElementIndexes.value[element.pageUid].indexOf(elementIndex) === -1
+    ) {
       clearAllElementIndexes.value[element.pageUid].push(elementIndex);
       clearAllElementIndexes.value[element.pageUid].sort((a, b) => a - b);
     }
 
+    if (trackHistory) {
+      const historyEvent: any = {
+        type: PageHistoryEvent.ADD_CANVAS_ELEMENT,
+        elementUid: element.uid,
+      };
+
+      if (element.tool === ELEMENT_TYPE.IMAGE) {
+        historyEvent.image = (element.settings as IImageElementSettings).image;
+      }
+
+      addHistoryEvent(pageUid, historyEvent);
+    }
+
+    markDirtyElement(element.uid);
     return element;
   }
 
-  function hideElement(elementUid: TPrimaryKey) {
-    const element = elements.value[elementUid];
+  function removeElement(element: BaseElement, trackHistory = true) {
+    const pageUid = element.pageUid;
+    const page = pages.value[pageUid];
+
     element.isHidden = true;
 
     if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
-      const page = pages.value[element.pageUid];
-      const elementIndex = page.elementOrder.indexOf(elementUid);
-      clearAllElementIndexes.value[element.pageUid] = clearAllElementIndexes.value[
-        element.pageUid
-      ].filter((i) => i !== elementIndex);
+      const elementIndex = page.elementOrder.indexOf(element.uid);
+
+      if (elementIndex > -1) {
+        clearAllElementIndexes.value[element.pageUid] = clearAllElementIndexes.value[
+          pageUid
+        ].filter((i) => i !== elementIndex);
+      }
     }
 
+    if (trackHistory) {
+      addHistoryEvent(pageUid, {
+        type: PageHistoryEvent.REMOVE_CANVAS_ELEMENT,
+        elementUid: element.uid,
+      });
+    }
+
+    markDirtyElement(element.uid);
     return element;
   }
 
@@ -538,15 +663,23 @@ export const useCoreStore = defineStore("core", () => {
     activeElements,
     lastActiveElementUid,
     fetchElements,
-    createElement,
-    deleteElement,
-    updateElement,
-    showElement,
-    hideElement,
+    startAutoSave,
+    stopAutoSave,
+    batchSaveElements,
+    addElement,
+    removeElement,
+    markDirtyElement,
 
     history,
     historyIndex,
     addHistoryEvent,
     popHistoryEvent,
+
+    pageOptions,
+    canvasConfig,
+    initPageOptions,
+    selectedFillColor,
+    selectedStrokeColor,
+    setIsStylus,
   };
 });

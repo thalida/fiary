@@ -116,13 +116,13 @@ export interface IElement {
   transform: IElementTransform | null;
   dimensions: IElementDimensions | null;
   canvasSettings: ICanvasSettings | null;
-  imageRender: string | null;
+  canvasDataUrl: string | null;
   isCached: boolean;
   isHtmlElement: boolean;
   isHidden: boolean;
 
   transformStr?: string | null;
-  loadedImage?: HTMLImageElement | null;
+  cachedCanvasImage?: HTMLImageElement | null;
 }
 
 export interface IAPIElement {
@@ -131,12 +131,12 @@ export interface IAPIElement {
   createdAt: string;
   updatedAt: string;
   tool: number;
-  points: string[];
+  points: string;
   settings: string | null;
   transform: string | null;
   dimensions: string | null;
   canvasSettings: string | null;
-  imageRender: string | null;
+  canvasDataUrl: string | null;
   isCached: boolean;
   isHtmlElement: boolean;
   isHidden: boolean;

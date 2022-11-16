@@ -15,7 +15,7 @@ query MyElements($uid:UUID, $pageUid:UUID) {
         transform
         dimensions
         canvasSettings
-        imageRender
+        canvasDataUrl
         isCached
         isHtmlElement
         isHidden

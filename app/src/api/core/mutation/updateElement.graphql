@@ -1,6 +1,7 @@
-mutation CreateElement(
-  $pageUid: UUID!
-  $tool: Int!
+mutation UpdateElement(
+  $uid: UUID!
+  $pageUid: UUID
+  $tool: Int
   $points: JSONString!
   $settings: JSONString
   $transform: JSONString
@@ -11,8 +12,9 @@ mutation CreateElement(
   $isHtmlElement: Boolean
   $isHidden: Boolean
 ) {
-  createElement(
+  updateElement(
     input: {
+      uid: $uid
       pageUid: $pageUid
       tool: $tool
       points: $points

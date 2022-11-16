@@ -17,6 +17,17 @@ export type Scalars = {
   UUID: any;
 };
 
+export type BatchSaveElementsInput = {
+  clientMutationId?: InputMaybe<Scalars["String"]>;
+  elements: Array<InputMaybe<Scalars["JSONString"]>>;
+};
+
+export type BatchSaveElementsPayload = {
+  __typename?: "BatchSaveElementsPayload";
+  clientMutationId?: Maybe<Scalars["String"]>;
+  elements?: Maybe<Array<Maybe<ElementNode>>>;
+};
+
 export type BookshelfNode = Node & {
   __typename?: "BookshelfNode";
   createdAt: Scalars["DateTime"];
@@ -69,10 +80,10 @@ export type CreateBookshelfPayload = {
 };
 
 export type CreateElementInput = {
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
   canvasSettings?: InputMaybe<Scalars["JSONString"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   dimensions?: InputMaybe<Scalars["JSONString"]>;
-  imageRender?: InputMaybe<Scalars["String"]>;
   isCached?: InputMaybe<Scalars["Boolean"]>;
   isHidden?: InputMaybe<Scalars["Boolean"]>;
   isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
@@ -199,12 +210,12 @@ export type DeletePaletteSwatchPayload = {
 
 export type ElementNode = Node & {
   __typename?: "ElementNode";
+  canvasDataUrl?: Maybe<Scalars["String"]>;
   canvasSettings?: Maybe<Scalars["JSONString"]>;
   createdAt: Scalars["DateTime"];
   dimensions?: Maybe<Scalars["JSONString"]>;
   /** The ID of the object */
   id: Scalars["ID"];
-  imageRender?: Maybe<Scalars["String"]>;
   isCached: Scalars["Boolean"];
   isHidden: Scalars["Boolean"];
   isHtmlElement: Scalars["Boolean"];
@@ -237,6 +248,7 @@ export type ElementNodeEdge = {
 
 export type Mutation = {
   __typename?: "Mutation";
+  batchSaveElements?: Maybe<BatchSaveElementsPayload>;
   createBookshelf?: Maybe<CreateBookshelfPayload>;
   createElement?: Maybe<CreateElementPayload>;
   createNotebook?: Maybe<CreateNotebookPayload>;
@@ -261,6 +273,10 @@ export type Mutation = {
   updatePalette?: Maybe<UpdatePalettePayload>;
   updatePaletteSwatch?: Maybe<UpdatePaletteSwatchPayload>;
   verifyToken?: Maybe<VerifyPayload>;
+};
+
+export type MutationBatchSaveElementsArgs = {
+  input: BatchSaveElementsInput;
 };
 
 export type MutationCreateBookshelfArgs = {
@@ -853,13 +869,14 @@ export type UpdateBookshelfPayload = {
 };
 
 export type UpdateElementInput = {
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
   canvasSettings?: InputMaybe<Scalars["JSONString"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   dimensions?: InputMaybe<Scalars["JSONString"]>;
-  imageRender?: InputMaybe<Scalars["String"]>;
   isCached?: InputMaybe<Scalars["Boolean"]>;
   isHidden?: InputMaybe<Scalars["Boolean"]>;
   isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
+  pageUid?: InputMaybe<Scalars["UUID"]>;
   points?: InputMaybe<Scalars["JSONString"]>;
   settings?: InputMaybe<Scalars["JSONString"]>;
   tool?: InputMaybe<Scalars["Int"]>;
@@ -1034,6 +1051,34 @@ export type VerifyPayload = {
   payload: Scalars["GenericScalar"];
 };
 
+export type BatchSaveElementsMutationVariables = Exact<{
+  elements: Array<InputMaybe<Scalars["JSONString"]>> | InputMaybe<Scalars["JSONString"]>;
+}>;
+
+export type BatchSaveElementsMutation = {
+  __typename?: "Mutation";
+  batchSaveElements?: {
+    __typename?: "BatchSaveElementsPayload";
+    elements?: Array<{
+      __typename?: "ElementNode";
+      uid: any;
+      updatedAt: any;
+      createdAt: any;
+      tool: number;
+      points: any;
+      settings?: any | null;
+      transform?: any | null;
+      dimensions?: any | null;
+      canvasSettings?: any | null;
+      canvasDataUrl?: string | null;
+      isCached: boolean;
+      isHtmlElement: boolean;
+      isHidden: boolean;
+      page: { __typename?: "PageNode"; uid: any; elementOrder: Array<any> };
+    } | null> | null;
+  } | null;
+};
+
 export type CreateElementMutationVariables = Exact<{
   pageUid: Scalars["UUID"];
   tool: Scalars["Int"];
@@ -1042,7 +1087,7 @@ export type CreateElementMutationVariables = Exact<{
   transform?: InputMaybe<Scalars["JSONString"]>;
   dimensions?: InputMaybe<Scalars["JSONString"]>;
   canvasSettings?: InputMaybe<Scalars["JSONString"]>;
-  imageRender?: InputMaybe<Scalars["String"]>;
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
   isCached?: InputMaybe<Scalars["Boolean"]>;
   isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
   isHidden?: InputMaybe<Scalars["Boolean"]>;
@@ -1063,7 +1108,7 @@ export type CreateElementMutation = {
       transform?: any | null;
       dimensions?: any | null;
       canvasSettings?: any | null;
-      imageRender?: string | null;
+      canvasDataUrl?: string | null;
       isCached: boolean;
       isHtmlElement: boolean;
       isHidden: boolean;
@@ -1197,6 +1242,45 @@ export type CreatePaletteSwatchMutation = {
   } | null;
 };
 
+export type UpdateElementMutationVariables = Exact<{
+  uid: Scalars["UUID"];
+  pageUid?: InputMaybe<Scalars["UUID"]>;
+  tool?: InputMaybe<Scalars["Int"]>;
+  points: Scalars["JSONString"];
+  settings?: InputMaybe<Scalars["JSONString"]>;
+  transform?: InputMaybe<Scalars["JSONString"]>;
+  dimensions?: InputMaybe<Scalars["JSONString"]>;
+  canvasSettings?: InputMaybe<Scalars["JSONString"]>;
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
+  isCached?: InputMaybe<Scalars["Boolean"]>;
+  isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
+  isHidden?: InputMaybe<Scalars["Boolean"]>;
+}>;
+
+export type UpdateElementMutation = {
+  __typename?: "Mutation";
+  updateElement?: {
+    __typename?: "UpdateElementPayload";
+    element?: {
+      __typename?: "ElementNode";
+      uid: any;
+      updatedAt: any;
+      createdAt: any;
+      tool: number;
+      points: any;
+      settings?: any | null;
+      transform?: any | null;
+      dimensions?: any | null;
+      canvasSettings?: any | null;
+      canvasDataUrl?: string | null;
+      isCached: boolean;
+      isHtmlElement: boolean;
+      isHidden: boolean;
+      page: { __typename?: "PageNode"; uid: any; elementOrder: Array<any> };
+    } | null;
+  } | null;
+};
+
 export type UpdatePageMutationVariables = Exact<{
   uid: Scalars["UUID"];
   notebookUid?: InputMaybe<Scalars["UUID"]>;
@@ -1278,7 +1362,7 @@ export type MyElementsQuery = {
         transform?: any | null;
         dimensions?: any | null;
         canvasSettings?: any | null;
-        imageRender?: string | null;
+        canvasDataUrl?: string | null;
         isCached: boolean;
         isHtmlElement: boolean;
         isHidden: boolean;
@@ -1547,6 +1631,92 @@ export type MeQuery = {
   me?: { __typename?: "UserNode"; uid: any; username: string } | null;
 };
 
+export const BatchSaveElementsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "BatchSaveElements" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "elements" } },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "ListType",
+              type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "batchSaveElements" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "elements" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "elements" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "elements" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "page" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
+                            { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
+                          ],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
+                      { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "tool" } },
+                      { kind: "Field", name: { kind: "Name", value: "points" } },
+                      { kind: "Field", name: { kind: "Name", value: "settings" } },
+                      { kind: "Field", name: { kind: "Name", value: "transform" } },
+                      { kind: "Field", name: { kind: "Name", value: "dimensions" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasSettings" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
+                      { kind: "Field", name: { kind: "Name", value: "isCached" } },
+                      { kind: "Field", name: { kind: "Name", value: "isHtmlElement" } },
+                      { kind: "Field", name: { kind: "Name", value: "isHidden" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<BatchSaveElementsMutation, BatchSaveElementsMutationVariables>;
 export const CreateElementDocument = {
   kind: "Document",
   definitions: [
@@ -1601,7 +1771,7 @@ export const CreateElementDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "imageRender" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
         },
         {
@@ -1670,8 +1840,8 @@ export const CreateElementDocument = {
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "imageRender" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "imageRender" } },
+                      name: { kind: "Name", value: "canvasDataUrl" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
                     },
                     {
                       kind: "ObjectField",
@@ -1721,7 +1891,7 @@ export const CreateElementDocument = {
                       { kind: "Field", name: { kind: "Name", value: "transform" } },
                       { kind: "Field", name: { kind: "Name", value: "dimensions" } },
                       { kind: "Field", name: { kind: "Name", value: "canvasSettings" } },
-                      { kind: "Field", name: { kind: "Name", value: "imageRender" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
                       { kind: "Field", name: { kind: "Name", value: "isCached" } },
                       { kind: "Field", name: { kind: "Name", value: "isHtmlElement" } },
                       { kind: "Field", name: { kind: "Name", value: "isHidden" } },
@@ -2228,6 +2398,202 @@ export const CreatePaletteSwatchDocument = {
     },
   ],
 } as unknown as DocumentNode<CreatePaletteSwatchMutation, CreatePaletteSwatchMutationVariables>;
+export const UpdateElementDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "UpdateElement" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "uid" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "pageUid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "tool" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "points" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "settings" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "transform" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "dimensions" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "canvasSettings" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isCached" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isHtmlElement" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isHidden" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateElement" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "uid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "uid" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "pageUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "pageUid" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "tool" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "tool" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "points" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "points" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "settings" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "settings" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "transform" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "transform" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "dimensions" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "dimensions" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "canvasSettings" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "canvasSettings" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "canvasDataUrl" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isCached" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isCached" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isHtmlElement" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isHtmlElement" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isHidden" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isHidden" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "element" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "page" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
+                            { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
+                          ],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "uid" } },
+                      { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "tool" } },
+                      { kind: "Field", name: { kind: "Name", value: "points" } },
+                      { kind: "Field", name: { kind: "Name", value: "settings" } },
+                      { kind: "Field", name: { kind: "Name", value: "transform" } },
+                      { kind: "Field", name: { kind: "Name", value: "dimensions" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasSettings" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
+                      { kind: "Field", name: { kind: "Name", value: "isCached" } },
+                      { kind: "Field", name: { kind: "Name", value: "isHtmlElement" } },
+                      { kind: "Field", name: { kind: "Name", value: "isHidden" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<UpdateElementMutation, UpdateElementMutationVariables>;
 export const UpdatePageDocument = {
   kind: "Document",
   definitions: [
@@ -2571,7 +2937,7 @@ export const MyElementsDocument = {
                             { kind: "Field", name: { kind: "Name", value: "transform" } },
                             { kind: "Field", name: { kind: "Name", value: "dimensions" } },
                             { kind: "Field", name: { kind: "Name", value: "canvasSettings" } },
-                            { kind: "Field", name: { kind: "Name", value: "imageRender" } },
+                            { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
                             { kind: "Field", name: { kind: "Name", value: "isCached" } },
                             { kind: "Field", name: { kind: "Name", value: "isHtmlElement" } },
                             { kind: "Field", name: { kind: "Name", value: "isHidden" } },

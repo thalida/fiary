@@ -224,7 +224,7 @@ class Element(models.Model):
         null=True,
         blank=True
     )
-    image_render = models.TextField(
+    canvas_data_url = models.TextField(
         default=None,
         null=True,
         blank=True

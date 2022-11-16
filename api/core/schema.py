@@ -309,6 +309,43 @@ class DeletePage(graphene.relay.ClientIDMutation):
         return DeletePage(page=page)
 
 
+class BatchSaveElements(graphene.relay.ClientIDMutation):
+    class Input:
+        elements = graphene.List(graphene.JSONString, required=True)
+
+    elements = graphene.List(ElementNode)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        elements = []
+        for input_element in input['elements']:
+            element_uid = input_element.get('uid', None)
+            if element_uid is not None:
+                element = Element.objects.get(uid=element_uid)
+            else:
+                page = Page.objects.get(uid=input_element['page_uid'])
+                element = Element.objects.create(
+                    owner=info.context.user,
+                    page=page,
+                    tool=input_element['tool'],
+                    points=input_element['points'],
+                )
+
+            for k, v in input_element.items():
+                if k == 'uid':
+                    continue
+
+                if k == 'page_uid':
+                    continue
+
+                setattr(element, k, v)
+
+            element.save()
+            elements.append(element)
+
+        return BatchSaveElements(elements=elements)
+
 class CreateElement(graphene.relay.ClientIDMutation):
     class Input:
         page_uid = graphene.UUID(required=True)
@@ -318,7 +355,7 @@ class CreateElement(graphene.relay.ClientIDMutation):
         transform = graphene.JSONString(required=False)
         dimensions = graphene.JSONString(required=False)
         canvas_settings = graphene.JSONString(required=False)
-        image_render = graphene.String(required=False)
+        canvas_data_url = graphene.String(required=False)
         is_cached = graphene.Boolean(required=False)
         is_html_element = graphene.Boolean(required=False)
         is_hidden = graphene.Boolean(required=False)
@@ -356,13 +393,14 @@ class CreateElement(graphene.relay.ClientIDMutation):
 class UpdateElement(graphene.relay.ClientIDMutation):
     class Input:
         uid = graphene.UUID(required=True)
+        page_uid = graphene.UUID(required=False)
         tool = graphene.Int(required=False)
         points = graphene.JSONString(required=False)
         settings = graphene.JSONString(required=False)
         transform = graphene.JSONString(required=False)
         dimensions = graphene.JSONString(required=False)
         canvas_settings = graphene.JSONString(required=False)
-        image_render = graphene.String(required=False)
+        canvas_data_url = graphene.String(required=False)
         is_cached = graphene.Boolean(required=False)
         is_html_element = graphene.Boolean(required=False)
         is_hidden = graphene.Boolean(required=False)
@@ -378,6 +416,19 @@ class UpdateElement(graphene.relay.ClientIDMutation):
         for k, v in input.items():
             if k == 'uid':
                 continue
+
+            if k == 'page_uid':
+                current_page = element.page
+                current_page.element_order.remove(element.uid)
+                current_page.save()
+
+                new_page = Page.objects.get(uid=v)
+                new_page.element_order.append(element.uid)
+                new_page.save()
+
+                element.page = new_page
+                continue
+
             setattr(element, k, v)
 
         element.save()
@@ -586,6 +637,7 @@ class CoreMutation(graphene.ObjectType):
     create_element = CreateElement.Field()
     update_element = UpdateElement.Field()
     delete_element = DeleteElement.Field()
+    batch_save_elements = BatchSaveElements.Field()
 
     create_palette = CreatePalette.Field()
     update_palette = UpdatePalette.Field()

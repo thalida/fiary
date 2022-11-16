@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useCanvasStore } from "@/stores/canvas";
 import {
   ELEMENT_TYPE,
   CANVAS_TOOL_CHOICES as supportedTools,
@@ -20,9 +19,8 @@ import type { TPrimaryKey } from "@/types/core";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
+const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const colorPickerRefs: any[] = [];
 
 const isDrawingTool = computed(() => {
@@ -141,6 +139,10 @@ function handlePatternSpacingChange() {
 
 function handleImageInput(event: Event) {
   emit("action:addImage:inputChange", event);
+}
+
+function handleSaveBtnClick() {
+  coreStore.batchSaveElements();
 }
 
 defineExpose({
@@ -286,6 +288,7 @@ defineExpose({
     <span>{{ zoomPercent }}%</span>
     <button :disabled="!hasUndo" @click="emit('action:history:undo')">Undo</button>
     <button :disabled="!hasRedo" @click="emit('action:history:redo')">Redo</button>
+    <button @click="handleSaveBtnClick">Save</button>
   </div>
 </template>
 

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import Moveable from "moveable";
-import { useCanvasStore } from "@/stores/canvas";
 import type { ICanvasSettings, TPrimaryKey } from "@/types/core";
 import { clearCanvas } from "@/utils/canvas";
 import { ELEMENT_TYPE, PageHistoryEvent, TRANSPARENT_COLOR } from "@/constants/core";
@@ -10,8 +9,7 @@ import { useCoreStore } from "@/stores/core";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
+const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const activeImage = ref<HTMLImageElement | null>(null);
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
@@ -33,13 +31,10 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
   let imageWidth = image.width;
   let imageHeight = image.height;
   let scale = 1;
-  if (
-    image.width > canvasStore.canvasConfig.width ||
-    image.height > canvasStore.canvasConfig.height
-  ) {
+  if (image.width > coreStore.canvasConfig.width || image.height > coreStore.canvasConfig.height) {
     scale = Math.min(
-      canvasStore.canvasConfig.width / image.width,
-      canvasStore.canvasConfig.height / image.height
+      coreStore.canvasConfig.width / image.width,
+      coreStore.canvasConfig.height / image.height
     );
     imageWidth *= scale;
     imageHeight *= scale;
@@ -47,8 +42,8 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
 
   imageTransform.value = {
     translate: [
-      canvasStore.canvasConfig.width / 2 - imageWidth / 2,
-      canvasStore.canvasConfig.height / 2 - imageHeight / 2,
+      coreStore.canvasConfig.width / 2 - imageWidth / 2,
+      coreStore.canvasConfig.height / 2 - imageHeight / 2,
     ],
     scale: [scale, scale],
     rotate: 0,
@@ -75,7 +70,7 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
 
   setImageStyles(imagePreviewCanvas.value, imageTransform.value);
 
-  const dpi = canvasStore.canvasConfig.dpi;
+  const dpi = coreStore.canvasConfig.dpi;
   imagePreviewCanvas.value.width = imageWidth * dpi;
   imagePreviewCanvas.value.height = imageHeight * dpi;
   imagePreviewCanvas.value.style.width = `${imageWidth}px`;
@@ -146,7 +141,7 @@ function handleAddImageEnd() {
     return;
   }
 
-  const dpi = canvasStore.canvasConfig.dpi;
+  const dpi = coreStore.canvasConfig.dpi;
   const width = imageElement.dimensions.outerWidth;
   const height = imageElement.dimensions.outerHeight;
   const centerX = width / 2;
@@ -196,17 +191,17 @@ function handleAddImageEnd() {
   ctx.restore();
 
   imageElement.isCached = true;
-  imageElement.imageRender = imageCacheCanvas.toDataURL();
+  imageElement.canvasDataUrl = imageCacheCanvas.toDataURL();
 
   const img = new Image();
   img.onload = () => {
-    imageElement.loadedImage = img;
-    coreStore.createElement(props.pageUid, imageElement);
+    imageElement.cachedCanvasImage = img;
+    coreStore.addElement(imageElement);
     emit("redraw");
     activeImage.value = null;
     pageOptions.value.isAddImageMode = false;
   };
-  img.src = imageElement.imageRender;
+  img.src = imageElement.canvasDataUrl;
 }
 
 function handleCancelAddImage() {

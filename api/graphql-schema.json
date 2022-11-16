@@ -4617,7 +4617,7 @@
               "deprecationReason": null,
               "description": null,
               "isDeprecated": false,
-              "name": "imageRender",
+              "name": "canvasDataUrl",
               "type": {
                 "kind": "SCALAR",
                 "name": "String",
@@ -4999,6 +4999,33 @@
               "type": {
                 "kind": "OBJECT",
                 "name": "DeleteElementPayload",
+                "ofType": null
+              }
+            },
+            {
+              "args": [
+                {
+                  "defaultValue": null,
+                  "description": null,
+                  "name": "input",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                      "kind": "INPUT_OBJECT",
+                      "name": "BatchSaveElementsInput",
+                      "ofType": null
+                    }
+                  }
+                }
+              ],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
+              "name": "batchSaveElements",
+              "type": {
+                "kind": "OBJECT",
+                "name": "BatchSaveElementsPayload",
                 "ofType": null
               }
             },
@@ -6206,7 +6233,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "imageRender",
+              "name": "canvasDataUrl",
               "type": {
                 "kind": "SCALAR",
                 "name": "String",
@@ -6316,6 +6343,16 @@
             {
               "defaultValue": null,
               "description": null,
+              "name": "pageUid",
+              "type": {
+                "kind": "SCALAR",
+                "name": "UUID",
+                "ofType": null
+              }
+            },
+            {
+              "defaultValue": null,
+              "description": null,
               "name": "tool",
               "type": {
                 "kind": "SCALAR",
@@ -6376,7 +6413,7 @@
             {
               "defaultValue": null,
               "description": null,
-              "name": "imageRender",
+              "name": "canvasDataUrl",
               "type": {
                 "kind": "SCALAR",
                 "name": "String",
@@ -6497,6 +6534,84 @@
           "interfaces": null,
           "kind": "INPUT_OBJECT",
           "name": "DeleteElementInput",
+          "possibleTypes": null
+        },
+        {
+          "description": null,
+          "enumValues": null,
+          "fields": [
+            {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
+              "name": "elements",
+              "type": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "ElementNode",
+                  "ofType": null
+                }
+              }
+            },
+            {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
+              "name": "clientMutationId",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "kind": "OBJECT",
+          "name": "BatchSaveElementsPayload",
+          "possibleTypes": null
+        },
+        {
+          "description": null,
+          "enumValues": null,
+          "fields": null,
+          "inputFields": [
+            {
+              "defaultValue": null,
+              "description": null,
+              "name": "elements",
+              "type": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "LIST",
+                  "name": null,
+                  "ofType": {
+                    "kind": "SCALAR",
+                    "name": "JSONString",
+                    "ofType": null
+                  }
+                }
+              }
+            },
+            {
+              "defaultValue": null,
+              "description": null,
+              "name": "clientMutationId",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            }
+          ],
+          "interfaces": null,
+          "kind": "INPUT_OBJECT",
+          "name": "BatchSaveElementsInput",
           "possibleTypes": null
         },
         {

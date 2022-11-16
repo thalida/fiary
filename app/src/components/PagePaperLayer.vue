@@ -2,17 +2,15 @@
 import { computed, ref } from "vue";
 import type { TPrimaryKey } from "@/types/core";
 import { getColorAsCss } from "@/utils/color";
-import { useCanvasStore } from "@/stores/canvas";
 import { useCoreStore } from "@/stores/core";
 import { PATTERN_TYPES } from "@/constants/core";
 import patterns from "@/components/PagePatterns";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
 
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
+const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 
 const selectedPatternComponent = computed(() => {

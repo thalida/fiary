@@ -4,7 +4,6 @@ import { debounce } from "lodash";
 import ColorPicker from "@mcistudio/vue-colorpicker";
 import "@mcistudio/vue-colorpicker/dist/style.css";
 import { getColorAsCss, isTransparent } from "@/utils/color";
-import { useCanvasStore } from "@/stores/canvas";
 import type { TColor, TPrimaryKey } from "@/types/core";
 import { useCoreStore } from "@/stores/core";
 import type { PALETTE_TYPES } from "@/constants/core";
@@ -20,9 +19,8 @@ const emits = defineEmits<{
   (e: "update", paletteUid: TPrimaryKey, swatchUid: TPrimaryKey): void;
 }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
 const pageOptions = computed(() => {
-  return canvasStore.pageOptions[props.pageUid];
+  return coreStore.pageOptions[props.pageUid];
 });
 
 const builtinPalette = computed(() => {

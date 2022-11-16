@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from "vue";
+import { computed, onBeforeUnmount, ref, watchEffect } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useCoreStore } from "@/stores/core";
 import PageScene from "@/components/PageScene.vue";
@@ -24,10 +24,15 @@ watchEffect(() => {
     coreStore.fetchPage(props.pageUid).then(() => {
       coreStore.fetchElements(props.pageUid).then(() => {
         isLoading.value = false;
+        coreStore.startAutoSave();
       });
       // isLoading.value = false;
     });
   }
+});
+
+onBeforeUnmount(() => {
+  coreStore.stopAutoSave();
 });
 </script>
 

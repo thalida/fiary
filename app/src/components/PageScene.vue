@@ -2,7 +2,6 @@
 import { ref, computed, watch, watchEffect } from "vue";
 import type Moveable from "moveable";
 import cloneDeep from "lodash/cloneDeep";
-import { useCanvasStore } from "@/stores/canvas";
 import {
   PageHistoryEvent as HistoryEvent,
   ELEMENT_TYPE,
@@ -30,10 +29,9 @@ import type BaseElement from "@/models/BaseElement";
 console.log("Updated PageScene");
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
 
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
+const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const paperLayer = ref<typeof PagePaperLayer>();
@@ -45,8 +43,8 @@ const toolbar = ref<typeof PageToolbar>();
 const drawingCanvas = ref<HTMLCanvasElement>();
 const activePanCoords = ref<{ x: number; y: number }[]>([]);
 
-const selectedFillColor = computed(() => canvasStore.selectedFillColor(props.pageUid));
-const selectedStrokeColor = computed(() => canvasStore.selectedStrokeColor(props.pageUid));
+const selectedFillColor = computed(() => coreStore.selectedFillColor(props.pageUid));
+const selectedStrokeColor = computed(() => coreStore.selectedStrokeColor(props.pageUid));
 
 function initScene(canvas: HTMLCanvasElement) {
   if (typeof canvas === "undefined") {
@@ -60,7 +58,7 @@ function initScene(canvas: HTMLCanvasElement) {
   }
 
   drawingCanvas.value = canvas;
-  canvasStore.initPageOptions(props.pageUid, ctx.getTransform());
+  coreStore.initPageOptions(props.pageUid, ctx.getTransform());
   paperLayer.value?.setPaperTransforms();
 
   watch(
@@ -100,34 +98,32 @@ function handleToolChange() {
 }
 
 function handleAddCheckbox(pos: IElementPoint) {
-  const checkboxElement = new ELEMENT_MAP[ELEMENT_TYPE.CHECKBOX](
-    {
-      pageUid: props.pageUid,
-      tool: ELEMENT_TYPE.CHECKBOX,
+  const checkboxElement = new ELEMENT_MAP[ELEMENT_TYPE.CHECKBOX]({
+    pageUid: props.pageUid,
+    tool: ELEMENT_TYPE.CHECKBOX,
+    points: [pos],
+    transform: {
+      translate: [pos.x, pos.y],
+      scale: [1, 1],
+      rotate: 0,
     },
-    {
-      pos,
-      initMatrix: pageOptions.value.initTransformMatrix,
-      matrix: pageOptions.value.transformMatrix,
-    }
-  );
+  });
 
-  coreStore.createElement(props.pageUid, checkboxElement);
+  coreStore.addElement(checkboxElement);
 }
 
 function handleAddTextbox(pos: IElementPoint) {
-  const textboxElement = new ELEMENT_MAP[ELEMENT_TYPE.TEXTBOX](
-    {
-      pageUid: props.pageUid,
-      tool: ELEMENT_TYPE.TEXTBOX,
+  const textboxElement = new ELEMENT_MAP[ELEMENT_TYPE.TEXTBOX]({
+    pageUid: props.pageUid,
+    tool: ELEMENT_TYPE.TEXTBOX,
+    points: [pos],
+    transform: {
+      translate: [pos.x, pos.y],
+      scale: [1, 1],
+      rotate: 0,
     },
-    {
-      pos,
-      initMatrix: pageOptions.value.initTransformMatrix,
-      matrix: pageOptions.value.transformMatrix,
-    }
-  );
-  coreStore.createElement(props.pageUid, textboxElement);
+  });
+  coreStore.addElement(textboxElement);
 }
 
 function getPressure(event: MouseEvent | TouchEvent, tool: ELEMENT_TYPE): number {
@@ -270,8 +266,8 @@ function handleClearAll() {
         y: 0,
       },
       {
-        x: canvasStore.canvasConfig.width,
-        y: canvasStore.canvasConfig.height,
+        x: coreStore.canvasConfig.width,
+        y: coreStore.canvasConfig.height,
       },
     ],
     canvasSettings: {
@@ -280,7 +276,7 @@ function handleClearAll() {
     } as ICanvasSettings,
   });
   clearElement.cacheElement();
-  coreStore.createElement(props.pageUid, clearElement);
+  coreStore.addElement(clearElement);
   drawingLayer.value?.drawElements();
   pageOptions.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
@@ -374,7 +370,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  canvasStore.setIsStylus(props.pageUid, event);
+  coreStore.setIsStylus(props.pageUid, event);
 
   if (
     !isDrawingAllowed(true) ||
@@ -434,7 +430,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   }
 
   const newElement = new ELEMENT_MAP[selectedTool](elementProps as any);
-  coreStore.createElement(props.pageUid, newElement);
+  coreStore.addElement(newElement);
   drawingLayer.value?.drawElements();
 }
 
@@ -493,6 +489,7 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   }
 
   lastElement.dimensions = lastElement.calculateDimensions();
+  coreStore.markDirtyElement(lastElementUid);
   drawingLayer.value?.drawElements();
 }
 
@@ -534,7 +531,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   lastElement.dimensions = lastElement.calculateDimensions();
 
   if (lastElement.dimensions.outerWidth === 0 || lastElement.dimensions.outerHeight === 0) {
-    page.value.elementOrder.pop();
+    coreStore.removeElement(lastElement);
     pageOptions.value.isDrawing = false;
     return;
   }
@@ -543,12 +540,14 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     pasteLayer.value?.handlePasteStart();
   } else {
     lastElement.cacheElement();
+    coreStore.markDirtyElement(lastElementUid);
     drawingLayer.value?.drawElements();
   }
   pageOptions.value.isDrawing = false;
 }
 function handleUndo() {
   const action = coreStore.history[props.pageUid][coreStore.historyIndex[props.pageUid]];
+  const element = coreStore.elements[action.elementUid] as BaseElement;
   let redoPaste = false;
   let redoAddImage = false;
 
@@ -557,14 +556,12 @@ function handleUndo() {
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     addImageLayer.value?.handleCancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = coreStore.elements[action.elementUid] as BaseElement;
     redoPaste = element.tool === ELEMENT_TYPE.PASTE;
     redoAddImage = element.tool === ELEMENT_TYPE.IMAGE;
-    coreStore.hideElement(action.elementUid);
+    coreStore.removeElement(element, false);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    coreStore.showElement(action.elementUid);
+    coreStore.addElement(element, false);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = coreStore.elements[action.elementUid] as BaseElement;
     element.transform = cloneDeep(action.from);
   }
 
@@ -582,17 +579,16 @@ function handleUndo() {
 
 function handleRedo() {
   const action = coreStore.history[props.pageUid][coreStore.historyIndex[props.pageUid] + 1];
+  const element = coreStore.elements[action.elementUid] as BaseElement;
   let redoPaste = false;
   let redoAddImage = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    const element = coreStore.elements[action.elementUid] as BaseElement;
     redoPaste = element.tool === ELEMENT_TYPE.CUT;
-    coreStore.showElement(action.elementUid);
+    coreStore.addElement(element, false);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
-    coreStore.hideElement(action.elementUid);
+    coreStore.removeElement(element, false);
   } else if (action.type === HistoryEvent.UPDATE_CANVAS_ELEMENT_STYLES) {
-    const element = coreStore.elements[action.elementUid] as BaseElement;
     element.transform = cloneDeep(action.to);
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     redoAddImage = true;

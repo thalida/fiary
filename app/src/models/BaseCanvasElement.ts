@@ -14,13 +14,16 @@ import BaseElement from "./BaseElement";
 import merge from "lodash/merge";
 
 export default class BaseCanvasElement extends BaseElement {
-  canvasSettings: ICanvasSettings;
+  declare canvasSettings: ICanvasSettings;
   dimensions: IElementDimensions;
 
-  constructor(element: { pageUid: TPrimaryKey; tool: ELEMENT_TYPE } & Partial<IElement>) {
-    super(element);
+  constructor(
+    element: { pageUid: TPrimaryKey; tool: ELEMENT_TYPE } & Partial<IElement>,
+    fromApi = false
+  ) {
+    super(element, fromApi);
 
-    this.canvasSettings = merge(element.canvasSettings, {
+    this.canvasSettings = merge(this.canvasSettings, {
       dpi: window.devicePixelRatio,
     });
 
@@ -283,14 +286,14 @@ export default class BaseCanvasElement extends BaseElement {
     this.drawElement(canvas, true);
     ctx.restore();
 
-    this.imageRender = canvas.toDataURL();
+    this.canvasDataUrl = canvas.toDataURL();
 
     const img = new Image();
     img.onload = () => {
-      this.loadedImage = img;
+      this.cachedCanvasImage = img;
       this.isCached = true;
     };
-    img.src = this.imageRender;
+    img.src = this.canvasDataUrl;
   }
 
   drawElement(canvas: HTMLCanvasElement, isCaching = false, isDebugMode = false) {
@@ -309,12 +312,16 @@ export default class BaseCanvasElement extends BaseElement {
       return;
     }
 
-    if (this.isCached && this.loadedImage !== null) {
+    if (
+      this.isCached &&
+      typeof this.cachedCanvasImage !== "undefined" &&
+      this.cachedCanvasImage !== null
+    ) {
       ctx.save();
       ctx.globalCompositeOperation = this.canvasSettings.composition as GlobalCompositeOperation;
       ctx.translate(this.dimensions.outerMinX, this.dimensions.outerMinY);
       ctx.drawImage(
-        this.loadedImage,
+        this.cachedCanvasImage,
         0,
         0,
         this.dimensions.outerWidth,

@@ -2,7 +2,6 @@
 import { computed, nextTick, ref } from "vue";
 import { cloneDeep } from "lodash";
 import Moveable from "moveable";
-import { useCanvasStore } from "@/stores/canvas";
 import type { ICanvasSettings, TPrimaryKey } from "@/types/core";
 import { clearCanvas } from "@/utils/canvas";
 import { ELEMENT_TYPE, TRANSPARENT_COLOR } from "@/constants/core";
@@ -13,8 +12,7 @@ import type BaseCanvasElement from "@/models/BaseCanvasElement";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
+const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
 const pasteTransform = ref({
@@ -85,8 +83,8 @@ async function handlePasteStart() {
   }
   const cutSelectionClip = cloneDeep(cutSelection);
   cutSelectionClip.isCached = false;
-  cutSelectionClip.imageRender = null;
-  cutSelectionClip.loadedImage = null;
+  cutSelectionClip.canvasDataUrl = null;
+  cutSelectionClip.cachedCanvasImage = null;
   cutSelectionClip.canvasSettings.composition = "destination-in";
   cutSelectionClip.drawElement(canvas.value);
 
@@ -105,7 +103,8 @@ async function handlePasteStart() {
 function handleCancelPaste() {
   const activeElements = coreStore.activeElements(props.pageUid);
   const cutSelectionUid = activeElements[activeElements.length - 1];
-  coreStore.deleteElement(cutSelectionUid, false);
+  const cutSelection = coreStore.elements[cutSelectionUid] as CutElement;
+  coreStore.removeElement(cutSelection, false);
   pageOptions.value.isPasteMode = false;
 }
 
@@ -151,8 +150,6 @@ function handlePasteEnd() {
   }
 
   const dpi = window.devicePixelRatio;
-  const minX = pasteElement.dimensions.outerMinX;
-  const minY = pasteElement.dimensions.outerMinY;
   const width = pasteElement.dimensions.outerWidth;
   const height = pasteElement.dimensions.outerHeight;
   const rotRad = (pasteTransform.value.rotate * Math.PI) / 180;
@@ -176,15 +173,15 @@ function handlePasteEnd() {
   ctx.restore();
 
   pasteElement.isCached = true;
-  pasteElement.imageRender = pasteCacheCanvas.toDataURL();
+  pasteElement.canvasDataUrl = pasteCacheCanvas.toDataURL();
   const img = new Image();
   img.onload = () => {
-    pasteElement.loadedImage = img;
-    coreStore.createElement(props.pageUid, pasteElement);
+    pasteElement.cachedCanvasImage = img;
+    coreStore.addElement(pasteElement);
     emit("redraw");
     pageOptions.value.isPasteMode = false;
   };
-  img.src = pasteElement.imageRender;
+  img.src = pasteElement.canvasDataUrl;
 }
 
 function handlePasteDelete() {

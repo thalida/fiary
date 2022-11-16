@@ -1,22 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, watchPostEffect } from "vue";
 import MoveableVue from "vue3-moveable";
-import { useCanvasStore } from "@/stores/canvas";
 import type { TPrimaryKey } from "@/types/core";
 import { useCoreStore } from "@/stores/core";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const canvasStore = useCanvasStore();
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => canvasStore.pageOptions[props.pageUid]);
+const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const rulerEl = ref();
 const moveableEl = ref();
 const rulerWidth = computed(() => {
   return Math.sqrt(
-    canvasStore.canvasConfig.width * canvasStore.canvasConfig.width +
-      canvasStore.canvasConfig.height * canvasStore.canvasConfig.height
+    coreStore.canvasConfig.width * coreStore.canvasConfig.width +
+      coreStore.canvasConfig.height * coreStore.canvasConfig.height
   );
 });
 const ruler = ref({
