@@ -4,11 +4,12 @@ import Selecto from "selecto";
 import Moveable from "moveable";
 import type { TPrimaryKey, ICheckboxElementSettings, ITransformMatrix } from "@/types/core";
 import { ELEMENT_TYPE, PageHistoryEvent } from "@/constants/core";
-import PageTextarea from "@/components/PageTextarea.vue";
+import type TextboxElement from "@/models/elements/TextboxElement";
+import TextboxElementComponent from "@/components/TextboxElement.vue";
+import CheckboxElementComponent from "@/components/CheckboxElement.vue";
 import cloneDeep from "lodash/cloneDeep";
 import { useCoreStore } from "@/stores/core";
 import type BaseInteractiveElement from "@/models/BaseInteractiveElement";
-import type TextboxElement from "@/models/elements/TextboxElement";
 import { merge } from "lodash";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
@@ -143,6 +144,7 @@ function setInteractiveElementStyles(
   element.transform = merge(element.transform, transform);
   element.transformStr = getRelativeTransformStr(elementUid, pageOptions.value.transformMatrix);
   target.style.transform = element.transformStr ? element.transformStr : "";
+  coreStore.markDirtyElement(elementUid);
 }
 
 function handleInteractiveDrag({
@@ -215,6 +217,11 @@ function handleTextboxChange({
 }) {
   const element = coreStore.elements[elementUid] as TextboxElement;
   element.settings.textContents = textContents;
+  coreStore.markDirtyElement(elementUid);
+}
+
+function handleCheckboxChange(elementUid: TPrimaryKey) {
+  coreStore.markDirtyElement(elementUid);
 }
 
 function handleTextboxFocus({ elementUid }: { elementUid: TPrimaryKey }) {
@@ -271,16 +278,16 @@ defineExpose({
     }"
   >
     <template v-for="elementUid in activeHtmlElements" :key="elementUid">
-      <input
+      <CheckboxElementComponent
         v-if="coreStore.elements[elementUid].tool === ELEMENT_TYPE.CHECKBOX"
         class="interactiveElement"
-        v-model="(coreStore.elements[elementUid].settings as ICheckboxElementSettings).isChecked"
-        :data-element-uid="coreStore.elements[elementUid].uid"
-        type="checkbox"
+        :data-element-uid="elementUid"
         :style="{
           position: 'absolute',
-          transform: (coreStore.elements[elementUid].transformStr as any)
+          transform: coreStore.elements[elementUid].transformStr,
         }"
+        :elementUid="elementUid"
+        @change="handleCheckboxChange"
         @mousedown="handleInteractiveElementEvent"
         @touchstart="handleInteractiveElementEvent"
         @mouseup="handleInteractiveElementEvent"
@@ -288,16 +295,16 @@ defineExpose({
         @mousemove="handleInteractiveElementEvent"
         @touchmove="handleInteractiveElementEvent"
       />
-      <PageTextarea
+      <TextboxElementComponent
         v-else-if="coreStore.elements[elementUid].tool === ELEMENT_TYPE.TEXTBOX"
-        :data-element-uid="coreStore.elements[elementUid].uid"
+        :data-element-uid="elementUid"
         class="interactiveElement"
         :style="{
           position: 'absolute',
           transform: coreStore.elements[elementUid].transformStr,
         }"
-        :element="coreStore.elements[elementUid]"
-        :is-active="coreStore.elements[elementUid].uid === activeElementUid"
+        :elementUid="elementUid"
+        :is-active="elementUid === activeElementUid"
         @change="handleTextboxChange"
         @focus="handleTextboxFocus"
         @blur="handleTextboxBlur"

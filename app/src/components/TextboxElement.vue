@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, type ComputedRef } from "vue";
 import Quill from "quill";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
@@ -8,10 +8,11 @@ import type { IPaletteSwatch } from "@/types/core";
 import { useCoreStore } from "@/stores/core";
 import { filter } from "lodash";
 import { PALETTE_TYPES } from "@/constants/core";
+import type TextboxElement from "@/models/elements/TextboxElement";
 
 const props = defineProps({
-  element: {
-    type: Object,
+  elementUid: {
+    type: String,
     required: true,
   },
   isActive: {
@@ -20,6 +21,10 @@ const props = defineProps({
   },
 });
 const coreStore = useCoreStore();
+const element: ComputedRef<TextboxElement> = computed(
+  () => coreStore.elements[props.elementUid] as TextboxElement
+);
+const textareaContents = computed(() => element.value.settings.textContents || "");
 const emit = defineEmits(["change", "focus", "blur"]);
 const toolbar = ref(null);
 const editor = ref(null);
@@ -67,24 +72,26 @@ onMounted(() => {
     theme: "snow",
   });
 
-  quill.setContents(props.element.toolOptions.textContents);
+  quill.setContents(textareaContents.value);
 
   quill.on("text-change", () => {
     emit("change", {
-      elementUid: props.element.uid,
+      elementUid: props.elementUid,
       textContents: quill.getContents(),
     });
   });
 
   quill.on("selection-change", (range) => {
     if (range) {
-      emit("focus", { elementUid: props.element.uid });
+      emit("focus", { elementUid: props.elementUid });
     } else {
-      emit("blur", { elementUid: props.element.uid });
+      emit("blur", { elementUid: props.elementUid });
     }
   });
 
-  quill.focus();
+  if (element.value.focusOnMount) {
+    quill.focus();
+  }
 });
 </script>
 

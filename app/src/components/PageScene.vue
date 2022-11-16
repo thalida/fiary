@@ -59,7 +59,8 @@ function initScene(canvas: HTMLCanvasElement) {
 
   drawingCanvas.value = canvas;
   coreStore.initPageOptions(props.pageUid, ctx.getTransform());
-  paperLayer.value?.setPaperTransforms();
+  drawingLayer.value?.drawElements();
+  interactiveLayer.value?.setInteractiveElementTransforms();
 
   watch(
     () => (pageOptions.value ? pageOptions.value.isDebugMode : false),
@@ -68,7 +69,9 @@ function initScene(canvas: HTMLCanvasElement) {
     }
   );
 
-  // watchEffect(() => {});
+  watchEffect(() => {
+    paperLayer.value?.setPaperTransforms();
+  });
 }
 
 function isDrawingAllowed(isDrawingOverride = false) {
@@ -110,6 +113,7 @@ function handleAddCheckbox(pos: IElementPoint) {
   });
 
   coreStore.addElement(checkboxElement);
+  interactiveLayer.value?.setInteractiveElementTransforms();
 }
 
 function handleAddTextbox(pos: IElementPoint) {
@@ -122,8 +126,10 @@ function handleAddTextbox(pos: IElementPoint) {
       scale: [1, 1],
       rotate: 0,
     },
+    focusOnMount: true,
   });
   coreStore.addElement(textboxElement);
+  interactiveLayer.value?.setInteractiveElementTransforms();
 }
 
 function getPressure(event: MouseEvent | TouchEvent, tool: ELEMENT_TYPE): number {
@@ -566,6 +572,7 @@ function handleUndo() {
   }
 
   coreStore.historyIndex[props.pageUid] -= 1;
+  coreStore.markDirtyElement(action.elementUid);
 
   if (redoPaste) {
     pasteLayer.value?.handlePasteStart();
@@ -595,6 +602,7 @@ function handleRedo() {
   }
 
   coreStore.historyIndex[props.pageUid] += 1;
+  coreStore.markDirtyElement(action.elementUid);
 
   if (redoPaste) {
     pasteLayer.value?.handlePasteStart();

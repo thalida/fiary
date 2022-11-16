@@ -113,6 +113,9 @@ export const useCoreStore = defineStore("core", () => {
     const startIdx = activeElementsStartIdx.value(pageUid);
     const postClear = pages.value[pageUid].elementOrder.slice(startIdx);
     return postClear.filter((uid) => {
+      if (typeof elements.value[uid] === "undefined") {
+        return false;
+      }
       return !elements.value[uid].isHidden;
     });
   });
@@ -480,8 +483,6 @@ export const useCoreStore = defineStore("core", () => {
       return;
     }
 
-    console.log("fetchElements", res.myElements);
-
     const page = pages.value[pageUid];
     for (let i = 0; i < res.myElements.length; i += 1) {
       const rawElement = res.myElements[i];
@@ -496,9 +497,6 @@ export const useCoreStore = defineStore("core", () => {
       }
     }
     clearAllElementIndexes.value[pageUid].sort((a, b) => a - b);
-
-    console.log(res);
-    console.log("elements", elements.value);
   }
 
   async function startAutoSave() {
@@ -523,7 +521,6 @@ export const useCoreStore = defineStore("core", () => {
   }
 
   async function batchSaveElements() {
-    console.log(dirtyElements.value);
     if (isSavingElements.value === true) {
       return;
     }

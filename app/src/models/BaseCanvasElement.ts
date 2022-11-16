@@ -1,6 +1,7 @@
 import { getStroke } from "perfect-freehand";
 import { ELEMENT_TYPE, CANVAS_LINE_TOOLS, LineEndSide, LineEndStyle } from "@/constants/core";
 import type {
+  IAPIElement,
   ICanvasSettings,
   ICutElementSettings,
   IElement,
@@ -18,7 +19,7 @@ export default class BaseCanvasElement extends BaseElement {
   dimensions: IElementDimensions;
 
   constructor(
-    element: { pageUid: TPrimaryKey; tool: ELEMENT_TYPE } & Partial<IElement>,
+    element: IAPIElement | ({ pageUid: TPrimaryKey; tool: ELEMENT_TYPE } & Partial<IElement>),
     fromApi = false
   ) {
     super(element, fromApi);
@@ -30,7 +31,11 @@ export default class BaseCanvasElement extends BaseElement {
     this.canvasSettings.composition = this.getComposition();
     this.canvasSettings.opacity = this.getOpacity();
 
-    if (CANVAS_LINE_TOOLS.includes(this.tool)) {
+    if (
+      CANVAS_LINE_TOOLS.includes(this.tool) &&
+      (typeof this.canvasSettings.smoothPoints === "undefined" ||
+        this.canvasSettings.smoothPoints === null)
+    ) {
       this.canvasSettings.smoothPoints = this.getSmoothPoints();
     }
 

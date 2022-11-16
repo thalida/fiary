@@ -123,6 +123,7 @@ export interface IElement {
 
   transformStr?: string | null;
   cachedCanvasImage?: HTMLImageElement | null;
+  focusOnMount?: boolean;
 }
 
 export interface IAPIElement {
