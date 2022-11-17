@@ -36,6 +36,7 @@ function handleNotebookCreate() {
 </script>
 
 <template>
+  <AppHeader />
   <main>
     <template v-if="isAuthenticated">
       <h1>My Notebooks</h1>

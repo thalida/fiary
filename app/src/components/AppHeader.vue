@@ -10,12 +10,12 @@ const currentUser = computed(() => usersStore.me);
 </script>
 
 <template>
-  <div v-if="isAuthenticated">
+  <header v-if="isAuthenticated">
     <RouterLink :to="{ name: 'Home' }">Home</RouterLink>
     <RouterLink :to="{ name: 'Signout' }">Sign out {{ currentUser?.username }}</RouterLink>
-  </div>
-  <div v-else>
+  </header>
+  <header v-else>
     <RouterLink :to="{ name: 'Signin' }">Sign in</RouterLink>
     <RouterLink :to="{ name: 'Signup' }">Signup</RouterLink>
-  </div>
+  </header>
 </template>

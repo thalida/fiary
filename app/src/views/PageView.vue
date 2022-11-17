@@ -24,15 +24,10 @@ watchEffect(() => {
     coreStore.fetchPage(props.pageUid).then(() => {
       coreStore.fetchElements(props.pageUid).then(() => {
         isLoading.value = false;
-        coreStore.startAutoSave();
       });
       // isLoading.value = false;
     });
   }
-});
-
-onBeforeUnmount(() => {
-  coreStore.stopAutoSave();
 });
 </script>
 

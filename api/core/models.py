@@ -164,6 +164,11 @@ class Page(models.Model):
         blank=True,
         null=True
     )
+    canvas_data_url = models.TextField(
+        default=None,
+        null=True,
+        blank=True
+    )
     element_order = ArrayField(
         models.UUIDField(),
         default=list,

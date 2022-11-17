@@ -214,6 +214,7 @@ class CreatePage(graphene.relay.ClientIDMutation):
         pattern_size = graphene.Float(required=False)
         pattern_spacing = graphene.Float(required=False)
         pattern_opacity = graphene.Int(required=False)
+        canvas_data_url = graphene.String(required=False)
 
     page = graphene.Field(PageNode)
 
@@ -255,6 +256,7 @@ class UpdatePage(graphene.relay.ClientIDMutation):
         pattern_size = graphene.Float(required=False)
         pattern_spacing = graphene.Float(required=False)
         pattern_opacity = graphene.Int(required=False)
+        canvas_data_url = graphene.String(required=False)
 
     page = graphene.Field(PageNode)
 

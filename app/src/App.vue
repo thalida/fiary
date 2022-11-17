@@ -19,9 +19,8 @@ authStore.autoLogin().then(async () => {
 </script>
 
 <template>
-  <div v-if="!isFetching">
-    <AppHeader />
+  <template v-if="!isFetching">
     <RouterView />
-  </div>
+  </template>
   <div v-else>Loading...</div>
 </template>

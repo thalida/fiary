@@ -13,6 +13,7 @@ import type {
 import { formatColor, isTransparent } from "@/utils/color";
 import BaseElement from "./BaseElement";
 import merge from "lodash/merge";
+import { average } from "@/utils/math";
 
 export default class BaseCanvasElement extends BaseElement {
   declare canvasSettings: ICanvasSettings;
@@ -29,14 +30,14 @@ export default class BaseCanvasElement extends BaseElement {
     });
 
     this.canvasSettings.composition = this.getComposition();
-    this.canvasSettings.opacity = this.getOpacity();
+    this.canvasSettings.opacity = 1;
 
     if (
       CANVAS_LINE_TOOLS.includes(this.tool) &&
       (typeof this.canvasSettings.smoothPoints === "undefined" ||
         this.canvasSettings.smoothPoints === null)
     ) {
-      this.canvasSettings.smoothPoints = this.getSmoothPoints();
+      this.canvasSettings.smoothPoints = this.smoothPoints();
     }
 
     this.dimensions = this.calculateDimensions();
@@ -48,7 +49,7 @@ export default class BaseCanvasElement extends BaseElement {
     }
 
     if (this.tool === ELEMENT_TYPE.MARKER) {
-      return "hard-light";
+      return "multiply";
     }
 
     if (this.tool === ELEMENT_TYPE.HIGHLIGHTER) {
@@ -56,17 +57,6 @@ export default class BaseCanvasElement extends BaseElement {
     }
 
     return "source-over";
-  }
-
-  getOpacity(): number {
-    if (Array.isArray(this.canvasSettings.fillColor)) {
-      const avgOpacity =
-        this.canvasSettings.fillColor.reduce((acc, { color }) => acc + color.a, 0) /
-        this.canvasSettings.fillColor.length;
-      return avgOpacity;
-    }
-
-    return this.canvasSettings.fillColor?.a || 1;
   }
 
   calculateDimensions() {
@@ -234,30 +224,33 @@ export default class BaseCanvasElement extends BaseElement {
     return [];
   }
 
-  getSmoothPoints() {
+  smoothPoints() {
     const stroke = getStroke(this.points, {
       ...this.canvasSettings.freehandOptions,
       size: this.canvasSettings.freehandOptions.size * 1.5,
       thinning: this.canvasSettings.freehandOptions.thinning / 1.5,
     });
     const path = getStroke(this.points, this.canvasSettings.freehandOptions);
-
+    const strokeSvgPath = this.svgPathFromStroke(stroke);
+    const pathSvgPath = this.svgPathFromStroke(path);
     return {
       stroke,
       path,
+      strokeSvgPath,
+      pathSvgPath,
     };
   }
 
-  getSvgPathFromStroke(stroke: number[][]) {
-    if (!stroke.length) return "";
+  svgPathFromStroke(points: number[][]) {
+    if (!points.length) return "";
 
-    const d = stroke.reduce(
+    const d = points.reduce(
       (acc, [x0, y0], i, arr) => {
         const [x1, y1] = arr[(i + 1) % arr.length];
         acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
         return acc;
       },
-      ["M", ...stroke[0], "Q"]
+      ["M", ...points[0], "Q"]
     );
 
     d.push("Z");
@@ -444,8 +437,8 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.beginPath();
       const strokePoints = this.canvasSettings.smoothPoints.stroke;
       ctx.moveTo(strokePoints[0][0], strokePoints[0][1]);
-      const strokeData = this.getSvgPathFromStroke(strokePoints);
-      const myStroke = new Path2D(strokeData);
+      // const strokeData = this.svgPathFromStroke(strokePoints);
+      const myStroke = new Path2D(this.canvasSettings.smoothPoints.strokeSvgPath);
       ctx.fillStyle = ctx.strokeStyle;
       ctx.fill(myStroke);
       ctx.restore();
@@ -458,8 +451,8 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.beginPath();
       const pathPoints = this.canvasSettings.smoothPoints.path;
       ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
-      const pathData = this.getSvgPathFromStroke(pathPoints);
-      const myPath = new Path2D(pathData);
+      // const pathData = this.svgPathFromStroke(pathPoints);
+      const myPath = new Path2D(this.canvasSettings.smoothPoints.pathSvgPath);
       ctx.fill(myPath);
       ctx.restore();
     } else if (this.tool === ELEMENT_TYPE.CIRCLE) {

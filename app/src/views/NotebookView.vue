@@ -44,6 +44,7 @@ function handlePageCreate() {
 </script>
 
 <template>
+  <AppHeader />
   <main>
     <h1>Notebook</h1>
     <p v-if="isLoading">Loading...</p>

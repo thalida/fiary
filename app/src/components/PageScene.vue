@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect } from "vue";
+import { ref, computed, watch, watchEffect, onBeforeUnmount } from "vue";
 import type Moveable from "moveable";
 import cloneDeep from "lodash/cloneDeep";
 import {
@@ -58,7 +58,7 @@ function initScene(canvas: HTMLCanvasElement) {
   }
 
   drawingCanvas.value = canvas;
-  coreStore.initPageOptions(props.pageUid, ctx.getTransform());
+  coreStore.initPageOptions(drawingCanvas.value, props.pageUid, ctx.getTransform());
   drawingLayer.value?.drawElements();
   interactiveLayer.value?.setInteractiveElementTransforms();
 
@@ -72,7 +72,13 @@ function initScene(canvas: HTMLCanvasElement) {
   watchEffect(() => {
     paperLayer.value?.setPaperTransforms();
   });
+
+  coreStore.startAutoSave();
 }
+
+onBeforeUnmount(() => {
+  coreStore.stopAutoSave();
+});
 
 function isDrawingAllowed(isDrawingOverride = false) {
   const activelyDrawing = pageOptions.value.isDrawing || isDrawingOverride;
@@ -288,59 +294,50 @@ function handleClearAll() {
 }
 
 function handleCameraZoom(zoomStep: number) {
-  if (typeof pageOptions.value.transformMatrix === "undefined") {
-    return;
-  }
-
-  const isInBounds =
-    zoomStep > 0
-      ? pageOptions.value.transformMatrix.a < 6
-      : pageOptions.value.transformMatrix.a > 0.5;
-
-  if (isInBounds) {
-    pageOptions.value.transformMatrix.a += zoomStep;
-    pageOptions.value.transformMatrix.a =
-      Math.round((pageOptions.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    pageOptions.value.transformMatrix.d = pageOptions.value.transformMatrix.a;
-  }
-
-  paperLayer.value?.setPaperTransforms();
-  interactiveLayer.value?.setInteractiveElementTransforms();
-  drawingLayer.value?.drawElements();
+  // if (typeof pageOptions.value.transformMatrix === "undefined") {
+  //   return;
+  // }
+  // const isInBounds =
+  //   zoomStep > 0
+  //     ? pageOptions.value.transformMatrix.a < 6
+  //     : pageOptions.value.transformMatrix.a > 0.5;
+  // if (isInBounds) {
+  //   pageOptions.value.transformMatrix.a += zoomStep;
+  //   pageOptions.value.transformMatrix.a =
+  //     Math.round((pageOptions.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+  //   pageOptions.value.transformMatrix.d = pageOptions.value.transformMatrix.a;
+  // }
+  // paperLayer.value?.setPaperTransforms();
+  // interactiveLayer.value?.setInteractiveElementTransforms();
+  // drawingLayer.value?.drawElements();
 }
 
 function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
-  if (
-    typeof pageOptions.value.transformMatrix === "undefined" ||
-    typeof drawingCanvas.value === "undefined"
-  ) {
-    return;
-  }
-
-  const pos = getMousePos(drawingCanvas.value, event);
-
-  if (isStart) {
-    activePanCoords.value = [
-      {
-        x: pos.x - pageOptions.value.transformMatrix.e,
-        y: pos.y - pageOptions.value.transformMatrix.f,
-      },
-    ];
-  }
-
-  activePanCoords.value[1] = { x: pos.x, y: pos.y };
-
-  const transformOrigin = {
-    x: activePanCoords.value[1].x - activePanCoords.value[0].x,
-    y: activePanCoords.value[1].y - activePanCoords.value[0].y,
-  };
-
-  pageOptions.value.transformMatrix.e = transformOrigin.x;
-  pageOptions.value.transformMatrix.f = transformOrigin.y;
-
-  paperLayer.value?.setPaperTransforms();
-  interactiveLayer.value?.setInteractiveElementTransforms();
-  drawingLayer.value?.drawElements();
+  // if (
+  //   typeof pageOptions.value.transformMatrix === "undefined" ||
+  //   typeof drawingCanvas.value === "undefined"
+  // ) {
+  //   return;
+  // }
+  // const pos = getMousePos(drawingCanvas.value, event);
+  // if (isStart) {
+  //   activePanCoords.value = [
+  //     {
+  //       x: pos.x - pageOptions.value.transformMatrix.e,
+  //       y: pos.y - pageOptions.value.transformMatrix.f,
+  //     },
+  //   ];
+  // }
+  // activePanCoords.value[1] = { x: pos.x, y: pos.y };
+  // const transformOrigin = {
+  //   x: activePanCoords.value[1].x - activePanCoords.value[0].x,
+  //   y: activePanCoords.value[1].y - activePanCoords.value[0].y,
+  // };
+  // pageOptions.value.transformMatrix.e = transformOrigin.x;
+  // pageOptions.value.transformMatrix.f = transformOrigin.y;
+  // paperLayer.value?.setPaperTransforms();
+  // interactiveLayer.value?.setInteractiveElementTransforms();
+  // drawingLayer.value?.drawElements();
 }
 
 function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
@@ -405,7 +402,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
       freehandOptions: {
         size: pageOptions.value.selectedToolSize,
         simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !pageOptions.value.isStylus,
-        thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.95 : 0,
+        thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.5 : 0,
         streamline: isRulerLine ? 1 : 0.32,
         smoothing: isRulerLine ? 1 : 0.32,
         last: false,
@@ -491,7 +488,7 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   lastElement.canvasSettings.isRulerLine = pos.isRulerLine;
 
   if (CANVAS_LINE_TOOLS.includes(lastElement.tool)) {
-    lastElement.canvasSettings.smoothPoints = lastElement.getSmoothPoints();
+    lastElement.canvasSettings.smoothPoints = lastElement.smoothPoints();
   }
 
   lastElement.dimensions = lastElement.calculateDimensions();
@@ -617,7 +614,12 @@ function handleRedo() {
 </script>
 
 <template>
-  <div class="canvas-wrapper">
+  <div
+    class="canvas-wrapper"
+    :style="{
+      overflow: pageOptions && pageOptions.isDrawing ? 'hidden' : 'auto',
+    }"
+  >
     <div class="toolbar">
       <PageToolbar
         ref="toolbar"
@@ -638,6 +640,10 @@ function handleRedo() {
     </div>
     <div
       class="surface"
+      :style="{
+        width: `${coreStore.canvasConfig.width}px`,
+        height: `${coreStore.canvasConfig.height}px`,
+      }"
       @mousedown="handleSurfaceTouchStart"
       @touchstart="handleSurfaceTouchStart"
       @mouseup="handleSurfaceTouchEnd"
@@ -686,6 +692,7 @@ function handleRedo() {
   width: 100vw;
   height: 100vh;
   border: 2px solid red;
+  overflow: auto;
 }
 
 .toolbar {
@@ -699,8 +706,8 @@ function handleRedo() {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  /* width: 100vw;
+  height: 100vh; */
 }
 
 .drawing-area,
@@ -711,8 +718,8 @@ function handleRedo() {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
 }
 
 .paper-layer {

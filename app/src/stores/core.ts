@@ -13,13 +13,10 @@ import {
   UpdatePaletteSwatchDocument,
   CreatePaletteDocument,
   UpdatePageDocument,
-  CreateElementDocument,
   MyElementsDocument,
-  UpdateElementDocument,
   BatchSaveElementsDocument,
 } from "@/api/graphql-operations";
 import type {
-  IAPIElement,
   IBookshelves,
   IImageElementSettings,
   INotebooks,
@@ -48,7 +45,7 @@ import {
 } from "@/constants/core";
 import type BaseElement from "@/models/BaseElement";
 import { ELEMENT_MAP } from "@/models/elements";
-import { clone } from "lodash";
+import { clone, cloneDeep } from "lodash";
 
 export const useCoreStore = defineStore("core", () => {
   const rooms = ref({} as IRooms);
@@ -124,8 +121,8 @@ export const useCoreStore = defineStore("core", () => {
     return elements[elements.length - 1];
   });
   const canvasConfig = ref({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: 3000,
+    height: 3000,
     dpi: window.devicePixelRatio,
   });
 
@@ -145,7 +142,11 @@ export const useCoreStore = defineStore("core", () => {
     return getSwatchColor.value(options.strokePaletteUid, options.strokeSwatchUid);
   });
 
-  function initPageOptions(pageUid: TPrimaryKey, matrix: ITransformMatrix) {
+  function initPageOptions(
+    canvas: HTMLCanvasElement,
+    pageUid: TPrimaryKey,
+    matrix: ITransformMatrix
+  ) {
     if (typeof pageOptions.value[pageUid] === "undefined") {
       const matrixAsObj = {
         a: matrix.a,
@@ -156,6 +157,8 @@ export const useCoreStore = defineStore("core", () => {
         f: matrix.f,
       };
       const options = {
+        drawingCanvas: canvas,
+
         fillPaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.palette,
         fillSwatchUid: builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.swatch,
         strokePaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.palette,
@@ -499,7 +502,7 @@ export const useCoreStore = defineStore("core", () => {
     clearAllElementIndexes.value[pageUid].sort((a, b) => a - b);
   }
 
-  async function startAutoSave() {
+  async function startAutoSave(pageUid: TPrimaryKey) {
     if (autoSaveInterval.value) {
       return;
     }
@@ -507,7 +510,7 @@ export const useCoreStore = defineStore("core", () => {
     const interval = 1000 * 60 * 5; // 5 minutes
 
     autoSaveInterval.value = setInterval(async () => {
-      batchSaveElements();
+      batchSaveElements(pageUid);
     }, interval);
   }
 
@@ -535,19 +538,15 @@ export const useCoreStore = defineStore("core", () => {
     const elementsToSave = dirtyElements.value.map((elementUid) => {
       const element = elements.value[elementUid] as BaseElement;
       const apiElement = element.toBatchApiFormat();
+      element.isDirty = false;
       return apiElement;
     });
+    dirtyElements.value = [];
 
-    const { execute, data } = useMutation(BatchSaveElementsDocument);
-    await execute({ elements: elementsToSave });
-
-    const savedElements = data.value.batchSaveElements?.elements;
-    if (typeof savedElements === "undefined" || savedElements === null) {
-      throw new Error("Failed to save elements");
-    }
-
-    console.log("savedElements", savedElements);
-    isSavingElements.value = false;
+    const { execute } = useMutation(BatchSaveElementsDocument);
+    execute({ elements: elementsToSave }).then(() => {
+      isSavingElements.value = false;
+    });
   }
 
   function addElement(element: BaseElement, trackHistory = true) {
