@@ -1,4 +1,5 @@
 import { getStroke } from "perfect-freehand";
+import polygonClipping from "polygon-clipping";
 import { ELEMENT_TYPE, CANVAS_LINE_TOOLS, LineEndSide, LineEndStyle } from "@/constants/core";
 import type {
   IAPIElement,
@@ -48,13 +49,13 @@ export default class BaseCanvasElement extends BaseElement {
       return "destination-out";
     }
 
-    if (this.tool === ELEMENT_TYPE.MARKER) {
-      return "multiply";
-    }
+    // if (this.tool === ELEMENT_TYPE.MARKER) {
+    //   return "multiply";
+    // }
 
-    if (this.tool === ELEMENT_TYPE.HIGHLIGHTER) {
-      return "hue";
-    }
+    // if (this.tool === ELEMENT_TYPE.HIGHLIGHTER) {
+    //   return "hue";
+    // }
 
     return "source-over";
   }
@@ -82,12 +83,8 @@ export default class BaseCanvasElement extends BaseElement {
     let outerMaxY = maxY;
 
     if (CANVAS_LINE_TOOLS.includes(this.tool) && !isTransparent(this.canvasSettings.strokeColor)) {
-      const outerXPoints = this.canvasSettings.smoothPoints.stroke.map(
-        (point: number[]) => point[0]
-      );
-      const outerYPoints = this.canvasSettings.smoothPoints.stroke.map(
-        (point: number[]) => point[1]
-      );
+      const outerXPoints = this.canvasSettings.smoothPoints.path.map((point: number[]) => point[0]);
+      const outerYPoints = this.canvasSettings.smoothPoints.path.map((point: number[]) => point[1]);
       outerMinX = Math.min(...outerXPoints);
       outerMinY = Math.min(...outerYPoints);
       outerMaxX = Math.max(...outerXPoints);
@@ -225,23 +222,15 @@ export default class BaseCanvasElement extends BaseElement {
   }
 
   smoothPoints() {
-    const stroke = getStroke(this.points, {
-      ...this.canvasSettings.freehandOptions,
-      size: this.canvasSettings.freehandOptions.size * 1.5,
-      thinning: this.canvasSettings.freehandOptions.thinning / 1.5,
-    });
     const path = getStroke(this.points, this.canvasSettings.freehandOptions);
-    const strokeSvgPath = this.svgPathFromStroke(stroke);
-    const pathSvgPath = this.svgPathFromStroke(path);
+    const pathSvgPath = this.getFlatSvgPathFromStroke(path);
     return {
-      stroke,
       path,
-      strokeSvgPath,
       pathSvgPath,
     };
   }
 
-  svgPathFromStroke(points: number[][]) {
+  getSvgPathFromStroke(points: number[][]) {
     if (!points.length) return "";
 
     const d = points.reduce(
@@ -257,44 +246,21 @@ export default class BaseCanvasElement extends BaseElement {
     return d.join(" ");
   }
 
-  cacheElement() {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+  getFlatSvgPathFromStroke(stroke) {
+    const faces = polygonClipping.union([stroke]);
 
-    if (ctx === null || this.dimensions === null) {
-      return;
-    }
+    const d: any[] = [];
 
-    const dpi = this.canvasSettings.dpi;
+    faces.forEach((face) =>
+      face.forEach((points) => {
+        d.push(this.getSvgPathFromStroke(points));
+      })
+    );
 
-    const minX = this.dimensions.outerMinX;
-    const minY = this.dimensions.outerMinY;
-    const width = this.dimensions.outerWidth;
-    const height = this.dimensions.outerHeight;
-
-    canvas.width = width * dpi;
-    canvas.height = height * dpi;
-
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-
-    ctx.save();
-    ctx.scale(dpi, dpi);
-    ctx.translate(-minX, -minY);
-    this.drawElement(canvas, true);
-    ctx.restore();
-
-    this.canvasDataUrl = canvas.toDataURL();
-
-    const img = new Image();
-    img.onload = () => {
-      this.cachedCanvasImage = img;
-      this.isCached = true;
-    };
-    img.src = this.canvasDataUrl;
+    return d.join(" ");
   }
 
-  drawElement(canvas: HTMLCanvasElement, isCaching = false, isDebugMode = false) {
+  drawElement(ctx) {
     if (
       this.isHtmlElement ||
       this.isHidden ||
@@ -304,38 +270,7 @@ export default class BaseCanvasElement extends BaseElement {
       return;
     }
 
-    const ctx = canvas.getContext("2d");
-
     if (ctx === null) {
-      return;
-    }
-
-    if (
-      this.isCached &&
-      typeof this.cachedCanvasImage !== "undefined" &&
-      this.cachedCanvasImage !== null
-    ) {
-      ctx.save();
-      ctx.globalCompositeOperation = this.canvasSettings.composition as GlobalCompositeOperation;
-      ctx.translate(this.dimensions.outerMinX, this.dimensions.outerMinY);
-      ctx.drawImage(
-        this.cachedCanvasImage,
-        0,
-        0,
-        this.dimensions.outerWidth,
-        this.dimensions.outerHeight
-      );
-      ctx.restore();
-      if (isDebugMode) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.translate(this.dimensions.outerMinX, this.dimensions.outerMinY);
-        ctx.rect(0, 0, this.dimensions.outerWidth, this.dimensions.outerHeight);
-        ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
-        ctx.lineWidth = 5;
-        ctx.stroke();
-        ctx.restore();
-      }
       return;
     }
 
@@ -345,16 +280,14 @@ export default class BaseCanvasElement extends BaseElement {
     ctx.save();
 
     if (
-      isCaching &&
-      (this.tool === ELEMENT_TYPE.ERASER ||
-        this.tool === ELEMENT_TYPE.CUT ||
-        this.tool === ELEMENT_TYPE.CLEAR_ALL)
+      this.settings !== null &&
+      "isCompletedCut" in this.settings &&
+      this.settings.isCompletedCut
     ) {
-      ctx.globalCompositeOperation = "source-over";
-    } else {
-      ctx.globalCompositeOperation = this.canvasSettings.composition as GlobalCompositeOperation;
+      this.canvasSettings.composition = "destination-out";
     }
 
+    ctx.globalCompositeOperation = this.canvasSettings.composition as GlobalCompositeOperation;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
@@ -362,98 +295,97 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.lineWidth = this.canvasSettings.lineSize;
     }
 
-    if (Array.isArray(this.canvasSettings.strokeColor)) {
-      let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
+    if (this.tool !== ELEMENT_TYPE.ERASER) {
+      if (Array.isArray(this.canvasSettings.strokeColor)) {
+        let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
 
-      if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
-        gradientStartX = minX;
-        gradientEndX = maxX;
+        // if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
+        //   gradientStartX = minX;
+        //   gradientEndX = maxX;
+        // } else {
+        //   gradientStartX = maxX;
+        //   gradientEndX = minX;
+        // }
+
+        // if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
+        //   gradientStartY = minY;
+        //   gradientEndY = maxY;
+        // } else {
+        //   gradientStartY = maxY;
+        //   gradientEndY = minY;
+        // }
+
+        gradientStartX = points[0].x;
+        gradientStartY = points[0].y;
+        gradientEndX = points[points.length - 1].x;
+        gradientEndY = points[points.length - 1].y;
+
+        const gradient = ctx.createLinearGradient(
+          gradientStartX,
+          gradientStartY,
+          gradientEndX,
+          gradientEndY
+        );
+        for (let j = 0; j < this.canvasSettings.strokeColor.length; j += 1) {
+          const colorStop = this.canvasSettings.strokeColor[j];
+          const stop = colorStop.percent / 100;
+          const color = formatColor(colorStop.color, this.canvasSettings.opacity);
+          gradient.addColorStop(stop, color);
+        }
+        ctx.strokeStyle = gradient;
       } else {
-        gradientStartX = maxX;
-        gradientEndX = minX;
+        ctx.strokeStyle = formatColor(this.canvasSettings.strokeColor, this.canvasSettings.opacity);
       }
 
-      if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
-        gradientStartY = minY;
-        gradientEndY = maxY;
+      if (Array.isArray(this.canvasSettings.fillColor)) {
+        let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
+        // if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
+        //   gradientStartX = minX;
+        //   gradientEndX = maxX;
+        // } else {
+        //   gradientStartX = maxX;
+        //   gradientEndX = minX;
+        // }
+        // if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
+        //   gradientStartY = minY;
+        //   gradientEndY = maxY;
+        // } else {
+        //   gradientStartY = maxY;
+        //   gradientEndY = minY;
+        // }
+
+        gradientStartX = points[0].x;
+        gradientStartY = points[0].y;
+        gradientEndX = points[points.length - 1].x;
+        gradientEndY = points[points.length - 1].y;
+
+        const gradient = ctx.createLinearGradient(
+          gradientStartX,
+          gradientStartY,
+          gradientEndX,
+          gradientEndY
+        );
+        for (let j = 0; j < this.canvasSettings.fillColor.length; j += 1) {
+          const colorStop = this.canvasSettings.fillColor[j];
+          const stop = colorStop.percent / 100;
+          const color = formatColor(colorStop.color, this.canvasSettings.opacity);
+          gradient.addColorStop(stop, color);
+        }
+        ctx.fillStyle = gradient;
       } else {
-        gradientStartY = maxY;
-        gradientEndY = minY;
+        ctx.fillStyle = formatColor(this.canvasSettings.fillColor, this.canvasSettings.opacity);
       }
-
-      const gradient = ctx.createLinearGradient(
-        gradientStartX,
-        gradientStartY,
-        gradientEndX,
-        gradientEndY
-      );
-      for (let j = 0; j < this.canvasSettings.strokeColor.length; j += 1) {
-        const colorStop = this.canvasSettings.strokeColor[j];
-        const stop = colorStop.percent / 100;
-        const color = formatColor(colorStop.color, this.canvasSettings.opacity);
-        gradient.addColorStop(stop, color);
-      }
-      ctx.strokeStyle = gradient;
-    } else {
-      ctx.strokeStyle = formatColor(this.canvasSettings.strokeColor, this.canvasSettings.opacity);
-    }
-
-    if (Array.isArray(this.canvasSettings.fillColor)) {
-      let gradientStartX, gradientStartY, gradientEndX, gradientEndY;
-      if (Math.abs(minX - points[0].x) <= Math.abs(maxX - points[0].x)) {
-        gradientStartX = minX;
-        gradientEndX = maxX;
-      } else {
-        gradientStartX = maxX;
-        gradientEndX = minX;
-      }
-      if (Math.abs(minY - points[0].y) <= Math.abs(maxY - points[0].y)) {
-        gradientStartY = minY;
-        gradientEndY = maxY;
-      } else {
-        gradientStartY = maxY;
-        gradientEndY = minY;
-      }
-
-      const gradient = ctx.createLinearGradient(
-        gradientStartX,
-        gradientStartY,
-        gradientEndX,
-        gradientEndY
-      );
-      for (let j = 0; j < this.canvasSettings.fillColor.length; j += 1) {
-        const colorStop = this.canvasSettings.fillColor[j];
-        const stop = colorStop.percent / 100;
-        const color = formatColor(colorStop.color, this.canvasSettings.opacity);
-        gradient.addColorStop(stop, color);
-      }
-      ctx.fillStyle = gradient;
-    } else {
-      ctx.fillStyle = formatColor(this.canvasSettings.fillColor, this.canvasSettings.opacity);
     }
 
     if (CANVAS_LINE_TOOLS.includes(this.tool)) {
       ctx.save();
       ctx.beginPath();
-      const strokePoints = this.canvasSettings.smoothPoints.stroke;
-      ctx.moveTo(strokePoints[0][0], strokePoints[0][1]);
-      // const strokeData = this.svgPathFromStroke(strokePoints);
-      const myStroke = new Path2D(this.canvasSettings.smoothPoints.strokeSvgPath);
-      ctx.fillStyle = ctx.strokeStyle;
-      ctx.fill(myStroke);
-      ctx.restore();
-
-      ctx.save();
-      if (isTransparent(this.canvasSettings.fillColor)) {
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.fillStyle = "#fff";
-      }
-      ctx.beginPath();
       const pathPoints = this.canvasSettings.smoothPoints.path;
       ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
-      // const pathData = this.svgPathFromStroke(pathPoints);
-      const myPath = new Path2D(this.canvasSettings.smoothPoints.pathSvgPath);
-      ctx.fill(myPath);
+      ctx.__addPathCommand(this.canvasSettings.smoothPoints.pathSvgPath);
+      ctx.fill();
+      ctx.stroke();
+      ctx.__currentElement.setAttribute("stroke-width", ctx.lineWidth / 4);
       ctx.restore();
     } else if (this.tool === ELEMENT_TYPE.CIRCLE) {
       ctx.beginPath();
@@ -475,12 +407,11 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.fill();
     } else if (this.tool === ELEMENT_TYPE.RECTANGLE) {
       ctx.beginPath();
-      const rectangle = new Path2D();
       const width = maxX - minX;
       const height = maxY - minY;
-      rectangle.rect(minX, minY, width, height);
-      ctx.stroke(rectangle);
-      ctx.fill(rectangle);
+      ctx.rect(minX, minY, width, height);
+      ctx.stroke();
+      ctx.fill();
     } else if (this.tool === ELEMENT_TYPE.LINE) {
       const numPoints = points.length;
       const fromx = points[0].x;
@@ -583,6 +514,7 @@ export default class BaseCanvasElement extends BaseElement {
       }
       ctx.restore();
     } else if (this.tool === ELEMENT_TYPE.BLOB || this.tool === ELEMENT_TYPE.ERASER) {
+      ctx.save();
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
 
@@ -598,20 +530,18 @@ export default class BaseCanvasElement extends BaseElement {
       }
 
       if (this.tool === ELEMENT_TYPE.BLOB) {
-        ctx.closePath();
-        ctx.save();
         if (isTransparent(this.canvasSettings.strokeColor)) {
           ctx.strokeStyle = ctx.fillStyle;
         }
-        ctx.stroke();
         ctx.fill();
-        ctx.restore();
-      } else if (this.tool === ELEMENT_TYPE.ERASER) {
-        ctx.save();
-        ctx.strokeStyle = "#ffffff";
+        ctx.closePath();
         ctx.stroke();
-        ctx.restore();
+      } else if (this.tool === ELEMENT_TYPE.ERASER) {
+        ctx.fillStyle = "transparent";
+        ctx.strokeStyle = "#000000";
+        ctx.stroke();
       }
+      ctx.restore();
     } else if (this.tool === ELEMENT_TYPE.CUT) {
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
@@ -650,5 +580,6 @@ export default class BaseCanvasElement extends BaseElement {
     }
 
     ctx.restore();
+    return ctx;
   }
 }

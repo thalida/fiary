@@ -65,8 +65,6 @@ export interface IPage {
 }
 
 export interface IPageOptions {
-  drawingCanvas: HTMLCanvasElement | null;
-
   fillPaletteUid: TPrimaryKey | null;
   fillSwatchUid: TPrimaryKey | null;
   strokePaletteUid: TPrimaryKey | null;

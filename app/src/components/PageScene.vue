@@ -40,25 +40,13 @@ const pasteLayer = ref<typeof PagePasteLayer>();
 const addImageLayer = ref<typeof PageAddImageLayer>();
 const rulerLayer = ref<typeof PageRulerLayer>();
 const toolbar = ref<typeof PageToolbar>();
-const drawingCanvas = ref<HTMLCanvasElement>();
 const activePanCoords = ref<{ x: number; y: number }[]>([]);
 
 const selectedFillColor = computed(() => coreStore.selectedFillColor(props.pageUid));
 const selectedStrokeColor = computed(() => coreStore.selectedStrokeColor(props.pageUid));
 
-function initScene(canvas: HTMLCanvasElement) {
-  if (typeof canvas === "undefined") {
-    return;
-  }
-
-  const ctx = canvas.getContext("2d");
-
-  if (ctx === null) {
-    return;
-  }
-
-  drawingCanvas.value = canvas;
-  coreStore.initPageOptions(drawingCanvas.value, props.pageUid, ctx.getTransform());
+function initScene(ctx) {
+  coreStore.initPageOptions(props.pageUid, ctx.getTransform());
   drawingLayer.value?.drawElements();
   interactiveLayer.value?.setInteractiveElementTransforms();
 
@@ -73,7 +61,7 @@ function initScene(canvas: HTMLCanvasElement) {
     paperLayer.value?.setPaperTransforms();
   });
 
-  coreStore.startAutoSave();
+  coreStore.startAutoSave(props.pageUid);
 }
 
 onBeforeUnmount(() => {
@@ -146,13 +134,7 @@ function getPressure(event: MouseEvent | TouchEvent, tool: ELEMENT_TYPE): number
   return 0.5;
 }
 
-function getMousePos(
-  canvas: HTMLCanvasElement,
-  event: MouseEvent | TouchEvent,
-  followRuler = false,
-  rulerElement?: Moveable
-) {
-  const rect = canvas.getBoundingClientRect(); // abs. size of element
+function getMousePos(event: MouseEvent | TouchEvent, followRuler = false, rulerElement?: Moveable) {
   const clientX = (event as TouchEvent).touches
     ? (event as TouchEvent).touches[0].clientX
     : (event as MouseEvent).clientX;
@@ -222,18 +204,15 @@ function getMousePos(
     }
   }
 
+  // const rect = canvas.getBoundingClientRect(); // abs. size of element
+  const rect = { left: 0, top: 0 };
   const x = inputX - rect.left;
   const y = inputY - rect.top;
   return { x, y, isRulerLine };
 }
 
-function getDrawPos(
-  canvas: HTMLCanvasElement,
-  event: MouseEvent | TouchEvent,
-  followRuler = false,
-  rulerElement?: Moveable
-) {
-  const pos = getMousePos(canvas, event, followRuler, rulerElement);
+function getDrawPos(event: MouseEvent | TouchEvent, followRuler = false, rulerElement?: Moveable) {
+  const pos = getMousePos(event, followRuler, rulerElement);
   let cameraX = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.e : 0;
   let cameraY = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.f : 0;
   const cameraZoom = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.a : 1;
@@ -287,7 +266,6 @@ function handleClearAll() {
       fillColor: { r: 255, g: 255, b: 255, a: 1 },
     } as ICanvasSettings,
   });
-  clearElement.cacheElement();
   coreStore.addElement(clearElement);
   drawingLayer.value?.drawElements();
   pageOptions.value.selectedTool = ELEMENT_TYPE.ERASER;
@@ -375,11 +353,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
 
   coreStore.setIsStylus(props.pageUid, event);
 
-  if (
-    !isDrawingAllowed(true) ||
-    typeof drawingCanvas.value === "undefined" ||
-    drawingCanvas.value === null
-  ) {
+  if (!isDrawingAllowed(true)) {
     return;
   }
 
@@ -388,7 +362,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   const strokeColor =
     selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
   const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
-  const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
+  const pos = getDrawPos(event, true, rulerLayer.value?.moveableEl);
   const isRulerLine = pos.isRulerLine;
 
   const elementProps = {
@@ -438,11 +412,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
 }
 
 function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
-  if (
-    !(pageOptions.value.isPanning || isDrawingAllowed()) ||
-    typeof drawingCanvas.value === "undefined" ||
-    drawingCanvas.value === null
-  ) {
+  if (!(pageOptions.value.isPanning || isDrawingAllowed())) {
     return;
   }
 
@@ -458,7 +428,7 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   const lastElement = coreStore.elements[lastElementUid] as BaseCanvasElement;
   const isntLineTool = !CANVAS_LINE_TOOLS.includes(lastElement.tool);
   const followRuler = lastElement.canvasSettings.isRulerLine || isntLineTool;
-  const pos = getDrawPos(drawingCanvas.value, event, followRuler, rulerLayer.value?.moveableEl);
+  const pos = getDrawPos(event, followRuler, rulerLayer.value?.moveableEl);
   const pressure = getPressure(event, lastElement.tool);
 
   if (lastElement.tool === ELEMENT_TYPE.CIRCLE || lastElement.tool === ELEMENT_TYPE.RECTANGLE) {
@@ -497,11 +467,7 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
 }
 
 function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
-  if (
-    pageOptions.value.isInteractiveEditMode ||
-    pageOptions.value.isTextboxEditMode ||
-    typeof drawingCanvas.value === "undefined"
-  ) {
+  if (pageOptions.value.isInteractiveEditMode || pageOptions.value.isTextboxEditMode) {
     return;
   }
 
@@ -512,18 +478,18 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
 
   if (pageOptions.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
-    const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
+    const pos = getDrawPos(event, true, rulerLayer.value?.moveableEl);
     handleAddCheckbox(pos);
     return;
   }
 
   if (pageOptions.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
-    const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
+    const pos = getDrawPos(event, true, rulerLayer.value?.moveableEl);
     handleAddTextbox(pos);
     return;
   }
 
-  if (!isDrawingAllowed() || drawingCanvas.value === null) {
+  if (!isDrawingAllowed()) {
     return;
   }
 
@@ -542,7 +508,6 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   if (lastElement.tool === ELEMENT_TYPE.CUT) {
     pasteLayer.value?.handlePasteStart();
   } else {
-    lastElement.cacheElement();
     coreStore.markDirtyElement(lastElementUid);
     drawingLayer.value?.drawElements();
   }
