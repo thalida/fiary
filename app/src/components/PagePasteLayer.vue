@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import { cloneDeep } from "lodash";
-import { Context } from "svgcanvas";
 import Moveable from "moveable";
 import type { ICanvasSettings, TPrimaryKey } from "@/types/core";
 import { clearCanvas } from "@/utils/canvas";
@@ -16,7 +15,6 @@ const coreStore = useCoreStore();
 const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
-const svgCanvas = ref<SVGElement | null>(null);
 const pasteTransform = ref({
   translate: [0, 0],
   scale: [1, 1],
@@ -41,10 +39,7 @@ async function handlePasteStart() {
     return;
   }
 
-  const ctx = new Context({
-    width: coreStore.canvasConfig.width,
-    height: coreStore.canvasConfig.height,
-  });
+  const ctx = canvas.value.getContext("2d");
 
   if (ctx === null) {
     return;
@@ -56,6 +51,8 @@ async function handlePasteStart() {
 
   if (!cutSelection.isCached) {
     cutSelection.settings.isCompletedCut = true;
+    cutSelection.canvasSettings.composition = "destination-out";
+    cutSelection.cacheElement();
   }
 
   emit("redraw");
@@ -82,16 +79,15 @@ async function handlePasteStart() {
   for (let i = 0; i < activeElements.length - 1; i += 1) {
     const elementUid = activeElements[i];
     const element = coreStore.elements[elementUid] as BaseCanvasElement;
-    element.drawElement(ctx);
+    element.drawElement(canvas.value);
   }
   const cutSelectionClip = cloneDeep(cutSelection);
   cutSelectionClip.isCached = false;
   cutSelectionClip.canvasDataUrl = null;
   cutSelectionClip.cachedCanvasImage = null;
   cutSelectionClip.canvasSettings.composition = "destination-in";
-  cutSelectionClip.drawElement(ctx);
+  cutSelectionClip.drawElement(canvas.value);
 
-  svgCanvas.value = ctx.getSerializedSvg();
   moveableEl = new Moveable(rootEl.value, {
     target: canvas.value as HTMLElement,
     draggable: true,
@@ -248,8 +244,7 @@ defineExpose({
 </script>
 <template>
   <div ref="rootEl" class="paste-layer" v-if="pageOptions && pageOptions.isPasteMode">
-    <!-- <canvas class="paste-canvas" ref="canvas"></canvas> -->
-    <div class="paste-canvas" v-html="svgCanvas"></div>
+    <canvas class="paste-canvas" ref="canvas"></canvas>
   </div>
 </template>
 

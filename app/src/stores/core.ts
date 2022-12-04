@@ -142,7 +142,11 @@ export const useCoreStore = defineStore("core", () => {
     return getSwatchColor.value(options.strokePaletteUid, options.strokeSwatchUid);
   });
 
-  function initPageOptions(pageUid: TPrimaryKey, matrix: ITransformMatrix) {
+  function initPageOptions(
+    canvas: HTMLCanvasElement,
+    pageUid: TPrimaryKey,
+    matrix: ITransformMatrix
+  ) {
     if (typeof pageOptions.value[pageUid] === "undefined") {
       const matrixAsObj = {
         a: matrix.a,
@@ -153,6 +157,8 @@ export const useCoreStore = defineStore("core", () => {
         f: matrix.f,
       };
       const options = {
+        drawingCanvas: canvas,
+
         fillPaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.palette,
         fillSwatchUid: builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.swatch,
         strokePaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.palette,

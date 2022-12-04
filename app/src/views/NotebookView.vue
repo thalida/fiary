@@ -4,7 +4,6 @@ import { computed, ref, watchEffect } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useCoreStore } from "@/stores/core";
 import type { TPrimaryKey } from "@/types/core";
-import AppHeader from "@/components/AppHeader.vue";
 
 const authStore = useAuthStore();
 const coreStore = useCoreStore();
