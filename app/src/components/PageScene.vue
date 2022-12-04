@@ -40,34 +40,13 @@ const pasteLayer = ref<typeof PagePasteLayer>();
 const addImageLayer = ref<typeof PageAddImageLayer>();
 const rulerLayer = ref<typeof PageRulerLayer>();
 const toolbar = ref<typeof PageToolbar>();
-const drawingCanvas = ref<HTMLCanvasElement>();
 const activePanCoords = ref<{ x: number; y: number }[]>([]);
 
 const selectedFillColor = computed(() => coreStore.selectedFillColor(props.pageUid));
 const selectedStrokeColor = computed(() => coreStore.selectedStrokeColor(props.pageUid));
 
-function initScene(canvas: HTMLCanvasElement) {
-  if (typeof canvas === "undefined") {
-    return;
-  }
-
-  const ctx = canvas.getContext("2d");
-
-  if (ctx === null) {
-    return;
-  }
-
-  drawingCanvas.value = canvas;
-  coreStore.initPageOptions(drawingCanvas.value, props.pageUid, ctx.getTransform());
-  drawingLayer.value?.drawElements();
+function initScene() {
   interactiveLayer.value?.setInteractiveElementTransforms();
-
-  watch(
-    () => (pageOptions.value ? pageOptions.value.isDebugMode : false),
-    () => {
-      drawingLayer.value?.drawElements();
-    }
-  );
 
   watchEffect(() => {
     paperLayer.value?.setPaperTransforms();
@@ -315,11 +294,11 @@ function handleCameraZoom(zoomStep: number) {
 function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
   // if (
   //   typeof pageOptions.value.transformMatrix === "undefined" ||
-  //   typeof drawingCanvas.value === "undefined"
+  //   typeof drawingLayer.value?.drawingCanvas === "undefined"
   // ) {
   //   return;
   // }
-  // const pos = getMousePos(drawingCanvas.value, event);
+  // const pos = getMousePos(drawingLayer?.value.drawingCanvas, event);
   // if (isStart) {
   //   activePanCoords.value = [
   //     {
@@ -377,8 +356,8 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
 
   if (
     !isDrawingAllowed(true) ||
-    typeof drawingCanvas.value === "undefined" ||
-    drawingCanvas.value === null
+    typeof drawingLayer.value?.drawingCanvas === "undefined" ||
+    drawingLayer.value?.drawingCanvas === null
   ) {
     return;
   }
@@ -388,7 +367,12 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   const strokeColor =
     selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
   const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
-  const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
+  const pos = getDrawPos(
+    drawingLayer.value?.drawingCanvas,
+    event,
+    true,
+    rulerLayer.value?.moveableEl
+  );
   const isRulerLine = pos.isRulerLine;
 
   const elementProps = {
@@ -440,8 +424,8 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
 function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   if (
     !(pageOptions.value.isPanning || isDrawingAllowed()) ||
-    typeof drawingCanvas.value === "undefined" ||
-    drawingCanvas.value === null
+    typeof drawingLayer.value?.drawingCanvas === "undefined" ||
+    drawingLayer.value?.drawingCanvas === null
   ) {
     return;
   }
@@ -458,7 +442,12 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   const lastElement = coreStore.elements[lastElementUid] as BaseCanvasElement;
   const isntLineTool = !CANVAS_LINE_TOOLS.includes(lastElement.tool);
   const followRuler = lastElement.canvasSettings.isRulerLine || isntLineTool;
-  const pos = getDrawPos(drawingCanvas.value, event, followRuler, rulerLayer.value?.moveableEl);
+  const pos = getDrawPos(
+    drawingLayer.value?.drawingCanvas,
+    event,
+    followRuler,
+    rulerLayer.value?.moveableEl
+  );
   const pressure = getPressure(event, lastElement.tool);
 
   if (lastElement.tool === ELEMENT_TYPE.CIRCLE || lastElement.tool === ELEMENT_TYPE.RECTANGLE) {
@@ -500,7 +489,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   if (
     pageOptions.value.isInteractiveEditMode ||
     pageOptions.value.isTextboxEditMode ||
-    typeof drawingCanvas.value === "undefined"
+    typeof drawingLayer.value?.drawingCanvas === "undefined"
   ) {
     return;
   }
@@ -512,18 +501,28 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
 
   if (pageOptions.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
-    const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
+    const pos = getDrawPos(
+      drawingLayer.value?.drawingCanvas,
+      event,
+      true,
+      rulerLayer.value?.moveableEl
+    );
     handleAddCheckbox(pos);
     return;
   }
 
   if (pageOptions.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
-    const pos = getDrawPos(drawingCanvas.value, event, true, rulerLayer.value?.moveableEl);
+    const pos = getDrawPos(
+      drawingLayer.value?.drawingCanvas,
+      event,
+      true,
+      rulerLayer.value?.moveableEl
+    );
     handleAddTextbox(pos);
     return;
   }
 
-  if (!isDrawingAllowed() || drawingCanvas.value === null) {
+  if (!isDrawingAllowed() || drawingLayer.value?.drawingCanvas === null) {
     return;
   }
 

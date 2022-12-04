@@ -2,14 +2,14 @@
 import type BaseCanvasElement from "@/models/BaseCanvasElement";
 import { useCoreStore } from "@/stores/core";
 import type { TPrimaryKey } from "@/types/core";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const drawingCanvas = ref<HTMLCanvasElement>();
 const emits = defineEmits<{
-  (event: "ready", canvas: HTMLCanvasElement): void;
+  (event: "ready"): void;
 }>();
 
 onMounted(() => {
@@ -31,7 +31,18 @@ onMounted(() => {
   drawingCanvas.value.style.height = `${coreStore.canvasConfig.height}px`;
 
   ctx.scale(dpi, dpi);
-  emits("ready", drawingCanvas.value);
+
+  coreStore.initPageOptions(drawingCanvas.value, props.pageUid, ctx.getTransform());
+  drawElements();
+
+  watch(
+    () => (pageOptions.value ? pageOptions.value.isDebugMode : false),
+    () => {
+      drawElements();
+    }
+  );
+
+  emits("ready");
 });
 
 function drawElements() {
@@ -62,6 +73,7 @@ function drawElements() {
 
 defineExpose({
   drawElements,
+  drawingCanvas,
 });
 </script>
 <template>

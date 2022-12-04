@@ -121,8 +121,17 @@ export const useCoreStore = defineStore("core", () => {
     return elements[elements.length - 1];
   });
   const canvasConfig = ref({
-    width: 3000,
-    height: 3000,
+    // // A4 [Square-ish] (300 DPI)
+    // width: 2480,
+    // height: 2480,
+
+    // // A6 (300 DPI)
+    // width: 1240,
+    // height: 1748,
+
+    // A5 (300 DPI)
+    width: 1748,
+    height: 2480,
     dpi: window.devicePixelRatio,
   });
 

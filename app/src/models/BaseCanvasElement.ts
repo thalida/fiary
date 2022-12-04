@@ -13,7 +13,6 @@ import type {
 import { formatColor, isTransparent } from "@/utils/color";
 import BaseElement from "./BaseElement";
 import merge from "lodash/merge";
-import { average } from "@/utils/math";
 
 export default class BaseCanvasElement extends BaseElement {
   declare canvasSettings: ICanvasSettings;
