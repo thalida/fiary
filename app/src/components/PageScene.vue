@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, onBeforeUnmount } from "vue";
-import type Moveable from "moveable";
+import { ref, computed, watch, watchEffect, onBeforeUnmount, nextTick } from "vue";
+import Moveable from "moveable";
 import cloneDeep from "lodash/cloneDeep";
 import {
   PageHistoryEvent as HistoryEvent,
@@ -33,6 +33,8 @@ const coreStore = useCoreStore();
 const page = computed(() => coreStore.pages[props.pageUid]);
 const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 
+const rootEl = ref<HTMLElement>();
+const surfaceEl = ref<HTMLElement>();
 const interactiveLayer = ref<typeof PageInteractiveLayer>();
 const paperLayer = ref<typeof PagePaperLayer>();
 const drawingLayer = ref<typeof PageDrawingLayer>();
@@ -40,19 +42,49 @@ const pasteLayer = ref<typeof PagePasteLayer>();
 const addImageLayer = ref<typeof PageAddImageLayer>();
 const rulerLayer = ref<typeof PageRulerLayer>();
 const toolbar = ref<typeof PageToolbar>();
-const activePanCoords = ref<{ x: number; y: number }[]>([]);
+const surfaceTransform = ref({
+  translate: [0, 0],
+  scale: [1, 1],
+});
 
+const surfaceTransformCss = computed(() => {
+  const translate = `translate(${surfaceTransform.value.translate[0]}px, ${surfaceTransform.value.translate[1]}px)`;
+  const scale = `scale(${surfaceTransform.value.scale[0]}, ${surfaceTransform.value.scale[1]})`;
+
+  return `${translate} ${scale}`;
+});
 const selectedFillColor = computed(() => coreStore.selectedFillColor(props.pageUid));
 const selectedStrokeColor = computed(() => coreStore.selectedStrokeColor(props.pageUid));
 
+let moveableSurfaceEl = null;
 function initScene() {
-  interactiveLayer.value?.setInteractiveElementTransforms();
-
-  watchEffect(() => {
-    paperLayer.value?.setPaperTransforms();
-  });
-
   coreStore.startAutoSave();
+
+  if (typeof rootEl.value === "undefined") {
+    return;
+  }
+
+  // bounds: { "left": 40, "top": 40, "right": 600, "bottom": 430 },
+  console.log(rootEl.value.getBoundingClientRect());
+
+  const rootRect = rootEl.value.getBoundingClientRect();
+  moveableSurfaceEl = new Moveable(rootEl.value, {
+    target: surfaceEl.value as HTMLElement,
+    snappable: true,
+    snapContainer: rootEl.value,
+    throttleDrag: 0,
+    throttleScale: 0,
+    origin: false,
+    edge: false,
+    keepRatio: true,
+    draggable: true,
+    pinchable: true,
+    scalable: true,
+    rotatable: false,
+    clippable: false,
+  });
+  moveableSurfaceEl.on("drag", onSurfaceDrag).on("scale", onSurfaceScale);
+  setSurfaceTransform({});
 }
 
 onBeforeUnmount(() => {
@@ -98,7 +130,6 @@ function handleAddCheckbox(pos: IElementPoint) {
   });
 
   coreStore.addElement(checkboxElement);
-  interactiveLayer.value?.setInteractiveElementTransforms();
 }
 
 function handleAddTextbox(pos: IElementPoint) {
@@ -114,7 +145,6 @@ function handleAddTextbox(pos: IElementPoint) {
     focusOnMount: true,
   });
   coreStore.addElement(textboxElement);
-  interactiveLayer.value?.setInteractiveElementTransforms();
 }
 
 function getPressure(event: MouseEvent | TouchEvent, tool: ELEMENT_TYPE): number {
@@ -272,59 +302,102 @@ function handleClearAll() {
   pageOptions.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
 
-function handleCameraZoom(zoomStep: number) {
-  // if (typeof pageOptions.value.transformMatrix === "undefined") {
-  //   return;
-  // }
-  // const isInBounds =
-  //   zoomStep > 0
-  //     ? pageOptions.value.transformMatrix.a < 6
-  //     : pageOptions.value.transformMatrix.a > 0.5;
-  // if (isInBounds) {
-  //   pageOptions.value.transformMatrix.a += zoomStep;
-  //   pageOptions.value.transformMatrix.a =
-  //     Math.round((pageOptions.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-  //   pageOptions.value.transformMatrix.d = pageOptions.value.transformMatrix.a;
-  // }
-  // paperLayer.value?.setPaperTransforms();
-  // interactiveLayer.value?.setInteractiveElementTransforms();
-  // drawingLayer.value?.drawElements();
+let fromUpdate = false;
+
+async function setSurfaceTransform(transform: { translate?: number[]; scale?: number[] }) {
+  if (typeof surfaceEl.value === "undefined") {
+    return;
+  }
+  const nextTransform = {
+    ...surfaceTransform.value,
+    ...transform,
+  };
+
+  surfaceTransform.value = nextTransform;
+  await nextTick();
+
+  const rect = surfaceEl.value.getBoundingClientRect();
+  const container = rootEl.value.getBoundingClientRect();
+
+  const innerBounds = { left: 0, top: 0, width: 0, height: 0 };
+  const bounds = {
+    left: -Infinity,
+    top: -Infinity,
+    right: Infinity,
+    bottom: Infinity,
+  };
+
+  if (rect.width < container.width) {
+    bounds.left = container.left;
+    bounds.right = container.right;
+  } else {
+    innerBounds.left = container.left;
+    innerBounds.width = container.width;
+  }
+
+  if (rect.height < container.height) {
+    bounds.top = container.top;
+    bounds.bottom = container.bottom;
+  } else {
+    innerBounds.top = container.top;
+    innerBounds.height = container.height;
+  }
+
+  moveableSurfaceEl.innerBounds = innerBounds;
+  moveableSurfaceEl.bounds = bounds;
+  moveableSurfaceEl.updateRect();
+
+  if (fromUpdate) {
+    fromUpdate = false;
+    return;
+  }
+  fromUpdate = true;
+  moveableSurfaceEl.request("draggable", { deltaX: 0, deltaY: 0 }, true);
 }
 
-function handleCameraPan(event: MouseEvent | TouchEvent, isStart = false) {
-  // if (
-  //   typeof pageOptions.value.transformMatrix === "undefined" ||
-  //   typeof drawingLayer.value?.drawingCanvas === "undefined"
-  // ) {
-  //   return;
-  // }
-  // const pos = getMousePos(drawingLayer?.value.drawingCanvas, event);
-  // if (isStart) {
-  //   activePanCoords.value = [
-  //     {
-  //       x: pos.x - pageOptions.value.transformMatrix.e,
-  //       y: pos.y - pageOptions.value.transformMatrix.f,
-  //     },
-  //   ];
-  // }
-  // activePanCoords.value[1] = { x: pos.x, y: pos.y };
-  // const transformOrigin = {
-  //   x: activePanCoords.value[1].x - activePanCoords.value[0].x,
-  //   y: activePanCoords.value[1].y - activePanCoords.value[0].y,
-  // };
-  // pageOptions.value.transformMatrix.e = transformOrigin.x;
-  // pageOptions.value.transformMatrix.f = transformOrigin.y;
-  // paperLayer.value?.setPaperTransforms();
-  // interactiveLayer.value?.setInteractiveElementTransforms();
-  // drawingLayer.value?.drawElements();
+function onSurfaceDrag({ translate }: { target: HTMLElement; translate: number[] }) {
+  if (pageOptions.value.isDrawing) {
+    return;
+  }
+  setSurfaceTransform({ translate });
+}
+
+function onSurfaceScale({ scale, drag }: { scale: number[]; drag: { translate: number[] } }) {
+  if (pageOptions.value.isDrawing) {
+    return;
+  }
+  setSurfaceTransform({ scale, translate: drag.translate });
+}
+
+function handleCameraZoom(zoomStep: number) {
+  if (typeof pageOptions.value.transformMatrix === "undefined") {
+    return;
+  }
+
+  const isInBounds =
+    zoomStep > 0
+      ? pageOptions.value.transformMatrix.a < 6
+      : pageOptions.value.transformMatrix.a > pageOptions.value.initTransformMatrix.a;
+
+  if (isInBounds) {
+    pageOptions.value.transformMatrix.a += zoomStep;
+    pageOptions.value.transformMatrix.a =
+      Math.round((pageOptions.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
+    pageOptions.value.transformMatrix.d = pageOptions.value.transformMatrix.a;
+  }
+
+  const initMatrixA = pageOptions.value.initTransformMatrix.a;
+  const currMatrixA = pageOptions.value.transformMatrix.a;
+  const relativeZoom = currMatrixA / initMatrixA;
+  setSurfaceTransform({
+    scale: [relativeZoom, relativeZoom],
+  });
 }
 
 function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   toolbar.value?.closeAllColorPickers();
 
   if (pageOptions.value.selectedTool === CANVAS_POINTER_TOOL) {
-    pageOptions.value.isPanning = true;
-    handleCameraPan(event, true);
     return;
   }
 
@@ -423,7 +496,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
 
 function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   if (
-    !(pageOptions.value.isPanning || isDrawingAllowed()) ||
+    !isDrawingAllowed() ||
     typeof drawingLayer.value?.drawingCanvas === "undefined" ||
     drawingLayer.value?.drawingCanvas === null
   ) {
@@ -431,11 +504,6 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
   }
 
   event.preventDefault();
-
-  if (pageOptions.value.isPanning) {
-    handleCameraPan(event);
-    return;
-  }
 
   // const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
   const lastElementUid = page.value.elementOrder[page.value.elementOrder.length - 1];
@@ -491,12 +559,6 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     pageOptions.value.isTextboxEditMode ||
     typeof drawingLayer.value?.drawingCanvas === "undefined"
   ) {
-    return;
-  }
-
-  if (pageOptions.value.isPanning) {
-    handleCameraPan(event);
-    pageOptions.value.isPanning = false;
     return;
   }
 
@@ -613,12 +675,7 @@ function handleRedo() {
 </script>
 
 <template>
-  <div
-    class="canvas-wrapper"
-    :style="{
-      overflow: pageOptions && pageOptions.isDrawing ? 'hidden' : 'auto',
-    }"
-  >
+  <div ref="rootEl" class="canvas-wrapper">
     <div class="toolbar">
       <PageToolbar
         ref="toolbar"
@@ -638,10 +695,12 @@ function handleRedo() {
       />
     </div>
     <div
+      ref="surfaceEl"
       class="surface"
       :style="{
         width: `${coreStore.canvasConfig.width}px`,
         height: `${coreStore.canvasConfig.height}px`,
+        transform: surfaceTransformCss,
       }"
       @mousedown="handleSurfaceTouchStart"
       @touchstart="handleSurfaceTouchStart"
@@ -691,7 +750,7 @@ function handleRedo() {
   width: 100vw;
   height: 100vh;
   border: 2px solid red;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .toolbar {

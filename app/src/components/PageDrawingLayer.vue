@@ -56,9 +56,7 @@ function drawElements() {
     return;
   }
 
-  ctx.setTransform(pageOptions.value.initTransformMatrix);
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
-  ctx.setTransform(pageOptions.value.transformMatrix);
 
   const drawElementUids = coreStore.activeElements(props.pageUid);
   for (let i = 0; i < drawElementUids.length; i += 1) {

@@ -48,6 +48,7 @@ function handleStartInteractiveEdit() {
     draggable: true,
     rotatable: true,
     pinchable: true,
+    scalable: true,
   });
 
   moveableInteractive
@@ -67,6 +68,10 @@ function handleStartInteractiveEdit() {
     .on("rotate", handleInteractiveRotate)
     .on("rotateGroup", (e) => {
       e.events.forEach(handleInteractiveRotate as any);
+    })
+    .on("scale", handleInteractiveScale)
+    .on("scaleGroup", (e) => {
+      e.events.forEach(handleInteractiveScale as any);
     })
     .on("renderEnd", ({ target }: { target: HTMLElement }) => {
       handleInteractiveEnd(target);
@@ -106,32 +111,6 @@ function handleEndInteractiveEdit() {
   moveableInteractive.destroy();
 }
 
-function getRelativeTransformStr(
-  elementUid: TPrimaryKey,
-  transformMatrix: ITransformMatrix
-): string {
-  const element = coreStore.elements[elementUid] as BaseInteractiveElement;
-  const initMatrixA = pageOptions.value.initTransformMatrix.a;
-  const currMatrixA = transformMatrix.a;
-  const currMatrixE = transformMatrix.e;
-  const currMatrixF = transformMatrix.f;
-  const htmlRelativeZoom = currMatrixA / initMatrixA;
-  const newOrigin = {
-    x: currMatrixE / initMatrixA,
-    y: currMatrixF / initMatrixA,
-  };
-  const translate = `translate(${
-    newOrigin.x + element.transform.translate[0] * htmlRelativeZoom
-  }px, ${newOrigin.y + element.transform.translate[1] * htmlRelativeZoom}px)`;
-  const scale = `scale(${element.transform.scale[0] * htmlRelativeZoom}, ${
-    element.transform.scale[1] * htmlRelativeZoom
-  })`;
-  const rotate = `rotate(${element.transform.rotate}deg)`;
-
-  const transformStr = `${translate} ${scale} ${rotate}`;
-  return transformStr;
-}
-
 function setInteractiveElementStyles(
   target: HTMLElement,
   transform: { [key: string]: number | number[] }
@@ -142,8 +121,6 @@ function setInteractiveElementStyles(
   }
   const element = coreStore.elements[elementUid] as BaseInteractiveElement;
   element.transform = merge(element.transform, transform);
-  element.transformStr = getRelativeTransformStr(elementUid, pageOptions.value.transformMatrix);
-  target.style.transform = element.transformStr ? element.transformStr : "";
   coreStore.markDirtyElement(elementUid);
 }
 
@@ -167,6 +144,18 @@ function handleInteractiveRotate({
   drag: { translate: number[] };
 }) {
   setInteractiveElementStyles(target, { rotate, translate: drag.translate });
+}
+
+function handleInteractiveScale({
+  target,
+  scale,
+  drag,
+}: {
+  target: HTMLElement;
+  scale: number[];
+  drag: { translate: number[] };
+}) {
+  setInteractiveElementStyles(target, { scale, translate: drag.translate });
 }
 
 function handleInteractiveStart(target: HTMLElement | SVGElement) {
@@ -244,14 +233,6 @@ function handleInteractiveElementEvent(e: Event) {
   }
 }
 
-function setInteractiveElementTransforms() {
-  for (let i = 0; i < activeHtmlElements.value.length; i += 1) {
-    const elementUid = activeHtmlElements.value[i];
-    const element = coreStore.elements[elementUid] as BaseInteractiveElement;
-    element.transformStr = getRelativeTransformStr(elementUid, pageOptions.value.transformMatrix);
-  }
-}
-
 function reset() {
   pageOptions.value.isTextboxEditMode = false;
   pageOptions.value.isInteractiveEditMode = false;
@@ -263,7 +244,6 @@ defineExpose({
   handleStartInteractiveEdit,
   handleEndInteractiveEdit,
   handleInteractiveElementDelete,
-  setInteractiveElementTransforms,
 });
 </script>
 
@@ -284,7 +264,7 @@ defineExpose({
         :data-element-uid="elementUid"
         :style="{
           position: 'absolute',
-          transform: coreStore.elements[elementUid].transformStr,
+          transform: (coreStore.elements[elementUid] as BaseInteractiveElement).getTransformCSS(),
         }"
         :elementUid="elementUid"
         @change="handleCheckboxChange"
@@ -301,7 +281,7 @@ defineExpose({
         class="interactiveElement"
         :style="{
           position: 'absolute',
-          transform: coreStore.elements[elementUid].transformStr,
+          transform: (coreStore.elements[elementUid] as BaseInteractiveElement).getTransformCSS(),
         }"
         :elementUid="elementUid"
         :is-active="elementUid === activeElementUid"

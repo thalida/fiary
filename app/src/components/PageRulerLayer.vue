@@ -25,7 +25,7 @@ const ruler = ref({
   },
 });
 const showRulerControls = computed(() => {
-  return !pageOptions.value.isDrawing && !pageOptions.value.isPanning;
+  return !pageOptions.value.isDrawing;
 });
 const lastActiveElementUid = computed(() => {
   return coreStore.lastActiveElementUid(props.pageUid);

@@ -32,7 +32,6 @@ export default class BaseElement {
   isDirty = true;
 
   cachedCanvasImage?: HTMLImageElement | null = null;
-  transformStr?: string | null;
 
   constructor(
     element: IAPIElement | ({ pageUid: TPrimaryKey; tool: ELEMENT_TYPE } & Partial<IElement>),

@@ -82,7 +82,6 @@ export interface IPageOptions {
   isInteractiveEditMode: boolean;
   isTextboxEditMode: boolean;
   isRulerMode: boolean;
-  isPanning: boolean;
   isMovingRuler: boolean;
   isDrawing: boolean;
   isSwatchOpen: boolean;
@@ -123,7 +122,6 @@ export interface IElement {
   isHtmlElement: boolean;
   isHidden: boolean;
 
-  transformStr?: string | null;
   cachedCanvasImage?: HTMLImageElement | null;
   focusOnMount?: boolean;
 }

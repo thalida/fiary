@@ -36,7 +36,9 @@ const hasRedo = computed(() => {
   return coreStore.historyIndex[props.pageUid] < coreStore.history[props.pageUid].length - 1;
 });
 const zoomPercent = computed(() => {
-  const percent = Math.round(pageOptions.value.transformMatrix.a * 100);
+  const relativeZoom =
+    pageOptions.value.transformMatrix.a / pageOptions.value.initTransformMatrix.a;
+  const percent = Math.round(relativeZoom * 100);
   return percent;
 });
 const emit = defineEmits<{

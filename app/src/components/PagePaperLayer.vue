@@ -11,7 +11,6 @@ const coreStore = useCoreStore();
 
 const page = computed(() => coreStore.pages[props.pageUid]);
 const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
-const paperPatternTransform = ref({ x: 0, y: 0, lineSize: 0, spacing: 0 });
 
 const selectedPatternComponent = computed(() => {
   return page.value.patternType !== PATTERN_TYPES.SOLID ? patterns[page.value.patternType] : null;
@@ -22,33 +21,6 @@ const paperColor = computed(() =>
 const patternColor = computed(() =>
   coreStore.getSwatchColor(page.value.patternPaletteUid, page.value.patternSwatchUid)
 );
-
-function setPaperTransforms() {
-  let relativeZoom = 1;
-
-  if (
-    typeof pageOptions.value.transformMatrix !== "undefined" &&
-    pageOptions.value.transformMatrix !== null
-  ) {
-    const initMatrixA = pageOptions.value.initTransformMatrix
-      ? pageOptions.value.initTransformMatrix.a
-      : 1;
-    relativeZoom = initMatrixA / pageOptions.value.transformMatrix.a;
-    paperPatternTransform.value.x = pageOptions.value.transformMatrix.e / initMatrixA;
-    paperPatternTransform.value.y = pageOptions.value.transformMatrix.f / initMatrixA;
-  }
-
-  paperPatternTransform.value.lineSize = page.value.patternSize
-    ? page.value.patternSize / relativeZoom
-    : 0;
-  paperPatternTransform.value.spacing = page.value.patternSpacing
-    ? page.value.patternSpacing / relativeZoom
-    : 0;
-}
-
-defineExpose({
-  setPaperTransforms,
-});
 </script>
 <template>
   <div v-if="pageOptions" class="paper-layer">
@@ -58,10 +30,10 @@ defineExpose({
         id="paper-svg-pattern"
         :is="selectedPatternComponent.COMPONENT"
         :fillColor="getColorAsCss(patternColor)"
-        :lineSize="paperPatternTransform.lineSize"
-        :spacing="paperPatternTransform.spacing"
-        :x="paperPatternTransform.x"
-        :y="paperPatternTransform.y"
+        :lineSize="page.patternSize"
+        :spacing="page.patternSpacing"
+        x="0"
+        y="0"
       />
       <rect
         x="0"

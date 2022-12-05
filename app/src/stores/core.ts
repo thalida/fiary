@@ -184,7 +184,6 @@ export const useCoreStore = defineStore("core", () => {
         isInteractiveEditMode: false,
         isTextboxEditMode: false,
         isRulerMode: false,
-        isPanning: false,
         isMovingRuler: false,
         isDrawing: false,
         isSwatchOpen: false,
