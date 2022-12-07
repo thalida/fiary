@@ -32,6 +32,7 @@ import type {
   TPrimaryKey,
 } from "@/types/core";
 import {
+  CANVAS_POINTER_TOOL,
   DEFAULT_PATTERN_OPACITY,
   DEFAULT_PATTERN_TYPE,
   DEFAULT_PEN_SIZE,
@@ -130,8 +131,11 @@ export const useCoreStore = defineStore("core", () => {
     // height: 1748,
 
     // A5 (300 DPI)
-    width: 1748,
-    height: 2480,
+    // width: 1748,
+    // height: 2480,
+
+    width: 2000,
+    height: 2000,
     dpi: window.devicePixelRatio,
   });
 
@@ -173,7 +177,7 @@ export const useCoreStore = defineStore("core", () => {
         strokePaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.palette,
         strokeSwatchUid: builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.swatch,
 
-        selectedTool: ELEMENT_TYPE.PEN,
+        selectedTool: CANVAS_POINTER_TOOL,
         selectedToolSize: DEFAULT_PEN_SIZE,
         selectedLineEndSide: LineEndSide.NONE,
         selectedLineEndStyle: LineEndStyle.NONE,

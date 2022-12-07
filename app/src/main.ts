@@ -2,6 +2,8 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import { createClient } from "villus";
 import vue3GoogleLogin from "vue3-google-login";
+import { MotionPlugin } from "@vueuse/motion";
+import { GesturePlugin } from "@vueuse/gesture";
 
 import App from "./App.vue";
 import router from "./router";
@@ -22,5 +24,7 @@ app.use(router);
 app.use(vue3GoogleLogin, {
   clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
 });
+app.use(MotionPlugin);
+app.use(GesturePlugin);
 
 app.mount("#app");

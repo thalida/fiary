@@ -127,6 +127,7 @@ function setInteractiveElementStyles(
 function handleInteractiveDrag({
   target,
   translate,
+  ...res
 }: {
   target: HTMLElement;
   translate: number[];

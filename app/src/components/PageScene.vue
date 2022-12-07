@@ -1,7 +1,19 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, onBeforeUnmount, nextTick } from "vue";
-import Moveable from "moveable";
+import {
+  ref,
+  computed,
+  watch,
+  watchEffect,
+  onBeforeUnmount,
+  nextTick,
+  reactive,
+  onMounted,
+} from "vue";
 import cloneDeep from "lodash/cloneDeep";
+import Moveable from "moveable";
+import { useMotionProperties, useSpring } from "@vueuse/motion";
+import { usePinch, useHover, useDrag } from "@vueuse/gesture";
+import { interpolate } from "popmotion";
 import {
   PageHistoryEvent as HistoryEvent,
   ELEMENT_TYPE,
@@ -46,6 +58,16 @@ const surfaceTransform = ref({
   translate: [0, 0],
   scale: [1, 1],
 });
+const { motionProperties } = useMotionProperties(surfaceEl, {
+  x: 0,
+  y: 0,
+  scale: 1,
+});
+
+const springValues = reactive({ zoom: 0, rotateZ: 0 });
+const spring = useSpring(springValues);
+
+const mapper = ref();
 
 const surfaceTransformCss = computed(() => {
   const translate = `translate(${surfaceTransform.value.translate[0]}px, ${surfaceTransform.value.translate[1]}px)`;
@@ -56,7 +78,6 @@ const surfaceTransformCss = computed(() => {
 const selectedFillColor = computed(() => coreStore.selectedFillColor(props.pageUid));
 const selectedStrokeColor = computed(() => coreStore.selectedStrokeColor(props.pageUid));
 
-let moveableSurfaceEl = null;
 function initScene() {
   coreStore.startAutoSave();
 
@@ -64,27 +85,35 @@ function initScene() {
     return;
   }
 
-  // bounds: { "left": 40, "top": 40, "right": 600, "bottom": 430 },
-  console.log(rootEl.value.getBoundingClientRect());
-
-  const rootRect = rootEl.value.getBoundingClientRect();
-  moveableSurfaceEl = new Moveable(rootEl.value, {
-    target: surfaceEl.value as HTMLElement,
-    snappable: true,
-    snapContainer: rootEl.value,
-    throttleDrag: 0,
-    throttleScale: 0,
-    origin: false,
-    edge: false,
-    keepRatio: true,
-    draggable: true,
-    pinchable: true,
-    scalable: true,
-    rotatable: false,
-    clippable: false,
+  const rect = rootEl.value.getBoundingClientRect();
+  const longestScreenSize = Math.max(rect.width, rect.height) - 100;
+  const longestCanvasSide = Math.max(coreStore.canvasConfig.width, coreStore.canvasConfig.height);
+  const minScale = longestScreenSize / longestCanvasSide;
+  const maxScale = 4;
+  const minSize = longestCanvasSide - longestScreenSize;
+  const maxSize = longestCanvasSide * maxScale;
+  mapper.value = interpolate([-minSize, 0, maxSize], [minScale, 1, maxScale], {
+    clamp: true,
   });
-  moveableSurfaceEl.on("drag", onSurfaceDrag).on("scale", onSurfaceScale);
-  setSurfaceTransform({});
+}
+
+const dragModule = useDrag(handleSurfaceDrag, {
+  domTarget: surfaceEl,
+  eventOptions: { passive: false },
+});
+
+usePinch(handleSurfacePinch, {
+  domTarget: surfaceEl,
+  eventOptions: { passive: false },
+});
+
+useHover(handleSurfaceHover, {
+  domTarget: surfaceEl,
+});
+
+// Disable viewport pinch zoom on whole app
+function cancelEvent(e: Event) {
+  e.preventDefault();
 }
 
 onBeforeUnmount(() => {
@@ -302,8 +331,6 @@ function handleClearAll() {
   pageOptions.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
 
-let fromUpdate = false;
-
 async function setSurfaceTransform(transform: { translate?: number[]; scale?: number[] }) {
   if (typeof surfaceEl.value === "undefined") {
     return;
@@ -313,60 +340,74 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
     ...transform,
   };
 
+  const rootRect = rootEl.value.getBoundingClientRect();
+  const surfaceRect = surfaceEl.value.getBoundingClientRect();
+
+  const buffer = 50;
+  let [x, y] = nextTransform.translate;
+  const x_boundary = surfaceRect.width - rootRect.width + buffer;
+  x = Math.max(x, -x_boundary);
+  x = Math.min(x, buffer);
+
+  const y_boundary = surfaceRect.height - rootRect.height + buffer;
+  y = Math.max(y, -y_boundary);
+  y = Math.min(y, buffer);
+
+  nextTransform.translate = [x, y];
+  dragModule.config.drag.initial = [x, y];
+
   surfaceTransform.value = nextTransform;
-  await nextTick();
-
-  const rect = surfaceEl.value.getBoundingClientRect();
-  const container = rootEl.value.getBoundingClientRect();
-
-  const innerBounds = { left: 0, top: 0, width: 0, height: 0 };
-  const bounds = {
-    left: -Infinity,
-    top: -Infinity,
-    right: Infinity,
-    bottom: Infinity,
-  };
-
-  if (rect.width < container.width) {
-    bounds.left = container.left;
-    bounds.right = container.right;
-  } else {
-    innerBounds.left = container.left;
-    innerBounds.width = container.width;
-  }
-
-  if (rect.height < container.height) {
-    bounds.top = container.top;
-    bounds.bottom = container.bottom;
-  } else {
-    innerBounds.top = container.top;
-    innerBounds.height = container.height;
-  }
-
-  moveableSurfaceEl.innerBounds = innerBounds;
-  moveableSurfaceEl.bounds = bounds;
-  moveableSurfaceEl.updateRect();
-
-  if (fromUpdate) {
-    fromUpdate = false;
-    return;
-  }
-  fromUpdate = true;
-  moveableSurfaceEl.request("draggable", { deltaX: 0, deltaY: 0 }, true);
 }
 
-function onSurfaceDrag({ translate }: { target: HTMLElement; translate: number[] }) {
-  if (pageOptions.value.isDrawing) {
+function handleSurfaceHover({ hovering }: { hovering: boolean }) {
+  if (!hovering) {
+    // window.removeEventListener("wheel", cancelEvent, { passive: false });
+    document.removeEventListener("gesturestart", cancelEvent);
+    document.removeEventListener("gesturechange", cancelEvent);
     return;
   }
-  setSurfaceTransform({ translate });
+  // window.addEventListener("wheel", cancelEvent, { passive: false });
+  document.addEventListener("gesturestart", cancelEvent);
+  document.addEventListener("gesturechange", cancelEvent);
 }
 
-function onSurfaceScale({ scale, drag }: { scale: number[]; drag: { translate: number[] } }) {
-  if (pageOptions.value.isDrawing) {
+function handleSurfaceDrag({
+  movement: [x, y],
+  dragging,
+}: {
+  movement: [number, number];
+  dragging: boolean;
+}) {
+  if (!dragging || pageOptions.value.isDrawing) {
     return;
   }
-  setSurfaceTransform({ scale, translate: drag.translate });
+
+  const selectedTool = pageOptions.value.selectedTool as ELEMENT_TYPE;
+  if (
+    selectedTool === ELEMENT_TYPE.CHECKBOX ||
+    selectedTool === ELEMENT_TYPE.TEXTBOX ||
+    selectedTool === ELEMENT_TYPE.CLEAR_ALL ||
+    selectedTool === ELEMENT_TYPE.PASTE ||
+    selectedTool === ELEMENT_TYPE.IMAGE
+  ) {
+    return;
+  }
+
+  setSurfaceTransform({ translate: [x, y] });
+}
+
+function handleSurfacePinch({ offset, pinching }: { offset: [number, number]; pinching: boolean }) {
+  if (!pinching || pageOptions.value.isDrawing) {
+    return;
+  }
+
+  const mappedValue = mapper.value(offset[0]);
+  const scale = [mappedValue, mappedValue];
+  setSurfaceTransform({ scale });
+}
+
+function handleSurfaceScroll({ xy: [x, y], ...state }) {
+  // console.log("scroll", x, y, state);
 }
 
 function handleCameraZoom(zoomStep: number) {
@@ -609,6 +650,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
   pageOptions.value.isDrawing = false;
 }
+
 function handleUndo() {
   const action = coreStore.history[props.pageUid][coreStore.historyIndex[props.pageUid]];
   const element = coreStore.elements[action.elementUid] as BaseElement;
@@ -749,7 +791,6 @@ function handleRedo() {
   /* position: absoulute; */
   width: 100vw;
   height: 100vh;
-  border: 2px solid red;
   overflow: hidden;
 }
 
@@ -764,6 +805,7 @@ function handleRedo() {
   position: absolute;
   top: 0;
   left: 0;
+  transform-origin: left top;
   /* width: 100vw;
   height: 100vh; */
 }
