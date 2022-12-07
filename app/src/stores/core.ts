@@ -195,8 +195,7 @@ export const useCoreStore = defineStore("core", () => {
         detectedStylus: false,
         allowFingerDrawing: true,
 
-        initTransformMatrix: clone(matrixAsObj),
-        transformMatrix: clone(matrixAsObj),
+        transformMatrix: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
       };
 
       pageOptions.value[pageUid] = options;

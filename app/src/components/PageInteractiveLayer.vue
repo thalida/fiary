@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import Selecto from "selecto";
 import Moveable from "moveable";
-import type { TPrimaryKey, ICheckboxElementSettings, ITransformMatrix } from "@/types/core";
+import type { TPrimaryKey } from "@/types/core";
 import { ELEMENT_TYPE, PageHistoryEvent } from "@/constants/core";
 import type TextboxElement from "@/models/elements/TextboxElement";
 import TextboxElementComponent from "@/components/TextboxElement.vue";
@@ -35,7 +35,7 @@ function handleStartInteractiveEdit() {
   activeElementUid.value = null;
   moveableElements = [];
   selectoInteractive = new Selecto({
-    container: rootEl.value,
+    container: document.body,
     selectableTargets: [".interactiveElement"],
     selectByClick: true,
     selectFromInside: false,

@@ -89,7 +89,6 @@ export interface IPageOptions {
   detectedStylus: boolean;
   allowFingerDrawing: boolean;
 
-  initTransformMatrix: ITransformMatrix;
   transformMatrix: ITransformMatrix;
 }
 

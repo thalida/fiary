@@ -58,11 +58,6 @@ const surfaceTransform = ref({
   translate: [0, 0],
   scale: [1, 1],
 });
-const { motionProperties } = useMotionProperties(surfaceEl, {
-  x: 0,
-  y: 0,
-  scale: 1,
-});
 
 const springValues = reactive({ zoom: 0, rotateZ: 0 });
 const spring = useSpring(springValues);
@@ -70,14 +65,20 @@ const spring = useSpring(springValues);
 const mapper = ref();
 
 const surfaceTransformCss = computed(() => {
-  const translate = `translate(${surfaceTransform.value.translate[0]}px, ${surfaceTransform.value.translate[1]}px)`;
-  const scale = `scale(${surfaceTransform.value.scale[0]}, ${surfaceTransform.value.scale[1]})`;
+  if (typeof pageOptions.value === "undefined") {
+    return "";
+  }
+
+  const translate = `translate(${pageOptions.value.transformMatrix.e}px, ${pageOptions.value.transformMatrix.f}px)`;
+  const scale = `scale(${pageOptions.value.transformMatrix.a})`;
 
   return `${translate} ${scale}`;
 });
 const selectedFillColor = computed(() => coreStore.selectedFillColor(props.pageUid));
 const selectedStrokeColor = computed(() => coreStore.selectedStrokeColor(props.pageUid));
 
+let minZoom = 0.25;
+const maxZoom = 4;
 function initScene() {
   coreStore.startAutoSave();
 
@@ -88,11 +89,10 @@ function initScene() {
   const rect = rootEl.value.getBoundingClientRect();
   const longestScreenSize = Math.max(rect.width, rect.height) - 100;
   const longestCanvasSide = Math.max(coreStore.canvasConfig.width, coreStore.canvasConfig.height);
-  const minScale = longestScreenSize / longestCanvasSide;
-  const maxScale = 4;
+  minZoom = longestScreenSize / longestCanvasSide;
   const minSize = longestCanvasSide - longestScreenSize;
-  const maxSize = longestCanvasSide * maxScale;
-  mapper.value = interpolate([-minSize, 0, maxSize], [minScale, 1, maxScale], {
+  const maxSize = longestCanvasSide * maxZoom;
+  mapper.value = interpolate([-minSize, 0, maxSize], [minZoom, 1, maxZoom], {
     clamp: true,
   });
 }
@@ -272,23 +272,10 @@ function getDrawPos(
   rulerElement?: Moveable
 ) {
   const pos = getMousePos(canvas, event, followRuler, rulerElement);
-  let cameraX = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.e : 0;
-  let cameraY = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.f : 0;
   const cameraZoom = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.a : 1;
-  const initMatrixA = pageOptions.value.initTransformMatrix
-    ? pageOptions.value.initTransformMatrix.a
-    : 1;
-  const relativeZoom = initMatrixA / cameraZoom;
-
-  const isInteractiveTool = CANVAS_INTERACTIVE_TOOLS.includes(pageOptions.value.selectedTool);
-  if (isInteractiveTool) {
-    cameraX /= cameraZoom;
-    cameraY /= cameraZoom;
-  }
-
   const transformedPos = {
-    x: pos.x * relativeZoom - cameraX,
-    y: pos.y * relativeZoom - cameraY,
+    x: pos.x / cameraZoom,
+    y: pos.y / cameraZoom,
   };
 
   return {
@@ -335,16 +322,25 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
   if (typeof surfaceEl.value === "undefined") {
     return;
   }
+
   const nextTransform = {
-    ...surfaceTransform.value,
-    ...transform,
+    ...pageOptions.value.transformMatrix,
   };
+  if (typeof transform.translate !== "undefined") {
+    nextTransform.e = transform.translate[0];
+    nextTransform.f = transform.translate[1];
+  }
+  if (typeof transform.scale !== "undefined") {
+    nextTransform.a = transform.scale[0];
+    nextTransform.d = transform.scale[1];
+  }
 
   const rootRect = rootEl.value.getBoundingClientRect();
   const surfaceRect = surfaceEl.value.getBoundingClientRect();
 
   const buffer = 50;
-  let [x, y] = nextTransform.translate;
+  let x = nextTransform.e;
+  let y = nextTransform.f;
   const x_boundary = surfaceRect.width - rootRect.width + buffer;
   x = Math.max(x, -x_boundary);
   x = Math.min(x, buffer);
@@ -353,10 +349,11 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
   y = Math.max(y, -y_boundary);
   y = Math.min(y, buffer);
 
-  nextTransform.translate = [x, y];
+  nextTransform.e = x;
+  nextTransform.f = y;
   dragModule.config.drag.initial = [x, y];
 
-  surfaceTransform.value = nextTransform;
+  pageOptions.value.transformMatrix = nextTransform;
 }
 
 function handleSurfaceHover({ hovering }: { hovering: boolean }) {
@@ -415,23 +412,10 @@ function handleCameraZoom(zoomStep: number) {
     return;
   }
 
-  const isInBounds =
-    zoomStep > 0
-      ? pageOptions.value.transformMatrix.a < 6
-      : pageOptions.value.transformMatrix.a > pageOptions.value.initTransformMatrix.a;
-
-  if (isInBounds) {
-    pageOptions.value.transformMatrix.a += zoomStep;
-    pageOptions.value.transformMatrix.a =
-      Math.round((pageOptions.value.transformMatrix.a + Number.EPSILON) * 100) / 100;
-    pageOptions.value.transformMatrix.d = pageOptions.value.transformMatrix.a;
-  }
-
-  const initMatrixA = pageOptions.value.initTransformMatrix.a;
-  const currMatrixA = pageOptions.value.transformMatrix.a;
-  const relativeZoom = currMatrixA / initMatrixA;
+  const nextZoom = pageOptions.value.transformMatrix.a + zoomStep;
+  const clampedZoom = Math.max(Math.min(nextZoom, maxZoom), minZoom);
   setSurfaceTransform({
-    scale: [relativeZoom, relativeZoom],
+    scale: [clampedZoom, clampedZoom],
   });
 }
 
