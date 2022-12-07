@@ -28,8 +28,12 @@ export default class BaseCanvasElement extends BaseElement {
       dpi: window.devicePixelRatio,
     });
 
-    this.canvasSettings.composition = this.getComposition();
-    this.canvasSettings.opacity = 1;
+    if (typeof this.canvasSettings.composition === "undefined") {
+      this.canvasSettings.composition = this.getComposition();
+    }
+    if (typeof this.canvasSettings.opacity === "undefined") {
+      this.canvasSettings.opacity = 1;
+    }
 
     if (
       CANVAS_LINE_TOOLS.includes(this.tool) &&

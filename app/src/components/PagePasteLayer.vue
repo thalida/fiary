@@ -79,6 +79,9 @@ async function handlePasteStart() {
   for (let i = 0; i < activeElements.length - 1; i += 1) {
     const elementUid = activeElements[i];
     const element = coreStore.elements[elementUid] as BaseCanvasElement;
+    if (typeof element.drawElement === "undefined") {
+      continue;
+    }
     element.drawElement(canvas.value);
   }
   const cutSelectionClip = cloneDeep(cutSelection);
@@ -206,7 +209,14 @@ function setPasteTransform(
   pasteTransform.value = nextTransform;
 }
 
-function onPasteDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
+function onPasteDrag({
+  inputEvent,
+  target,
+  translate,
+}: {
+  target: HTMLElement;
+  translate: number[];
+}) {
   setPasteTransform(target, { translate });
 }
 
