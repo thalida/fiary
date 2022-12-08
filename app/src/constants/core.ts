@@ -8,28 +8,30 @@ export enum PageHistoryEvent {
 }
 
 export enum ELEMENT_TYPE {
-  ERASER = 1,
-  CLEAR_ALL = 2,
-  PEN = 10,
-  MARKER = 11,
-  HIGHLIGHTER = 12,
-  BLOB = 20,
-  CIRCLE = 30,
-  RECTANGLE = 31,
-  TRIANGLE = 32,
-  LINE = 33,
-  CUT = 40,
-  PASTE = 41,
-  IMAGE = 50,
-  CHECKBOX = 60,
-  TEXTBOX = 61,
+  ERASER = 10,
+  CLEAR_ALL = 12,
+  PEN = 20,
+  MARKER = 21,
+  HIGHLIGHTER = 22,
+  BLOB = 30,
+  CIRCLE = 40,
+  RECTANGLE = 41,
+  TRIANGLE = 42,
+  LINE = 43,
+  CUT = 50,
+  PASTE = 51,
+  IMAGE = 60,
+  CHECKBOX = 70,
+  TEXTBOX = 81,
 }
 
-export const CANVAS_POINTER_TOOL = 0;
-export const CANVAS_PAPER_TOOL = 0.1;
+export const CANVAS_POINTER_TOOL = 1;
+export const CANVAS_HAND_TOOL = 2;
+export const CANVAS_PAPER_TOOL = 3;
 
 export const CANVAS_TOOL_CHOICES = [
   { key: CANVAS_POINTER_TOOL, label: "Pointer" },
+  { key: CANVAS_HAND_TOOL, label: "Hand" },
   { key: CANVAS_PAPER_TOOL, label: "Paper" },
   { key: ELEMENT_TYPE.PEN, label: "Pen" },
   { key: ELEMENT_TYPE.MARKER, label: "Marker" },
@@ -53,6 +55,7 @@ export const CANVAS_NONDRAWING_TOOLS = [
   ELEMENT_TYPE.CLEAR_ALL,
   CANVAS_POINTER_TOOL,
   CANVAS_PAPER_TOOL,
+  CANVAS_HAND_TOOL,
 ];
 export const CANVAS_PAPER_TOOLS = [CANVAS_PAPER_TOOL];
 

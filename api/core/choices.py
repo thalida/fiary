@@ -3,22 +3,21 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Tools(models.IntegerChoices):
-    ERASER = 1,
-    CLEAR_ALL = 2,
-    PEN = 10,
-    MARKER = 11,
-    HIGHLIGHTER = 12,
-    BLOB = 20,
-    CIRCLE = 30,
-    RECTANGLE = 31,
-    TRIANGLE = 32,
-    LINE = 33,
-    CUT = 40,
-    PASTE = 41,
-    IMAGE = 50,
-    CHECKBOX = 60,
-    TEXTBOX = 61,
-    PAPER = 70,
+    ERASER = 10,
+    CLEAR_ALL = 12,
+    PEN = 20,
+    MARKER = 21,
+    HIGHLIGHTER = 22,
+    BLOB = 30,
+    CIRCLE = 40,
+    RECTANGLE = 41,
+    TRIANGLE = 42,
+    LINE = 43,
+    CUT = 50,
+    PASTE = 51,
+    IMAGE = 60,
+    CHECKBOX = 70,
+    TEXTBOX = 81,
 
 
 class PatternTypes(models.IntegerChoices):

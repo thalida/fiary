@@ -1,18 +1,9 @@
 <script setup lang="ts">
-import {
-  ref,
-  computed,
-  watch,
-  watchEffect,
-  onBeforeUnmount,
-  nextTick,
-  reactive,
-  onMounted,
-} from "vue";
+import { ref, computed, onBeforeUnmount, reactive, onMounted } from "vue";
 import cloneDeep from "lodash/cloneDeep";
-import Moveable from "moveable";
+import type Moveable from "moveable";
 import { useMotionProperties, useSpring } from "@vueuse/motion";
-import { usePinch, useHover, useDrag } from "@vueuse/gesture";
+import { useGesture, usePinch, useHover, useDrag, useWheel } from "@vueuse/gesture";
 import { interpolate } from "popmotion";
 import {
   PageHistoryEvent as HistoryEvent,
@@ -21,8 +12,8 @@ import {
   CANVAS_PAPER_TOOL,
   CANVAS_LINE_TOOLS,
   TRANSPARENT_COLOR,
-  CANVAS_INTERACTIVE_TOOLS,
   CANVAS_NONDRAWING_TOOLS,
+  CANVAS_HAND_TOOL,
 } from "@/constants/core";
 import type { ICanvasSettings, IElement, IElementPoint, TPrimaryKey } from "@/types/core";
 import { ELEMENT_MAP } from "@/models/elements";
@@ -97,19 +88,18 @@ function initScene() {
   });
 }
 
-const dragModule = useDrag(handleSurfaceDrag, {
-  domTarget: surfaceEl,
-  eventOptions: { passive: false },
-});
-
-usePinch(handleSurfacePinch, {
-  domTarget: surfaceEl,
-  eventOptions: { passive: false },
-});
-
-useHover(handleSurfaceHover, {
-  domTarget: surfaceEl,
-});
+const surfaceGestureModule = useGesture(
+  {
+    onDrag: handleSurfaceDrag,
+    onPinch: handleSurfacePinch,
+    onHover: handleSurfaceHover,
+    onWheel: handleSurfaceScroll,
+  },
+  {
+    domTarget: surfaceEl,
+    eventOptions: { passive: false },
+  }
+);
 
 // Disable viewport pinch zoom on whole app
 function cancelEvent(e: Event) {
@@ -351,19 +341,18 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
 
   nextTransform.e = x;
   nextTransform.f = y;
-  dragModule.config.drag.initial = [x, y];
 
   pageOptions.value.transformMatrix = nextTransform;
 }
 
 function handleSurfaceHover({ hovering }: { hovering: boolean }) {
   if (!hovering) {
-    // window.removeEventListener("wheel", cancelEvent, { passive: false });
+    window.removeEventListener("wheel", cancelEvent, { passive: false });
     document.removeEventListener("gesturestart", cancelEvent);
     document.removeEventListener("gesturechange", cancelEvent);
     return;
   }
-  // window.addEventListener("wheel", cancelEvent, { passive: false });
+  window.addEventListener("wheel", cancelEvent, { passive: false });
   document.addEventListener("gesturestart", cancelEvent);
   document.addEventListener("gesturechange", cancelEvent);
 }
@@ -375,22 +364,16 @@ function handleSurfaceDrag({
   movement: [number, number];
   dragging: boolean;
 }) {
-  if (!dragging || pageOptions.value.isDrawing) {
-    return;
-  }
-
-  const selectedTool = pageOptions.value.selectedTool as ELEMENT_TYPE;
-  if (
-    selectedTool === ELEMENT_TYPE.CHECKBOX ||
-    selectedTool === ELEMENT_TYPE.TEXTBOX ||
-    selectedTool === ELEMENT_TYPE.CLEAR_ALL ||
-    selectedTool === ELEMENT_TYPE.PASTE ||
-    selectedTool === ELEMENT_TYPE.IMAGE
-  ) {
+  if (!dragging || pageOptions.value.selectedTool !== CANVAS_HAND_TOOL) {
     return;
   }
 
   setSurfaceTransform({ translate: [x, y] });
+
+  surfaceGestureModule.config.drag.initial = [
+    pageOptions.value.transformMatrix.e,
+    pageOptions.value.transformMatrix.f,
+  ];
 }
 
 function handleSurfacePinch({ offset, pinching }: { offset: [number, number]; pinching: boolean }) {
@@ -400,11 +383,30 @@ function handleSurfacePinch({ offset, pinching }: { offset: [number, number]; pi
 
   const mappedValue = mapper.value(offset[0]);
   const scale = [mappedValue, mappedValue];
+
   setSurfaceTransform({ scale });
+  surfaceGestureModule.config.drag.initial = [
+    pageOptions.value.transformMatrix.e,
+    pageOptions.value.transformMatrix.f,
+  ];
 }
 
-function handleSurfaceScroll({ xy: [x, y], ...state }) {
-  // console.log("scroll", x, y, state);
+function handleSurfaceScroll({
+  xy: [x, y],
+  wheeling,
+}: {
+  xy: [number, number];
+  wheeling: boolean;
+}) {
+  if (!wheeling) {
+    return;
+  }
+
+  setSurfaceTransform({ translate: [-x, -y] });
+  surfaceGestureModule.state.wheel.values = [
+    -pageOptions.value.transformMatrix.e,
+    -pageOptions.value.transformMatrix.f,
+  ];
 }
 
 function handleCameraZoom(zoomStep: number) {
@@ -417,6 +419,10 @@ function handleCameraZoom(zoomStep: number) {
   setSurfaceTransform({
     scale: [clampedZoom, clampedZoom],
   });
+  surfaceGestureModule.config.drag.initial = [
+    pageOptions.value.transformMatrix.e,
+    pageOptions.value.transformMatrix.f,
+  ];
 }
 
 function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
@@ -776,6 +782,7 @@ function handleRedo() {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  background: #333;
 }
 
 .toolbar {
