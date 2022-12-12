@@ -12,6 +12,7 @@ import type BaseCanvasElement from "@/models/BaseCanvasElement";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
+const page = computed(() => coreStore.pages[props.pageUid]);
 const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
@@ -75,6 +76,17 @@ async function handlePasteStart() {
 
   clearCanvas(canvas.value);
   ctx.translate(-minX, -minY);
+
+  if (typeof page.value.canvasImage !== "undefined" && page.value.canvasImage !== null) {
+    ctx.drawImage(
+      page.value.canvasImage,
+      0,
+      0,
+      coreStore.canvasConfig.width,
+      coreStore.canvasConfig.width
+    );
+  }
+
   activeElements = coreStore.activeElements(props.pageUid);
   for (let i = 0; i < activeElements.length - 1; i += 1) {
     const elementUid = activeElements[i];

@@ -25,6 +25,7 @@ query MyPages($uid: UUID) {
         patternSpacing
         patternOpacity
         elementOrder
+        canvasDataUrl
       }
     }
   }

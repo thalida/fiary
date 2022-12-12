@@ -62,6 +62,9 @@ export interface IPage {
   patternSize: number | null;
   patternSpacing: number | null;
   elementOrder: TPrimaryKey[];
+  canvasDataUrl: string | null;
+
+  canvasImage?: HTMLImageElement | null;
 }
 
 export interface IPageOptions {

@@ -3137,6 +3137,18 @@
               "deprecationReason": null,
               "description": null,
               "isDeprecated": false,
+              "name": "canvasDataUrl",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
               "name": "elementOrder",
               "type": {
                 "kind": "NON_NULL",
@@ -5885,6 +5897,16 @@
             {
               "defaultValue": null,
               "description": null,
+              "name": "canvasDataUrl",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              }
+            },
+            {
+              "defaultValue": null,
+              "description": null,
               "name": "clientMutationId",
               "type": {
                 "kind": "SCALAR",
@@ -6019,6 +6041,16 @@
               "type": {
                 "kind": "SCALAR",
                 "name": "Int",
+                "ofType": null
+              }
+            },
+            {
+              "defaultValue": null,
+              "description": null,
+              "name": "canvasDataUrl",
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
                 "ofType": null
               }
             },

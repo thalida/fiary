@@ -6,6 +6,7 @@ import { computed, onMounted, ref, watch } from "vue";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
+const page = computed(() => coreStore.pages[props.pageUid]);
 const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const drawingCanvas = ref<HTMLCanvasElement>();
 const emits = defineEmits<{
@@ -32,7 +33,8 @@ onMounted(() => {
 
   ctx.scale(dpi, dpi);
 
-  coreStore.initPageOptions(drawingCanvas.value, props.pageUid, ctx.getTransform());
+  coreStore.initPageOptions(drawingCanvas.value, props.pageUid);
+
   drawElements();
 
   watch(
@@ -57,6 +59,16 @@ function drawElements() {
   }
 
   ctx.clearRect(0, 0, drawingCanvas.value.width, drawingCanvas.value.height);
+
+  if (typeof page.value.canvasImage !== "undefined" && page.value.canvasImage !== null) {
+    ctx.drawImage(
+      page.value.canvasImage,
+      0,
+      0,
+      coreStore.canvasConfig.width,
+      coreStore.canvasConfig.width
+    );
+  }
 
   const drawElementUids = coreStore.activeElements(props.pageUid);
   for (let i = 0; i < drawElementUids.length; i += 1) {

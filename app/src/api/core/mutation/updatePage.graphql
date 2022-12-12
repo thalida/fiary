@@ -7,6 +7,7 @@ mutation UpdatePage(
   $patternSize: Float
   $patternSpacing: Float
   $patternOpacity: Int
+  $canvasDataUrl: String
 ) {
   updatePage(
     input: {
@@ -18,6 +19,7 @@ mutation UpdatePage(
       patternSize: $patternSize
       patternSpacing: $patternSpacing
       patternOpacity: $patternOpacity
+      canvasDataUrl: $canvasDataUrl
     }
   ) {
     page {
@@ -45,6 +47,7 @@ mutation UpdatePage(
       patternSpacing
       patternOpacity
       elementOrder
+      canvasDataUrl
     }
   }
 }

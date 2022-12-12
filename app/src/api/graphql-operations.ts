@@ -113,6 +113,7 @@ export type CreateNotebookPayload = {
 };
 
 export type CreatePageInput = {
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookUid: Scalars["UUID"];
   paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
@@ -448,6 +449,7 @@ export type PageInfo = {
 
 export type PageNode = Node & {
   __typename?: "PageNode";
+  canvasDataUrl?: Maybe<Scalars["String"]>;
   createdAt: Scalars["DateTime"];
   elementOrder: Array<Scalars["UUID"]>;
   elements: ElementNodeConnection;
@@ -905,6 +907,7 @@ export type UpdateNotebookPayload = {
 };
 
 export type UpdatePageInput = {
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
   notebookUid?: InputMaybe<Scalars["UUID"]>;
   paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
@@ -1162,6 +1165,7 @@ export type CreatePageMutation = {
       patternSpacing?: number | null;
       patternOpacity?: number | null;
       elementOrder: Array<any>;
+      canvasDataUrl?: string | null;
       notebook: { __typename?: "NotebookNode"; uid: any; pageOrder: Array<any> };
       paperSwatch?: {
         __typename?: "PaletteSwatchNode";
@@ -1290,6 +1294,7 @@ export type UpdatePageMutationVariables = Exact<{
   patternSize?: InputMaybe<Scalars["Float"]>;
   patternSpacing?: InputMaybe<Scalars["Float"]>;
   patternOpacity?: InputMaybe<Scalars["Int"]>;
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
 }>;
 
 export type UpdatePageMutation = {
@@ -1306,6 +1311,7 @@ export type UpdatePageMutation = {
       patternSpacing?: number | null;
       patternOpacity?: number | null;
       elementOrder: Array<any>;
+      canvasDataUrl?: string | null;
       notebook: { __typename?: "NotebookNode"; uid: any; pageOrder: Array<any> };
       paperSwatch?: {
         __typename?: "PaletteSwatchNode";
@@ -1428,6 +1434,7 @@ export type MyPagesQuery = {
         patternSpacing?: number | null;
         patternOpacity?: number | null;
         elementOrder: Array<any>;
+        canvasDataUrl?: string | null;
         notebook: { __typename?: "NotebookNode"; uid: any };
         paperSwatch?: {
           __typename?: "PaletteSwatchNode";
@@ -2164,6 +2171,7 @@ export const CreatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                       { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
                       { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
                     ],
                   },
                 },
@@ -2645,6 +2653,11 @@ export const UpdatePageDocument = {
           variable: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
         },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -2701,6 +2714,11 @@ export const UpdatePageDocument = {
                       kind: "ObjectField",
                       name: { kind: "Name", value: "patternOpacity" },
                       value: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "canvasDataUrl" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
                     },
                   ],
                 },
@@ -2774,6 +2792,7 @@ export const UpdatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                       { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
                       { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
                     ],
                   },
                 },
@@ -3178,6 +3197,7 @@ export const MyPagesDocument = {
                             { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
                             { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
                             { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
+                            { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
                           ],
                         },
                       },

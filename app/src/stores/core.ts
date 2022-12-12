@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import merge from "lodash/merge";
@@ -27,8 +26,6 @@ import type {
   IPalettes,
   IPaletteSwatch,
   IRooms,
-  ITransformMatrix,
-  TColor,
   TPrimaryKey,
 } from "@/types/core";
 import {
@@ -46,7 +43,6 @@ import {
 } from "@/constants/core";
 import type BaseElement from "@/models/BaseElement";
 import { ELEMENT_MAP } from "@/models/elements";
-import { clone, cloneDeep } from "lodash";
 
 export const useCoreStore = defineStore("core", () => {
   const rooms = ref({} as IRooms);
@@ -155,20 +151,8 @@ export const useCoreStore = defineStore("core", () => {
     return getSwatchColor.value(options.strokePaletteUid, options.strokeSwatchUid);
   });
 
-  function initPageOptions(
-    canvas: HTMLCanvasElement,
-    pageUid: TPrimaryKey,
-    matrix: ITransformMatrix
-  ) {
+  function initPageOptions(canvas: HTMLCanvasElement, pageUid: TPrimaryKey) {
     if (typeof pageOptions.value[pageUid] === "undefined") {
-      const matrixAsObj = {
-        a: matrix.a,
-        b: matrix.b,
-        c: matrix.c,
-        d: matrix.d,
-        e: matrix.e,
-        f: matrix.f,
-      };
       const options = {
         drawingCanvas: canvas,
 
@@ -388,6 +372,7 @@ export const useCoreStore = defineStore("core", () => {
 
   function storePage(page: any) {
     const currPage = pages.value[page.uid];
+    const isInit = typeof currPage === "undefined" || currPage === null;
     const formattedPage: Partial<IPage> = {
       uid: page.uid,
       updatedAt: page.updatedAt,
@@ -409,6 +394,7 @@ export const useCoreStore = defineStore("core", () => {
       patternSize: typeof page.patternSize !== "undefined" ? page.patternSize : null,
       patternSpacing: typeof page.patternSpacing !== "undefined" ? page.patternSpacing : null,
       patternOpacity: page.patternOpacity ? page.patternOpacity : DEFAULT_PATTERN_OPACITY,
+      canvasDataUrl: page.canvasDataUrl ? page.canvasDataUrl : null,
     };
 
     pages.value[page.uid] = merge(currPage, formattedPage);
@@ -428,7 +414,26 @@ export const useCoreStore = defineStore("core", () => {
       clearAllElementIndexes.value[page.uid] = [];
     }
 
-    return pages.value[page.uid];
+    // const image = new Image();
+    // image.onload = () => {
+    //   page.canvasImage = image;
+    // };
+    // image.src = page.canvasDataUrl;
+
+    return new Promise((resolve, reject) => {
+      if (!isInit || pages.value[page.uid].canvasDataUrl === null) {
+        resolve(pages.value[page.uid]);
+        return;
+      }
+
+      const image = new Image();
+      image.onload = () => {
+        pages.value[page.uid].canvasImage = image;
+        resolve(pages.value[page.uid]);
+      };
+      image.onerror = reject;
+      image.src = pages.value[page.uid].canvasDataUrl;
+    });
   }
 
   async function fetchPage(uid: TPrimaryKey) {
@@ -443,8 +448,9 @@ export const useCoreStore = defineStore("core", () => {
       return;
     }
 
-    const page = res.myPages[0];
-    return storePage(page);
+    const pageRes = res.myPages[0];
+    const page = await storePage(pageRes);
+    return page;
   }
 
   async function createPage(notebookUid: TPrimaryKey) {
@@ -458,7 +464,7 @@ export const useCoreStore = defineStore("core", () => {
       throw new Error("Failed to create page");
     }
 
-    return storePage(page);
+    return await storePage(page);
   }
 
   async function updatePage(uid: TPrimaryKey, page: Partial<IPage>) {
@@ -470,7 +476,7 @@ export const useCoreStore = defineStore("core", () => {
       throw new Error("Failed to update page");
     }
 
-    return storePage(updatedPage);
+    return await storePage(updatedPage);
   }
 
   function markDirtyElement(elementUid: TPrimaryKey) {
@@ -513,7 +519,7 @@ export const useCoreStore = defineStore("core", () => {
     clearAllElementIndexes.value[pageUid].sort((a, b) => a - b);
   }
 
-  async function startAutoSave(pageUid: TPrimaryKey) {
+  async function startAutoSave() {
     if (autoSaveInterval.value) {
       return;
     }
@@ -521,7 +527,7 @@ export const useCoreStore = defineStore("core", () => {
     const interval = 1000 * 60 * 5; // 5 minutes
 
     autoSaveInterval.value = setInterval(async () => {
-      batchSaveElements(pageUid);
+      batchSaveElements();
     }, interval);
   }
 
@@ -546,16 +552,35 @@ export const useCoreStore = defineStore("core", () => {
 
     isSavingElements.value = true;
 
-    const elementsToSave = dirtyElements.value.map((elementUid) => {
+    const elementsToSave: string[] = [];
+    const pagesToSave: string[] = [];
+
+    for (let i = 0; i < dirtyElements.value.length; i += 1) {
+      const elementUid = dirtyElements.value[i];
       const element = elements.value[elementUid] as BaseElement;
-      const apiElement = element.toBatchApiFormat();
-      element.isDirty = false;
-      return apiElement;
-    });
+      const pageUid = element.pageUid;
+      if (!pagesToSave.includes(pageUid)) {
+        pagesToSave.push(pageUid);
+      }
+      if (!elementsToSave.includes(elementUid)) {
+        const apiElement = element.toBatchApiFormat();
+        element.isDirty = false;
+        elementsToSave.push(apiElement);
+      }
+    }
+
     dirtyElements.value = [];
 
     const { execute } = useMutation(BatchSaveElementsDocument);
     execute({ elements: elementsToSave }).then(() => {
+      for (let i = 0; i < pagesToSave.length; i += 1) {
+        const pageUid = pagesToSave[i];
+        const canvas = pageOptions.value[pageUid].drawingCanvas;
+        if (canvas !== null) {
+          const canvasDataUrl = canvas.toDataURL();
+          updatePage(pageUid, { canvasDataUrl });
+        }
+      }
       isSavingElements.value = false;
     });
   }

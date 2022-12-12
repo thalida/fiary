@@ -22,10 +22,10 @@ watchEffect(() => {
   if (isAuthenticated.value) {
     isLoading.value = true;
     coreStore.fetchPage(props.pageUid).then(() => {
-      coreStore.fetchElements(props.pageUid).then(() => {
-        isLoading.value = false;
-      });
-      // isLoading.value = false;
+      // coreStore.fetchElements(props.pageUid).then(() => {
+      //   isLoading.value = false;
+      // });
+      isLoading.value = false;
     });
   }
 });

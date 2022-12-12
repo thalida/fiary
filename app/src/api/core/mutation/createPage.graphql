@@ -43,6 +43,7 @@ mutation CreatePage(
       patternSpacing
       patternOpacity
       elementOrder
+      canvasDataUrl
     }
   }
 }

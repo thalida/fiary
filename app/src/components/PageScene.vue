@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount, reactive, onMounted } from "vue";
+import { ref, computed, onBeforeUnmount, reactive } from "vue";
 import cloneDeep from "lodash/cloneDeep";
 import type Moveable from "moveable";
-import { useMotionProperties, useSpring } from "@vueuse/motion";
-import { useGesture, usePinch, useHover, useDrag, useWheel } from "@vueuse/gesture";
+import { useGesture } from "@vueuse/gesture";
 import { interpolate } from "popmotion";
 import {
   PageHistoryEvent as HistoryEvent,
@@ -45,13 +44,6 @@ const pasteLayer = ref<typeof PagePasteLayer>();
 const addImageLayer = ref<typeof PageAddImageLayer>();
 const rulerLayer = ref<typeof PageRulerLayer>();
 const toolbar = ref<typeof PageToolbar>();
-const surfaceTransform = ref({
-  translate: [0, 0],
-  scale: [1, 1],
-});
-
-const springValues = reactive({ zoom: 0, rotateZ: 0 });
-const spring = useSpring(springValues);
 
 const mapper = ref();
 
