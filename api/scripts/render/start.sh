@@ -2,4 +2,4 @@
 # exit on error
 set -o errexit
 
-pipenv run gunicorn api.api.wsgi:application
+pipenv run gunicorn api.wsgi:application
