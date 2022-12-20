@@ -13,6 +13,7 @@ django-cors-headers = "*"
 social-auth-app-django = "*"
 django-graphql-jwt = "*"
 gunicorn = "*"
+whitenoise = {extras = ["brotli"], version = "*"}
 
 [dev-packages]
 
