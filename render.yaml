@@ -25,6 +25,7 @@ services:
   - type: web
     name: prod:api
     env: python
+    plan: free
     rootDir: api/
     buildFilter:
       paths:
