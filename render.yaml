@@ -4,6 +4,7 @@ previewsExpireAfterDays: 1
 services:
   # App
   - type: web
+    plan: free
     name: app
     env: static
     rootDir: app/
@@ -23,6 +24,7 @@ services:
 
   # API
   - type: web
+    plan: free
     name: api
     env: python
     rootDir: api/
@@ -47,3 +49,4 @@ databases:
   - name: postgres
     databaseName: fiary
     user: admin
+    plan: free
