@@ -24,6 +24,7 @@ import type {
   IPages,
   IPalette,
   IPalettes,
+  TColor,
   IPaletteSwatch,
   IRooms,
   TPrimaryKey,
@@ -362,7 +363,7 @@ export const useCoreStore = defineStore("core", () => {
     return notebooks.value[notebook.uid];
   }
 
-  function storePage(page: any) {
+  function storePage(page: any): Promise<IPage> {
     const currPage = pages.value[page.uid];
     const isInit = typeof currPage === "undefined" || currPage === null;
     const formattedPage: Partial<IPage> = {
@@ -414,7 +415,7 @@ export const useCoreStore = defineStore("core", () => {
         resolve(pages.value[page.uid]);
       };
       image.onerror = reject;
-      image.src = pages.value[page.uid].canvasDataUrl;
+      image.src = pages.value[page.uid].canvasDataUrl as string;
     });
   }
 

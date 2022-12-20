@@ -301,7 +301,7 @@ function handleClearAll() {
 }
 
 async function setSurfaceTransform(transform: { translate?: number[]; scale?: number[] }) {
-  if (typeof surfaceEl.value === "undefined") {
+  if (typeof surfaceEl.value === "undefined" || typeof rootEl.value === "undefined") {
     return;
   }
 
@@ -339,7 +339,7 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
 
 function handleSurfaceHover({ hovering }: { hovering: boolean }) {
   if (!hovering) {
-    window.removeEventListener("wheel", cancelEvent, { passive: false });
+    window.removeEventListener("wheel", cancelEvent);
     document.removeEventListener("gesturestart", cancelEvent);
     document.removeEventListener("gesturechange", cancelEvent);
     return;
@@ -362,6 +362,9 @@ function handleSurfaceDrag({
 
   setSurfaceTransform({ translate: [x, y] });
 
+  if (typeof surfaceGestureModule.config.drag === "undefined") {
+    return;
+  }
   surfaceGestureModule.config.drag.initial = [
     pageOptions.value.transformMatrix.e,
     pageOptions.value.transformMatrix.f,
@@ -377,6 +380,10 @@ function handleSurfacePinch({ offset, pinching }: { offset: [number, number]; pi
   const scale = [mappedValue, mappedValue];
 
   setSurfaceTransform({ scale });
+
+  if (typeof surfaceGestureModule.config.drag === "undefined") {
+    return;
+  }
   surfaceGestureModule.config.drag.initial = [
     pageOptions.value.transformMatrix.e,
     pageOptions.value.transformMatrix.f,
@@ -411,6 +418,10 @@ function handleCameraZoom(zoomStep: number) {
   setSurfaceTransform({
     scale: [clampedZoom, clampedZoom],
   });
+
+  if (typeof surfaceGestureModule.config.drag === "undefined") {
+    return;
+  }
   surfaceGestureModule.config.drag.initial = [
     pageOptions.value.transformMatrix.e,
     pageOptions.value.transformMatrix.f,

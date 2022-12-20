@@ -15,7 +15,7 @@ import "./styles/main.css";
 const app = createApp(App);
 
 const graphqlClient = createClient({
-  url: "http://localhost:8000/graphql/", // your endpoint.
+  url: import.meta.env.VITE_GRAPHQL_URL,
 });
 
 app.use(graphqlClient);

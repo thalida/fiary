@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watchPostEffect } from "vue";
+import type { OnDrag, OnRotate } from "moveable";
 import MoveableVue from "vue3-moveable";
 import type { TPrimaryKey } from "@/types/core";
 import { useCoreStore } from "@/stores/core";
@@ -42,7 +43,7 @@ watchPostEffect(() => {
 });
 
 function setRulerTransform(
-  target: HTMLElement,
+  target: HTMLElement | SVGElement,
   transform: { translate?: number[]; scale?: number[]; rotate?: number }
 ) {
   const nextTransform = {
@@ -65,19 +66,11 @@ function onRulerMoveEnd() {
   pageOptions.value.isMovingRuler = false;
 }
 
-function onRulerDrag({ target, translate }: { target: HTMLElement; translate: number[] }) {
+function onRulerDrag({ target, translate }: OnDrag) {
   setRulerTransform(target, { translate });
 }
 
-function onRulerRotate({
-  target,
-  drag,
-  rotation,
-}: {
-  target: HTMLElement;
-  drag: { translate: number[] };
-  rotation: number;
-}) {
+function onRulerRotate({ target, drag, rotation }: OnRotate) {
   const normalizedRotation = rotation % 360;
   const absRotation = Math.abs(normalizedRotation);
   let transformRotation = normalizedRotation;

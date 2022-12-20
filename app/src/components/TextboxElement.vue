@@ -58,6 +58,10 @@ const supportedPalettes = computed(() => {
 });
 
 onMounted(() => {
+  if (editor.value === null) {
+    return;
+  }
+
   quill = new Quill(editor.value, {
     placeholder: "Compose an epic...",
     modules: {
@@ -72,7 +76,7 @@ onMounted(() => {
     theme: "snow",
   });
 
-  quill.setContents(textareaContents.value);
+  quill.setContents(textareaContents.value as never);
 
   quill.on("text-change", () => {
     emit("change", {

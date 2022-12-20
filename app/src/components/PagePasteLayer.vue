@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
 import { cloneDeep } from "lodash";
-import Moveable from "moveable";
+import Moveable, { type OnDrag, type OnRotate, type OnScale } from "moveable";
 import type { ICanvasSettings, TPrimaryKey } from "@/types/core";
 import { clearCanvas } from "@/utils/canvas";
 import { ELEMENT_TYPE, TRANSPARENT_COLOR } from "@/constants/core";
@@ -205,7 +205,7 @@ function handlePasteDelete() {
 }
 
 function setPasteTransform(
-  target: HTMLElement,
+  target: HTMLElement | SVGElement,
   transform: { translate?: number[]; scale?: number[]; rotate?: number }
 ) {
   const nextTransform = {
@@ -221,38 +221,15 @@ function setPasteTransform(
   pasteTransform.value = nextTransform;
 }
 
-function onPasteDrag({
-  inputEvent,
-  target,
-  translate,
-}: {
-  target: HTMLElement;
-  translate: number[];
-}) {
+function onPasteDrag({ target, translate }: OnDrag) {
   setPasteTransform(target, { translate });
 }
 
-function onPasteRotate({
-  target,
-  rotate,
-  drag,
-}: {
-  target: HTMLElement;
-  rotate: number;
-  drag: { translate: number[] };
-}) {
-  setPasteTransform(target, { rotate, translate: drag.translate });
+function onPasteRotate({ target, rotation, drag }: OnRotate) {
+  setPasteTransform(target, { rotate: rotation, translate: drag.translate });
 }
 
-function onPasteScale({
-  target,
-  scale,
-  drag,
-}: {
-  target: HTMLElement;
-  scale: number[];
-  drag: { translate: number[] };
-}) {
+function onPasteScale({ target, scale, drag }: OnScale) {
   setPasteTransform(target, { scale, translate: drag.translate });
 }
 
