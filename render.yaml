@@ -4,8 +4,7 @@ previewsExpireAfterDays: 1
 services:
   # App
   - type: web
-    plan: free
-    name: app
+    name: prod:app
     env: static
     rootDir: app/
     buildFilter:
@@ -24,8 +23,7 @@ services:
 
   # API
   - type: web
-    plan: free
-    name: api
+    name: prod:api
     env: python
     rootDir: api/
     buildFilter:
@@ -38,7 +36,7 @@ services:
         value: 3.10
       - key: DATABASE_URL
         fromDatabase:
-          name: postgresql
+          name: prod:db
           property: connectionString
       - key: DJANGO_SECRET_KEY
         generateValue: true
@@ -46,7 +44,7 @@ services:
         value: 4
 
 databases:
-  - name: postgresql
+  - name: prod:db
     databaseName: fiary
     user: admin
     plan: free
