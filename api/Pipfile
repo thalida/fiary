@@ -12,6 +12,7 @@ psycopg2-binary = "*"
 django-cors-headers = "*"
 social-auth-app-django = "*"
 django-graphql-jwt = "*"
+gunicorn = "*"
 
 [dev-packages]
 
