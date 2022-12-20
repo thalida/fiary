@@ -33,15 +33,24 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = 'RENDER' not in os.environ
 
-ALLOWED_HOSTS = []
-
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGIN_REGEXES = []
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.fiary\.app$",
+]
+
+ALLOWED_HOSTS = [
+    '.fiary.app'
+]
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 if DEBUG:
     ALLOWED_HOSTS += [
         'localhost',
         '127.0.0.1',
+        '.onrender.com',
     ]
 
     CORS_ALLOWED_ORIGIN_REGEXES += [
