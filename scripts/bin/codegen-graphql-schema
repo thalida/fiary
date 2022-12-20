@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# background color using ANSI escape
+bgBlack=$(tput setab 0) # black
+bgRed=$(tput setab 1) # red
+bgGreen=$(tput setab 2) # green
+bgYellow=$(tput setab 3) # yellow
+bgBlue=$(tput setab 4) # blue
+bgMagenta=$(tput setab 5) # magenta
+bgCyan=$(tput setab 6) # cyan
+bgWhite=$(tput setab 7) # white
+
+# foreground color using ANSI escape
+fgBLack=$(tput setaf 0) # black
+fgRed=$(tput setaf 1) # red
+fgGreen=$(tput setaf 2) # green
+fgYellow=$(tput setaf 3) # yellow
+fgBlue=$(tput setaf 4) # blue
+fgMagenta=$(tput setaf 5) # magenta
+fgCyan=$(tput setaf 6) # cyan
+fgWhite=$(tput setaf 7) # white
+
+# text editing options
+txBold=$(tput bold)   # bold
+txHalf=$(tput dim)    # half-bright
+txUnderline=$(tput smul)   # underline
+txEndUnder=$(tput rmul)   # exit underline
+txReverse=$(tput rev)    # reverse
+txStandout=$(tput smso)   # standout
+txEndStand=$(tput rmso)   # exit standout
+txReset=$(tput sgr0)   # reset attributes
+
+echo -e "${txBold}${fgCyan}====================================${txReset}"
+echo -e "${txBold}${fgCyan}       Codegen GraphQL Schema       ${txReset}"
+echo -e "${txBold}${fgCyan}====================================${txReset}"
+
+echo -e "\n${txUnderline}Step 1/3: Generating GraphQL Schema${txReset}"
+cd /workspace/api
+python manage.py graphql_schema --schema api.schema.schema --out graphql-schema.json
+
+echo -e "\n${txUnderline}Step 2/3: Generating JS Operations${txReset}"
+cd /workspace/app
+npx graphql-codegen &
+PID=$!
+i=1
+sp="/-\|"
+echo -n ' '
+while [ -d /proc/$PID ]
+do
+  printf "${fgYellow}\b${sp:i++%${#sp}:1}${txReset}"
+  sleep 0.3
+done
+
+printf "\b "
+echo -e "${txBold}${fgGreen}Sucessfully saved GraphQL operations to graphql-operations.ts${txReset}"
+
+echo -e "\n${txUnderline}Step 3/3: Linting and Formatting Generated File${txReset}"
+cd /workspace/app
+npx eslint ./src/api/graphql-operations.ts --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --quiet --ignore-path .gitignore &
+PID=$!
+i=1
+sp="/-\|"
+echo -n ' '
+while [ -d /proc/$PID ]
+do
+  printf "${fgYellow}\b${sp:i++%${#sp}:1}${txReset}"
+  sleep 0.3
+done
+
+sed -i 's/import { TypedDocumentNode as DocumentNode }/import type { TypedDocumentNode as DocumentNode }/' ./src/api/graphql-operations.ts
+
+printf "\b "
+echo -e "\n${txBold}${fgGreen}Done${txReset}"

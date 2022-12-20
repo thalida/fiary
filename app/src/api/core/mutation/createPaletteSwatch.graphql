@@ -1,0 +1,12 @@
+mutation CreatePaletteSwatch($paletteUid: UUID!, $swatch: JSONString!) {
+  createPaletteSwatch(input: { paletteUid: $paletteUid, swatch: $swatch }) {
+    swatch {
+      uid
+      swatch
+      isDefault
+      palette {
+        uid
+      }
+    }
+  }
+}

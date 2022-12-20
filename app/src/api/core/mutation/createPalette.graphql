@@ -1,0 +1,29 @@
+mutation CreatePalette($title: String, $swatches: [JSONString]) {
+  createPalette(input: { title: $title, swatches: $swatches }) {
+    palette {
+      uid
+      updatedAt
+      createdAt
+      title
+      paletteType
+      isPublic
+      collections {
+        edges {
+          node {
+            uid
+            paletteOrder
+          }
+        }
+      }
+      swatches {
+        edges {
+          node {
+            uid
+            swatch
+            isDefault
+          }
+        }
+      }
+    }
+  }
+}

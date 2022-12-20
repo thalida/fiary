@@ -1,0 +1,28 @@
+query MyNotebooks($uid: UUID) {
+  myNotebooks(uid: $uid) {
+    edges {
+      node {
+        bookshelf {
+          uid
+        }
+        uid
+        updatedAt
+        createdAt
+        title
+        pageOrder
+        pages {
+          edges {
+            node {
+              uid
+              updatedAt
+              createdAt
+              notebook {
+                uid
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

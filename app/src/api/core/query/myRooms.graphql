@@ -1,0 +1,39 @@
+query MyRooms {
+  myRooms {
+    edges {
+      node {
+        uid
+        updatedAt
+        createdAt
+        bookshelfOrder
+        bookshelves {
+          edges {
+            node {
+            	room {
+                uid
+              }
+              uid
+              updatedAt
+              createdAt
+              notebookOrder
+              notebooks {
+                edges {
+                  node {
+                    bookshelf {
+                      uid
+                    }
+                    uid
+                    updatedAt
+                    createdAt
+                    title
+                    pageOrder
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+query MyPalettes($uid: UUID) {
+  myPalettes(uid: $uid) {
+    edges {
+      node {
+        uid
+        updatedAt
+        createdAt
+        title
+        paletteType
+        isPublic
+        collections {
+          edges {
+            node {
+              uid
+              paletteOrder
+            }
+          }
+        }
+        swatches {
+          edges {
+            node {
+              uid
+              swatch
+              isDefault
+            }
+          }
+        }
+      }
+    }
+  }
+}

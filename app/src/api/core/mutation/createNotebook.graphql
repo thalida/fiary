@@ -1,0 +1,15 @@
+mutation CreateNotebook($bookshelfUid: UUID!, $title: String) {
+  createNotebook(input: {bookshelfUid: $bookshelfUid, title: $title}) {
+    notebook {
+      bookshelf {
+        uid
+        notebookOrder
+      }
+      uid
+      updatedAt
+      createdAt
+      title
+      pageOrder
+    }
+  }
+}

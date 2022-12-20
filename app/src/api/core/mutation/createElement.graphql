@@ -1,0 +1,49 @@
+mutation CreateElement(
+  $pageUid: UUID!
+  $tool: Int!
+  $points: JSONString!
+  $settings: JSONString
+  $transform: JSONString
+  $dimensions: JSONString
+  $canvasSettings: JSONString
+  $canvasDataUrl: String
+  $isCached: Boolean
+  $isHtmlElement: Boolean
+  $isHidden: Boolean
+) {
+  createElement(
+    input: {
+      pageUid: $pageUid
+      tool: $tool
+      points: $points
+      settings: $settings
+      transform: $transform
+      dimensions: $dimensions
+      canvasSettings: $canvasSettings
+      canvasDataUrl: $canvasDataUrl
+      isCached: $isCached
+      isHtmlElement: $isHtmlElement
+      isHidden: $isHidden
+    }
+  ) {
+    element {
+      page {
+        uid
+        elementOrder
+      }
+      uid
+      updatedAt
+      createdAt
+      tool
+      points
+      settings
+      transform
+      dimensions
+      canvasSettings
+      canvasDataUrl
+      isCached
+      isHtmlElement
+      isHidden
+    }
+  }
+}

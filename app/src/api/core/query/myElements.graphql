@@ -1,0 +1,25 @@
+query MyElements($uid:UUID, $pageUid:UUID, $isHtmlElement: Boolean) {
+  myElements(uid: $uid, page_Uid: $pageUid, isHtmlElement: $isHtmlElement) {
+    edges {
+      node {
+        page {
+          uid
+          elementOrder
+        }
+        uid
+        updatedAt
+        createdAt
+        tool
+        points
+        settings
+        transform
+        dimensions
+        canvasSettings
+        canvasDataUrl
+        isCached
+        isHtmlElement
+        isHidden
+      }
+    }
+  }
+}

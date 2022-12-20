@@ -1,0 +1,32 @@
+query MyPages($uid: UUID) {
+  myPages(uid: $uid) {
+    edges {
+      node {
+        notebook {
+          uid
+        }
+        uid
+        updatedAt
+        createdAt
+        paperSwatch {
+          uid
+          palette {
+            uid
+          }
+        }
+        patternSwatch {
+          uid
+          palette {
+            uid
+          }
+        }
+        patternType
+        patternSize
+        patternSpacing
+        patternOpacity
+        elementOrder
+        canvasDataUrl
+      }
+    }
+  }
+}

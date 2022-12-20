@@ -1,0 +1,49 @@
+mutation CreatePage(
+  $notebookUid: UUID!
+  $paperSwatchUid: UUID!
+  $patternSwatchUid: UUID
+  $patternType: Int
+  $patternSize: Float
+  $patternSpacing: Float
+  $patternOpacity: Int
+) {
+  createPage(
+    input: {
+      notebookUid: $notebookUid
+      paperSwatchUid: $paperSwatchUid
+      patternSwatchUid: $patternSwatchUid
+      patternType: $patternType
+      patternSize: $patternSize
+      patternSpacing: $patternSpacing
+      patternOpacity: $patternOpacity
+    }
+  ) {
+    page {
+      notebook {
+        uid
+        pageOrder
+      }
+      uid
+      updatedAt
+      createdAt
+      paperSwatch {
+        uid
+        palette {
+          uid
+        }
+      }
+      patternSwatch {
+        uid
+        palette {
+          uid
+        }
+      }
+      patternType
+      patternSize
+      patternSpacing
+      patternOpacity
+      elementOrder
+      canvasDataUrl
+    }
+  }
+}

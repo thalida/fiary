@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+cd /workspace/app
+npm run dev
