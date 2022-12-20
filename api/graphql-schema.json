@@ -638,6 +638,16 @@
                     "name": "UUID",
                     "ofType": null
                   }
+                },
+                {
+                  "defaultValue": null,
+                  "description": null,
+                  "name": "isHtmlElement",
+                  "type": {
+                    "kind": "SCALAR",
+                    "name": "Boolean",
+                    "ofType": null
+                  }
                 }
               ],
               "deprecationReason": null,
@@ -1858,6 +1868,16 @@
                   "type": {
                     "kind": "SCALAR",
                     "name": "UUID",
+                    "ofType": null
+                  }
+                },
+                {
+                  "defaultValue": null,
+                  "description": null,
+                  "name": "isHtmlElement",
+                  "type": {
+                    "kind": "SCALAR",
+                    "name": "Boolean",
                     "ofType": null
                   }
                 }
@@ -3237,6 +3257,16 @@
                   "type": {
                     "kind": "SCALAR",
                     "name": "UUID",
+                    "ofType": null
+                  }
+                },
+                {
+                  "defaultValue": null,
+                  "description": null,
+                  "name": "isHtmlElement",
+                  "type": {
+                    "kind": "SCALAR",
+                    "name": "Boolean",
                     "ofType": null
                   }
                 }

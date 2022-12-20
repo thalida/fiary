@@ -19,9 +19,7 @@ const rootEl = ref(null as HTMLElement | null);
 const activeElementUid = ref(null as TPrimaryKey | null);
 const activeHtmlElements = computed(() => {
   const activeElements = coreStore.activeElements(props.pageUid);
-  return activeElements.filter(
-    (uid: TPrimaryKey) => coreStore.elements[uid].isHtmlElement && !coreStore.elements[uid].isHidden
-  );
+  return activeElements.filter((uid: TPrimaryKey) => coreStore.elements[uid].isHtmlElement);
 });
 
 let selectoInteractive: Selecto;

@@ -45,6 +45,8 @@ class ElementNode(IsOwner, DjangoObjectType):
         filter_fields = {
             'uid': ['exact'],
             'page__uid': ['exact'],
+            'is_html_element': ['exact'],
+            'is_hidden': ['exact'],
         }
         interfaces = (graphene.relay.Node, )
         convert_choices_to_enum = False

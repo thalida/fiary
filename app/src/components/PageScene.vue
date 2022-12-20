@@ -636,16 +636,18 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
 function handleUndo() {
   const action = coreStore.history[props.pageUid][coreStore.historyIndex[props.pageUid]];
   const element = coreStore.elements[action.elementUid] as BaseElement;
-  let redoPaste = false;
-  let redoAddImage = false;
+  let undoPaste = false;
+  let undoAddImage = false;
+  let undoClearAll = false;
 
   if (pageOptions.value.isPasteMode) {
     pasteLayer.value?.handleCancelPaste();
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     addImageLayer.value?.handleCancelAddImage();
   } else if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
-    redoPaste = element.tool === ELEMENT_TYPE.PASTE;
-    redoAddImage = element.tool === ELEMENT_TYPE.IMAGE;
+    undoPaste = element.tool === ELEMENT_TYPE.PASTE;
+    undoAddImage = element.tool === ELEMENT_TYPE.IMAGE;
+    undoClearAll = element.tool === ELEMENT_TYPE.CLEAR_ALL;
     coreStore.removeElement(element, false);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     coreStore.addElement(element, false);
@@ -656,11 +658,16 @@ function handleUndo() {
   coreStore.historyIndex[props.pageUid] -= 1;
   coreStore.markDirtyElement(action.elementUid);
 
-  if (redoPaste) {
+  if (undoPaste) {
     pasteLayer.value?.handlePasteStart();
-  } else if (redoAddImage) {
+  } else if (undoAddImage) {
     drawingLayer.value?.drawElements();
     addImageLayer.value?.handleAddImageStart(action.image, false);
+  } else if (undoClearAll) {
+    for (const elementUid of action.elements) {
+      coreStore.addElement(coreStore.elements[elementUid], false);
+    }
+    drawingLayer.value?.drawElements();
   } else {
     drawingLayer.value?.drawElements();
   }
@@ -671,9 +678,11 @@ function handleRedo() {
   const element = coreStore.elements[action.elementUid] as BaseElement;
   let redoPaste = false;
   let redoAddImage = false;
+  let redoClearAll = false;
 
   if (action.type === HistoryEvent.ADD_CANVAS_ELEMENT) {
     redoPaste = element.tool === ELEMENT_TYPE.CUT;
+    redoClearAll = element.tool === ELEMENT_TYPE.CLEAR_ALL;
     coreStore.addElement(element, false);
   } else if (action.type === HistoryEvent.REMOVE_CANVAS_ELEMENT) {
     coreStore.removeElement(element, false);
@@ -690,6 +699,11 @@ function handleRedo() {
     pasteLayer.value?.handlePasteStart();
   } else if (redoAddImage) {
     addImageLayer.value?.handleAddImageStart(action.image, false);
+  } else if (redoClearAll) {
+    for (const elementUid of action.elements) {
+      coreStore.removeElement(coreStore.elements[elementUid], false);
+    }
+    drawingLayer.value?.drawElements();
   } else {
     pageOptions.value.isPasteMode = false;
     pageOptions.value.isAddImageMode = false;

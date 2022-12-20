@@ -74,7 +74,7 @@ function drawElements() {
   for (let i = 0; i < drawElementUids.length; i += 1) {
     const elementUid = drawElementUids[i];
     const element = coreStore.elements[elementUid] as BaseCanvasElement;
-    if (typeof element.drawElement === "undefined") {
+    if (typeof element.drawElement === "undefined" || element.isHidden) {
       continue;
     }
     element.drawElement(drawingCanvas.value);

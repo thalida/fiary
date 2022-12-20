@@ -471,6 +471,7 @@ export type PageNodeElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
+  isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
   page_Uid?: InputMaybe<Scalars["UUID"]>;
@@ -678,6 +679,7 @@ export type QueryMyElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
+  isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
   page_Uid?: InputMaybe<Scalars["UUID"]>;
@@ -990,6 +992,7 @@ export type UserNodeElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
+  isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
   page_Uid?: InputMaybe<Scalars["UUID"]>;
@@ -1349,6 +1352,7 @@ export type UpdatePaletteSwatchMutation = {
 export type MyElementsQueryVariables = Exact<{
   uid?: InputMaybe<Scalars["UUID"]>;
   pageUid?: InputMaybe<Scalars["UUID"]>;
+  isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
 }>;
 
 export type MyElementsQuery = {
@@ -2902,6 +2906,11 @@ export const MyElementsDocument = {
           variable: { kind: "Variable", name: { kind: "Name", value: "pageUid" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isHtmlElement" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -2919,6 +2928,11 @@ export const MyElementsDocument = {
                 kind: "Argument",
                 name: { kind: "Name", value: "page_Uid" },
                 value: { kind: "Variable", name: { kind: "Name", value: "pageUid" } },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "isHtmlElement" },
+                value: { kind: "Variable", name: { kind: "Name", value: "isHtmlElement" } },
               },
             ],
             selectionSet: {

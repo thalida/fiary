@@ -54,7 +54,6 @@ export const useCoreStore = defineStore("core", () => {
   const autoSaveInterval = ref(null as NodeJS.Timer | null);
   const elements = ref({} as { [key: TPrimaryKey]: BaseElement });
   const dirtyElements = ref([] as TPrimaryKey[]);
-  const clearAllElementIndexes = ref({} as { [key: TPrimaryKey]: number[] });
   const history = ref({} as { [key: TPrimaryKey]: any[] });
   const historyIndex = ref({} as { [key: TPrimaryKey]: number });
   const paletteCollections = ref({} as { [key: TPrimaryKey]: TPrimaryKey[] });
@@ -98,15 +97,8 @@ export const useCoreStore = defineStore("core", () => {
     return bookshelves.value[bookshelfOrder[0]];
   });
 
-  const activeElementsStartIdx = computed(() => (pageUid: TPrimaryKey) => {
-    return clearAllElementIndexes.value[pageUid].length > 0
-      ? clearAllElementIndexes.value[pageUid][clearAllElementIndexes.value[pageUid].length - 1]
-      : 0;
-  });
   const activeElements = computed(() => (pageUid: TPrimaryKey) => {
-    const startIdx = activeElementsStartIdx.value(pageUid);
-    const postClear = pages.value[pageUid].elementOrder.slice(startIdx);
-    return postClear.filter((uid) => {
+    return pages.value[pageUid].elementOrder.filter((uid) => {
       if (typeof elements.value[uid] === "undefined") {
         return false;
       }
@@ -410,16 +402,6 @@ export const useCoreStore = defineStore("core", () => {
       historyIndex.value[page.uid] = -1;
     }
 
-    if (typeof clearAllElementIndexes.value[page.uid] === "undefined") {
-      clearAllElementIndexes.value[page.uid] = [];
-    }
-
-    // const image = new Image();
-    // image.onload = () => {
-    //   page.canvasImage = image;
-    // };
-    // image.src = page.canvasDataUrl;
-
     return new Promise((resolve, reject) => {
       if (!isInit || pages.value[page.uid].canvasDataUrl === null) {
         resolve(pages.value[page.uid]);
@@ -486,10 +468,13 @@ export const useCoreStore = defineStore("core", () => {
     }
   }
 
-  async function fetchElements(pageUid: TPrimaryKey) {
+  async function fetchElements(
+    pageUid: TPrimaryKey,
+    variables: { isHtmlElement?: boolean; isHidden?: boolean } = {}
+  ) {
     const { data } = await useQuery({
       query: MyElementsDocument,
-      variables: { pageUid },
+      variables: { pageUid, ...variables },
       cachePolicy: "network-only",
     });
 
@@ -510,13 +495,7 @@ export const useCoreStore = defineStore("core", () => {
       const element = new ELEMENT_MAP[rawElement.tool as ELEMENT_TYPE](rawElement, true);
       elements.value[element.uid] = element;
       page.elementOrder = rawElement.page.elementOrder;
-
-      if (element.tool === ELEMENT_TYPE.CLEAR_ALL && !element.isHidden) {
-        const elementIndex = page.elementOrder.indexOf(element.uid);
-        clearAllElementIndexes.value[pageUid].push(elementIndex);
-      }
     }
-    clearAllElementIndexes.value[pageUid].sort((a, b) => a - b);
   }
 
   async function startAutoSave() {
@@ -601,12 +580,15 @@ export const useCoreStore = defineStore("core", () => {
       elementIndex = page.elementOrder.length - 1;
     }
 
-    if (
-      element.tool === ELEMENT_TYPE.CLEAR_ALL &&
-      clearAllElementIndexes.value[element.pageUid].indexOf(elementIndex) === -1
-    ) {
-      clearAllElementIndexes.value[element.pageUid].push(elementIndex);
-      clearAllElementIndexes.value[element.pageUid].sort((a, b) => a - b);
+    const hiddenElements = [];
+    if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
+      const activePageElements = activeElements.value(pageUid);
+      for (let i = 0; i < activePageElements.length; i += 1) {
+        const activeElementUid = activePageElements[i];
+        const activeElement = elements.value[activeElementUid] as BaseElement;
+        removeElement(activeElement, false);
+        hiddenElements.push(activeElementUid);
+      }
     }
 
     if (trackHistory) {
@@ -614,6 +596,10 @@ export const useCoreStore = defineStore("core", () => {
         type: PageHistoryEvent.ADD_CANVAS_ELEMENT,
         elementUid: element.uid,
       };
+
+      if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
+        historyEvent.elements = hiddenElements;
+      }
 
       if (element.tool === ELEMENT_TYPE.IMAGE) {
         historyEvent.image = (element.settings as IImageElementSettings).image;
@@ -628,19 +614,8 @@ export const useCoreStore = defineStore("core", () => {
 
   function removeElement(element: BaseElement, trackHistory = true) {
     const pageUid = element.pageUid;
-    const page = pages.value[pageUid];
 
     element.isHidden = true;
-
-    if (element.tool === ELEMENT_TYPE.CLEAR_ALL) {
-      const elementIndex = page.elementOrder.indexOf(element.uid);
-
-      if (elementIndex > -1) {
-        clearAllElementIndexes.value[element.pageUid] = clearAllElementIndexes.value[
-          pageUid
-        ].filter((i) => i !== elementIndex);
-      }
-    }
 
     if (trackHistory) {
       addHistoryEvent(pageUid, {
