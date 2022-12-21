@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { debounce } from "lodash";
 import {
   ELEMENT_TYPE,
   CANVAS_TOOL_CHOICES as supportedTools,
@@ -12,7 +14,6 @@ import {
   PALETTE_TYPES,
 } from "@/constants/core";
 import ColorPicker from "@/components/PageColorPicker.vue";
-import { computed } from "vue";
 import { useCoreStore } from "@/stores/core";
 import patterns, { patternOrder } from "@/components/PagePatterns";
 import type { TPrimaryKey } from "@/types/core";
@@ -54,6 +55,7 @@ const emit = defineEmits<{
   (event: "action:paste:delete"): void;
   (event: "action:saveBtn:click"): void;
 }>();
+const debouncedUpdatePage = debounce(coreStore.updatePage, 100);
 
 function addColorPickerRef(ref: any) {
   if (ref !== null) {
@@ -88,7 +90,7 @@ function handleStrokeColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey
 function handlePaperColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
   page.value.paperPaletteUid = paletteUid;
   page.value.paperSwatchUid = swatchUid;
-  coreStore.updatePage(props.pageUid, {
+  debouncedUpdatePage(props.pageUid, {
     paperSwatchUid: swatchUid,
   });
 }
@@ -96,7 +98,7 @@ function handlePaperColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey)
 function handlePatternColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
   page.value.patternPaletteUid = paletteUid;
   page.value.patternSwatchUid = swatchUid;
-  coreStore.updatePage(props.pageUid, {
+  debouncedUpdatePage(props.pageUid, {
     patternSwatchUid: swatchUid,
   });
 }
@@ -106,13 +108,13 @@ function handlePatternTypeChange() {
     page.value.patternType = DEFAULT_PATTERN_TYPE;
   }
 
-  coreStore.updatePage(props.pageUid, {
+  debouncedUpdatePage(props.pageUid, {
     patternType: page.value.patternType,
   });
 }
 
 function handlePatternOpacityChange() {
-  coreStore.updatePage(props.pageUid, {
+  debouncedUpdatePage(props.pageUid, {
     patternOptions: {
       ...page.value.patternOptions,
     },
@@ -120,7 +122,7 @@ function handlePatternOpacityChange() {
 }
 
 function handlePatternSizeChange() {
-  coreStore.updatePage(props.pageUid, {
+  debouncedUpdatePage(props.pageUid, {
     patternOptions: {
       ...page.value.patternOptions,
     },
@@ -128,7 +130,7 @@ function handlePatternSizeChange() {
 }
 
 function handlePatternSpacingChange() {
-  coreStore.updatePage(props.pageUid, {
+  debouncedUpdatePage(props.pageUid, {
     patternOptions: {
       ...page.value.patternOptions,
     },
