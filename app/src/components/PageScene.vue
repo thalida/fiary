@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount, reactive } from "vue";
+import { ref, computed, onBeforeUnmount } from "vue";
 import cloneDeep from "lodash/cloneDeep";
 import type Moveable from "moveable";
 import { useGesture } from "@vueuse/gesture";
@@ -33,7 +33,6 @@ const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 
 const rootEl = ref<HTMLElement>();
 const surfaceEl = ref<HTMLElement>();
@@ -48,12 +47,12 @@ const toolbar = ref<typeof PageToolbar>();
 const mapper = ref();
 
 const surfaceTransformCss = computed(() => {
-  if (typeof pageOptions.value === "undefined") {
+  if (typeof page.value === "undefined") {
     return "";
   }
 
-  const translate = `translate(${pageOptions.value.transformMatrix.e}px, ${pageOptions.value.transformMatrix.f}px)`;
-  const scale = `scale(${pageOptions.value.transformMatrix.a})`;
+  const translate = `translate(${page.value.transformMatrix.e}px, ${page.value.transformMatrix.f}px)`;
+  const scale = `scale(${page.value.transformMatrix.a})`;
 
   return `${translate} ${scale}`;
 });
@@ -63,11 +62,11 @@ const selectedStrokeColor = computed(() => coreStore.selectedStrokeColor(props.p
 let minZoom = 0.25;
 const maxZoom = 4;
 function initScene() {
-  coreStore.startAutoSave();
-
   if (typeof rootEl.value === "undefined") {
     return;
   }
+
+  coreStore.startAutoSave(props.pageUid, drawingLayer.value?.drawingCanvas);
 
   const rect = rootEl.value.getBoundingClientRect();
   const longestScreenSize = Math.max(rect.width, rect.height) - 100;
@@ -78,6 +77,10 @@ function initScene() {
   mapper.value = interpolate([-minSize, 0, maxSize], [minZoom, 1, maxZoom], {
     clamp: true,
   });
+}
+
+function handleSaveBtnClick() {
+  coreStore.batchSaveElements(props.pageUid, drawingLayer.value?.drawingCanvas);
 }
 
 const surfaceGestureModule = useGesture(
@@ -103,17 +106,17 @@ onBeforeUnmount(() => {
 });
 
 function isDrawingAllowed(isDrawingOverride = false) {
-  const activelyDrawing = pageOptions.value.isDrawing || isDrawingOverride;
+  const activelyDrawing = page.value.isDrawing || isDrawingOverride;
   const isOverlayMode =
-    pageOptions.value.isSwatchOpen ||
-    pageOptions.value.isPasteMode ||
-    pageOptions.value.isAddImageMode ||
-    pageOptions.value.isInteractiveEditMode ||
-    pageOptions.value.isMovingRuler ||
-    pageOptions.value.isTextboxEditMode;
-  const isNonDrawingTool = CANVAS_NONDRAWING_TOOLS.includes(pageOptions.value.selectedTool);
-  const stylusAllowed = pageOptions.value.detectedStylus && pageOptions.value.isStylus;
-  const isFingerAllowed = !pageOptions.value.isStylus && pageOptions.value.allowFingerDrawing;
+    page.value.isSwatchOpen ||
+    page.value.isPasteMode ||
+    page.value.isAddImageMode ||
+    page.value.isInteractiveEditMode ||
+    page.value.isMovingRuler ||
+    page.value.isTextboxEditMode;
+  const isNonDrawingTool = CANVAS_NONDRAWING_TOOLS.includes(page.value.selectedTool);
+  const stylusAllowed = page.value.detectedStylus && page.value.isStylus;
+  const isFingerAllowed = !page.value.isStylus && page.value.allowFingerDrawing;
 
   return (
     activelyDrawing && !isOverlayMode && !isNonDrawingTool && (stylusAllowed || isFingerAllowed)
@@ -123,7 +126,7 @@ function isDrawingAllowed(isDrawingOverride = false) {
 function handleToolChange() {
   interactiveLayer.value?.reset();
 
-  if (pageOptions.value.selectedTool === ELEMENT_TYPE.CLEAR_ALL) {
+  if (page.value.selectedTool === ELEMENT_TYPE.CLEAR_ALL) {
     handleClearAll();
   }
 }
@@ -160,7 +163,7 @@ function handleAddTextbox(pos: IElementPoint) {
 
 function getPressure(event: MouseEvent | TouchEvent, tool: ELEMENT_TYPE): number {
   if (tool === ELEMENT_TYPE.PEN) {
-    return pageOptions.value.isStylus ? (event as TouchEvent).touches[0]["force"] : 1;
+    return page.value.isStylus ? (event as TouchEvent).touches[0]["force"] : 1;
   }
 
   return 0.5;
@@ -183,7 +186,7 @@ function getMousePos(
   let inputY = clientY;
   let isRulerLine = false;
 
-  if (pageOptions.value.isRulerMode && followRuler && rulerElement) {
+  if (page.value.isRulerMode && followRuler && rulerElement) {
     const searchDistance = 25;
     let foundX, foundY;
     let searchFor = true;
@@ -254,7 +257,7 @@ function getDrawPos(
   rulerElement?: Moveable
 ) {
   const pos = getMousePos(canvas, event, followRuler, rulerElement);
-  const cameraZoom = pageOptions.value.transformMatrix ? pageOptions.value.transformMatrix.a : 1;
+  const cameraZoom = page.value.transformMatrix ? page.value.transformMatrix.a : 1;
   const transformedPos = {
     x: pos.x / cameraZoom,
     y: pos.y / cameraZoom,
@@ -297,7 +300,7 @@ function handleClearAll() {
   clearElement.cacheElement();
   coreStore.addElement(clearElement);
   drawingLayer.value?.drawElements();
-  pageOptions.value.selectedTool = ELEMENT_TYPE.ERASER;
+  page.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
 
 async function setSurfaceTransform(transform: { translate?: number[]; scale?: number[] }) {
@@ -306,7 +309,7 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
   }
 
   const nextTransform = {
-    ...pageOptions.value.transformMatrix,
+    ...page.value.transformMatrix,
   };
   if (typeof transform.translate !== "undefined") {
     nextTransform.e = transform.translate[0];
@@ -334,7 +337,7 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
   nextTransform.e = x;
   nextTransform.f = y;
 
-  pageOptions.value.transformMatrix = nextTransform;
+  page.value.transformMatrix = nextTransform;
 }
 
 function handleSurfaceHover({ hovering }: { hovering: boolean }) {
@@ -356,7 +359,7 @@ function handleSurfaceDrag({
   movement: [number, number];
   dragging: boolean;
 }) {
-  if (!dragging || pageOptions.value.selectedTool !== CANVAS_HAND_TOOL) {
+  if (!dragging || page.value.selectedTool !== CANVAS_HAND_TOOL) {
     return;
   }
 
@@ -366,13 +369,13 @@ function handleSurfaceDrag({
     return;
   }
   surfaceGestureModule.config.drag.initial = [
-    pageOptions.value.transformMatrix.e,
-    pageOptions.value.transformMatrix.f,
+    page.value.transformMatrix.e,
+    page.value.transformMatrix.f,
   ];
 }
 
 function handleSurfacePinch({ offset, pinching }: { offset: [number, number]; pinching: boolean }) {
-  if (!pinching || pageOptions.value.isDrawing) {
+  if (!pinching || page.value.isDrawing) {
     return;
   }
 
@@ -385,8 +388,8 @@ function handleSurfacePinch({ offset, pinching }: { offset: [number, number]; pi
     return;
   }
   surfaceGestureModule.config.drag.initial = [
-    pageOptions.value.transformMatrix.e,
-    pageOptions.value.transformMatrix.f,
+    page.value.transformMatrix.e,
+    page.value.transformMatrix.f,
   ];
 }
 
@@ -403,17 +406,17 @@ function handleSurfaceScroll({
 
   setSurfaceTransform({ translate: [-x, -y] });
   surfaceGestureModule.state.wheel.values = [
-    -pageOptions.value.transformMatrix.e,
-    -pageOptions.value.transformMatrix.f,
+    -page.value.transformMatrix.e,
+    -page.value.transformMatrix.f,
   ];
 }
 
 function handleCameraZoom(zoomStep: number) {
-  if (typeof pageOptions.value.transformMatrix === "undefined") {
+  if (typeof page.value.transformMatrix === "undefined") {
     return;
   }
 
-  const nextZoom = pageOptions.value.transformMatrix.a + zoomStep;
+  const nextZoom = page.value.transformMatrix.a + zoomStep;
   const clampedZoom = Math.max(Math.min(nextZoom, maxZoom), minZoom);
   setSurfaceTransform({
     scale: [clampedZoom, clampedZoom],
@@ -423,23 +426,23 @@ function handleCameraZoom(zoomStep: number) {
     return;
   }
   surfaceGestureModule.config.drag.initial = [
-    pageOptions.value.transformMatrix.e,
-    pageOptions.value.transformMatrix.f,
+    page.value.transformMatrix.e,
+    page.value.transformMatrix.f,
   ];
 }
 
 function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   toolbar.value?.closeAllColorPickers();
 
-  if (pageOptions.value.selectedTool === CANVAS_POINTER_TOOL) {
+  if (page.value.selectedTool === CANVAS_POINTER_TOOL) {
     return;
   }
 
-  if (pageOptions.value.selectedTool === CANVAS_PAPER_TOOL) {
+  if (page.value.selectedTool === CANVAS_PAPER_TOOL) {
     return;
   }
 
-  const selectedTool = pageOptions.value.selectedTool as ELEMENT_TYPE;
+  const selectedTool = page.value.selectedTool as ELEMENT_TYPE;
   const activeElements = coreStore.activeElements(props.pageUid);
 
   if (
@@ -469,7 +472,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  pageOptions.value.isDrawing = true;
+  page.value.isDrawing = true;
 
   const strokeColor =
     selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
@@ -489,10 +492,10 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
       strokeColor,
       fillColor,
       isRulerLine,
-      lineSize: selectedTool === ELEMENT_TYPE.CUT ? 0 : pageOptions.value.selectedToolSize,
+      lineSize: selectedTool === ELEMENT_TYPE.CUT ? 0 : page.value.selectedToolSize,
       freehandOptions: {
-        size: pageOptions.value.selectedToolSize,
-        simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !pageOptions.value.isStylus,
+        size: page.value.selectedToolSize,
+        simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !page.value.isStylus,
         thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.5 : 0,
         streamline: isRulerLine ? 1 : 0.32,
         smoothing: isRulerLine ? 1 : 0.32,
@@ -506,8 +509,8 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
 
   if (selectedTool === ELEMENT_TYPE.LINE) {
     elementProps.settings = {
-      lineEndSide: pageOptions.value.selectedLineEndSide,
-      lineEndStyle: pageOptions.value.selectedLineEndStyle,
+      lineEndSide: page.value.selectedLineEndSide,
+      lineEndStyle: page.value.selectedLineEndStyle,
     };
   }
 
@@ -589,14 +592,14 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
 
 function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   if (
-    pageOptions.value.isInteractiveEditMode ||
-    pageOptions.value.isTextboxEditMode ||
+    page.value.isInteractiveEditMode ||
+    page.value.isTextboxEditMode ||
     typeof drawingLayer.value?.drawingCanvas === "undefined"
   ) {
     return;
   }
 
-  if (pageOptions.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
+  if (page.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
     const pos = getDrawPos(
       drawingLayer.value?.drawingCanvas,
       event,
@@ -607,7 +610,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     return;
   }
 
-  if (pageOptions.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
+  if (page.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
     const pos = getDrawPos(
       drawingLayer.value?.drawingCanvas,
       event,
@@ -630,7 +633,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
 
   if (lastElement.dimensions.outerWidth === 0 || lastElement.dimensions.outerHeight === 0) {
     coreStore.removeElement(lastElement);
-    pageOptions.value.isDrawing = false;
+    page.value.isDrawing = false;
     return;
   }
 
@@ -641,7 +644,7 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
     coreStore.markDirtyElement(lastElementUid);
     drawingLayer.value?.drawElements();
   }
-  pageOptions.value.isDrawing = false;
+  page.value.isDrawing = false;
 }
 
 function handleUndo() {
@@ -651,7 +654,7 @@ function handleUndo() {
   let undoAddImage = false;
   let undoClearAll = false;
 
-  if (pageOptions.value.isPasteMode) {
+  if (page.value.isPasteMode) {
     pasteLayer.value?.handleCancelPaste();
   } else if (action.type === HistoryEvent.ADD_IMAGE_START) {
     addImageLayer.value?.handleCancelAddImage();
@@ -716,8 +719,8 @@ function handleRedo() {
     }
     drawingLayer.value?.drawElements();
   } else {
-    pageOptions.value.isPasteMode = false;
-    pageOptions.value.isAddImageMode = false;
+    page.value.isPasteMode = false;
+    page.value.isAddImageMode = false;
     drawingLayer.value?.drawElements();
   }
 }
@@ -741,6 +744,7 @@ function handleRedo() {
         @action:addImage:end="addImageLayer?.handleAddImageEnd"
         @action:paste:delete="pasteLayer?.handlePasteDelete"
         @action:paste:end="pasteLayer?.handlePasteEnd"
+        @action:save-btn:click="handleSaveBtnClick"
       />
     </div>
     <div

@@ -8,6 +8,8 @@ query MyPages($uid: UUID) {
         uid
         updatedAt
         createdAt
+        canvasDataUrl
+        elementOrder
         paperSwatch {
           uid
           palette {
@@ -21,11 +23,29 @@ query MyPages($uid: UUID) {
           }
         }
         patternType
-        patternSize
-        patternSpacing
-        patternOpacity
-        elementOrder
-        canvasDataUrl
+        patternOptions
+        fillSwatch {
+          uid
+          palette {
+            uid
+          }
+        }
+        strokeSwatch {
+          uid
+          palette {
+            uid
+          }
+        }
+        selectedTool
+        selectedToolSize
+        selectedLineEndStyle
+        selectedLineEndSide
+        isDebugMode
+        isPasteMode
+        isAddImageMode
+        isInteractiveEditMode
+        isTextboxEditMode
+        isRulerMode
       }
     }
   }

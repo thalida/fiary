@@ -20,14 +20,13 @@ import type { TPrimaryKey } from "@/types/core";
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const colorPickerRefs: any[] = [];
 
 const isDrawingTool = computed(() => {
-  return !CANVAS_NONDRAWING_TOOLS.includes(pageOptions.value.selectedTool);
+  return !CANVAS_NONDRAWING_TOOLS.includes(page.value.selectedTool);
 });
 const isPaperTool = computed(() => {
-  return CANVAS_PAPER_TOOLS.includes(pageOptions.value.selectedTool);
+  return CANVAS_PAPER_TOOLS.includes(page.value.selectedTool);
 });
 const hasUndo = computed(() => {
   return coreStore.historyIndex[props.pageUid] >= 0;
@@ -36,7 +35,7 @@ const hasRedo = computed(() => {
   return coreStore.historyIndex[props.pageUid] < coreStore.history[props.pageUid].length - 1;
 });
 const zoomPercent = computed(() => {
-  const zoom = pageOptions.value.transformMatrix.a;
+  const zoom = page.value.transformMatrix.a;
   const percent = Math.round(zoom * 100);
   return percent;
 });
@@ -53,6 +52,7 @@ const emit = defineEmits<{
   (event: "action:addImage:end"): void;
   (event: "action:paste:end"): void;
   (event: "action:paste:delete"): void;
+  (event: "action:saveBtn:click"): void;
 }>();
 
 function addColorPickerRef(ref: any) {
@@ -62,7 +62,7 @@ function addColorPickerRef(ref: any) {
 }
 
 function handleToolChange(event: Event) {
-  emit("update:tool", pageOptions.value.selectedTool);
+  emit("update:tool", page.value.selectedTool);
 
   if (event.target) {
     (event.target as HTMLElement).blur();
@@ -76,13 +76,13 @@ function closeAllColorPickers() {
 }
 
 function handleFillColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
-  pageOptions.value.fillPaletteUid = paletteUid;
-  pageOptions.value.fillSwatchUid = swatchUid;
+  page.value.fillPaletteUid = paletteUid;
+  page.value.fillSwatchUid = swatchUid;
 }
 
 function handleStrokeColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
-  pageOptions.value.strokePaletteUid = paletteUid;
-  pageOptions.value.strokeSwatchUid = swatchUid;
+  page.value.strokePaletteUid = paletteUid;
+  page.value.strokeSwatchUid = swatchUid;
 }
 
 function handlePaperColorChange(paletteUid: TPrimaryKey, swatchUid: TPrimaryKey) {
@@ -106,35 +106,32 @@ function handlePatternTypeChange() {
     page.value.patternType = DEFAULT_PATTERN_TYPE;
   }
 
-  page.value.patternSize = patterns[page.value.patternType]
-    ? patterns[page.value.patternType].DEFAULT_PROPS.lineSize
-    : null;
-  page.value.patternSpacing = patterns[page.value.patternType]
-    ? patterns[page.value.patternType].DEFAULT_PROPS.spacing
-    : null;
-
   coreStore.updatePage(props.pageUid, {
     patternType: page.value.patternType,
-    patternSize: page.value.patternSize,
-    patternSpacing: page.value.patternSpacing,
   });
 }
 
 function handlePatternOpacityChange() {
   coreStore.updatePage(props.pageUid, {
-    patternOpacity: page.value.patternOpacity,
+    patternOptions: {
+      ...page.value.patternOptions,
+    },
   });
 }
 
 function handlePatternSizeChange() {
   coreStore.updatePage(props.pageUid, {
-    patternSize: page.value.patternSize,
+    patternOptions: {
+      ...page.value.patternOptions,
+    },
   });
 }
 
 function handlePatternSpacingChange() {
   coreStore.updatePage(props.pageUid, {
-    patternSpacing: page.value.patternSpacing,
+    patternOptions: {
+      ...page.value.patternOptions,
+    },
   });
 }
 
@@ -143,7 +140,7 @@ function handleImageInput(event: Event) {
 }
 
 function handleSaveBtnClick() {
-  coreStore.batchSaveElements();
+  emit("action:saveBtn:click");
 }
 
 defineExpose({
@@ -151,19 +148,19 @@ defineExpose({
 });
 </script>
 <template>
-  <div v-if="pageOptions" class="tools">
-    <select v-model="pageOptions.selectedTool" @change="handleToolChange">
+  <div v-if="page" class="tools">
+    <select v-model="page.selectedTool" @change="handleToolChange">
       <option v-for="tool in supportedTools" :key="tool.key" :value="tool.key">
         {{ tool.label }}
       </option>
     </select>
-    <div v-if="pageOptions.selectedTool === ELEMENT_TYPE.LINE">
-      <select v-model="pageOptions.selectedLineEndSide">
+    <div v-if="page.selectedTool === ELEMENT_TYPE.LINE">
+      <select v-model="page.selectedLineEndSide">
         <option v-for="endSide in LINE_END_SIDE_CHOICES" :key="endSide.key" :value="endSide.key">
           {{ endSide.label }}
         </option>
       </select>
-      <select v-model="pageOptions.selectedLineEndStyle">
+      <select v-model="page.selectedLineEndStyle">
         <option
           v-for="endStyle in LINE_END_STYLE_CHOICES"
           :key="endStyle.key"
@@ -173,28 +170,26 @@ defineExpose({
         </option>
       </select>
     </div>
-    <label v-else-if="pageOptions.selectedTool === ELEMENT_TYPE.IMAGE">
+    <label v-else-if="page.selectedTool === ELEMENT_TYPE.IMAGE">
       <input type="file" accept="image/*" @input="handleImageInput" />
     </label>
     <label
       v-else-if="
-        (pageOptions.selectedTool === ELEMENT_TYPE.CHECKBOX ||
-          pageOptions.selectedTool === ELEMENT_TYPE.TEXTBOX) &&
-        !pageOptions.isInteractiveEditMode
+        (page.selectedTool === ELEMENT_TYPE.CHECKBOX ||
+          page.selectedTool === ELEMENT_TYPE.TEXTBOX) &&
+        !page.isInteractiveEditMode
       "
     >
       <button @click="emit('action:interactiveEdit:start')">Edit</button>
     </label>
-    <div v-if="pageOptions.isInteractiveEditMode">
+    <div v-if="page.isInteractiveEditMode">
       <button @click="emit('action:interactiveEdit:elementDelete')">Delete</button>
       <button @click="emit('action:interactiveEdit:end')">Done</button>
     </div>
-    <button v-if="pageOptions.isAddImageMode" @click="emit('action:addImage:end')">Done</button>
-    <button v-if="pageOptions.isPasteMode" @click="emit('action:paste:end')">Done</button>
-    <button v-if="pageOptions.isPasteMode" @click="emit('action:paste:delete')">
-      Delete Selection
-    </button>
-    <select v-if="isDrawingTool" v-model="pageOptions.selectedToolSize">
+    <button v-if="page.isAddImageMode" @click="emit('action:addImage:end')">Done</button>
+    <button v-if="page.isPasteMode" @click="emit('action:paste:end')">Done</button>
+    <button v-if="page.isPasteMode" @click="emit('action:paste:delete')">Delete Selection</button>
+    <select v-if="isDrawingTool" v-model="page.selectedToolSize">
       <option v-for="size in PEN_SIZES" :key="size" :value="size">
         {{ size }}
       </option>
@@ -204,8 +199,8 @@ defineExpose({
       style="display: inline"
       :ref="addColorPickerRef"
       :pageUid="props.pageUid"
-      :paletteUid="pageOptions.fillPaletteUid"
-      :swatchUid="pageOptions.fillSwatchUid"
+      :paletteUid="page.fillPaletteUid"
+      :swatchUid="page.fillSwatchUid"
       :paletteType="PALETTE_TYPES.TOOL_FILL"
       @update="handleFillColorChange"
     />
@@ -214,8 +209,8 @@ defineExpose({
       style="display: inline"
       :ref="addColorPickerRef"
       :pageUid="props.pageUid"
-      :paletteUid="pageOptions.strokePaletteUid"
-      :swatchUid="pageOptions.strokeSwatchUid"
+      :paletteUid="page.strokePaletteUid"
+      :swatchUid="page.strokeSwatchUid"
       :paletteType="PALETTE_TYPES.TOOL_STROKE"
       @update="handleStrokeColorChange"
     />
@@ -251,7 +246,7 @@ defineExpose({
       min="0"
       max="100"
       step="1"
-      v-model.number="page.patternOpacity"
+      v-model.number="page.patternOptions[page.patternType].opacity"
       @change="handlePatternOpacityChange"
     />
     <input
@@ -260,7 +255,7 @@ defineExpose({
       min="0"
       max="512"
       step="1"
-      v-model.number="page.patternSize"
+      v-model.number="page.patternOptions[page.patternType].lineSize"
       @change="handlePatternSizeChange"
     />
     <input
@@ -269,21 +264,20 @@ defineExpose({
       min="0"
       max="512"
       step="1"
-      v-model.number="page.patternSpacing"
+      v-model.number="page.patternOptions[page.patternType].spacing"
       @change="handlePatternSpacingChange"
     />
 
-    <!-- <label><input type="checkbox" v-model="pageOptions.isRulerMode" /> Show ruler?</label> -->
+    <!-- <label><input type="checkbox" v-model="page.isRulerMode" /> Show ruler?</label> -->
     <label>
-      <input type="checkbox" v-model="pageOptions.detectedStylus" :disabled="true" /> Detected
-      Stylus?
+      <input type="checkbox" v-model="page.detectedStylus" :disabled="true" /> Detected Stylus?
     </label>
     <label>
-      <input type="checkbox" v-model="pageOptions.isStylus" :disabled="true" />
+      <input type="checkbox" v-model="page.isStylus" :disabled="true" />
       isStylus?
     </label>
-    <label><input type="checkbox" v-model="pageOptions.allowFingerDrawing" /> finger?</label>
-    <label><input type="checkbox" v-model="pageOptions.isDebugMode" /> debug?</label>
+    <label><input type="checkbox" v-model="page.allowFingerDrawing" /> finger?</label>
+    <label><input type="checkbox" v-model="page.isDebugMode" /> debug?</label>
     <button @click="emit('action:camera:zoomOut', -0.1)">Zoom -</button>
     <button @click="emit('action:camera:zoomIn', 0.1)">Zoom +</button>
     <span>{{ zoomPercent }}%</span>

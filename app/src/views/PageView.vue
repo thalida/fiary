@@ -18,15 +18,13 @@ const isNotFound = computed(
   () => !isLoading.value && (typeof page.value === "undefined" || page.value === null)
 );
 
-watchEffect(() => {
+watchEffect(async () => {
   if (isAuthenticated.value) {
     isLoading.value = true;
-    coreStore.fetchPage(props.pageUid).then(() => {
-      coreStore.fetchElements(props.pageUid, { isHtmlElement: true }).then(() => {
-        isLoading.value = false;
-      });
-      isLoading.value = false;
-    });
+    await coreStore.fetchMyPalettes();
+    await coreStore.fetchPage(props.pageUid);
+    await coreStore.fetchElements(props.pageUid, { isHtmlElement: true });
+    isLoading.value = false;
   }
 });
 </script>

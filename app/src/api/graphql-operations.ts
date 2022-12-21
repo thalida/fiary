@@ -115,13 +115,23 @@ export type CreateNotebookPayload = {
 export type CreatePageInput = {
   canvasDataUrl?: InputMaybe<Scalars["String"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
+  fillSwatchUid?: InputMaybe<Scalars["UUID"]>;
+  isAddImageMode?: InputMaybe<Scalars["Boolean"]>;
+  isDebugMode?: InputMaybe<Scalars["Boolean"]>;
+  isInteractiveEditMode?: InputMaybe<Scalars["Boolean"]>;
+  isPasteMode?: InputMaybe<Scalars["Boolean"]>;
+  isRulerMode?: InputMaybe<Scalars["Boolean"]>;
+  isTextboxEditMode?: InputMaybe<Scalars["Boolean"]>;
   notebookUid: Scalars["UUID"];
   paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
-  patternOpacity?: InputMaybe<Scalars["Int"]>;
-  patternSize?: InputMaybe<Scalars["Float"]>;
-  patternSpacing?: InputMaybe<Scalars["Float"]>;
+  patternOptions?: InputMaybe<Scalars["JSONString"]>;
   patternSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
+  selectedLineEndSide?: InputMaybe<Scalars["Int"]>;
+  selectedLineEndStyle?: InputMaybe<Scalars["Int"]>;
+  selectedTool?: InputMaybe<Scalars["Int"]>;
+  selectedToolSize?: InputMaybe<Scalars["Int"]>;
+  strokeSwatchUid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type CreatePagePayload = {
@@ -453,16 +463,26 @@ export type PageNode = Node & {
   createdAt: Scalars["DateTime"];
   elementOrder: Array<Scalars["UUID"]>;
   elements: ElementNodeConnection;
+  fillSwatch?: Maybe<PaletteSwatchNode>;
   /** The ID of the object */
   id: Scalars["ID"];
+  isAddImageMode: Scalars["Boolean"];
+  isDebugMode: Scalars["Boolean"];
+  isInteractiveEditMode: Scalars["Boolean"];
+  isPasteMode: Scalars["Boolean"];
+  isRulerMode: Scalars["Boolean"];
+  isTextboxEditMode: Scalars["Boolean"];
   notebook: NotebookNode;
   owner: UserNode;
   paperSwatch?: Maybe<PaletteSwatchNode>;
-  patternOpacity?: Maybe<Scalars["Int"]>;
-  patternSize?: Maybe<Scalars["Float"]>;
-  patternSpacing?: Maybe<Scalars["Float"]>;
+  patternOptions?: Maybe<Scalars["JSONString"]>;
   patternSwatch?: Maybe<PaletteSwatchNode>;
   patternType: Scalars["Int"];
+  selectedLineEndSide: Scalars["Int"];
+  selectedLineEndStyle: Scalars["Int"];
+  selectedTool: Scalars["Int"];
+  selectedToolSize: Scalars["Int"];
+  strokeSwatch?: Maybe<PaletteSwatchNode>;
   uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
 };
@@ -471,6 +491,7 @@ export type PageNodeElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
+  isHidden?: InputMaybe<Scalars["Boolean"]>;
   isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
@@ -586,6 +607,7 @@ export type PaletteNodeEdge = {
 export type PaletteSwatchNode = Node & {
   __typename?: "PaletteSwatchNode";
   createdAt: Scalars["DateTime"];
+  fillSwatch: PageNodeConnection;
   /** The ID of the object */
   id: Scalars["ID"];
   isDefault: Scalars["Boolean"];
@@ -593,9 +615,20 @@ export type PaletteSwatchNode = Node & {
   palette: PaletteNode;
   paperSwatch: PageNodeConnection;
   patternSwatch: PageNodeConnection;
+  strokeSwatch: PageNodeConnection;
   swatch: Scalars["JSONString"];
   uid: Scalars["UUID"];
   updatedAt: Scalars["DateTime"];
+};
+
+export type PaletteSwatchNodeFillSwatchArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  notebook?: InputMaybe<Scalars["ID"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
 };
 
 export type PaletteSwatchNodePaperSwatchArgs = {
@@ -609,6 +642,16 @@ export type PaletteSwatchNodePaperSwatchArgs = {
 };
 
 export type PaletteSwatchNodePatternSwatchArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  notebook?: InputMaybe<Scalars["ID"]>;
+  offset?: InputMaybe<Scalars["Int"]>;
+  uid?: InputMaybe<Scalars["UUID"]>;
+};
+
+export type PaletteSwatchNodeStrokeSwatchArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
@@ -679,6 +722,7 @@ export type QueryMyElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
+  isHidden?: InputMaybe<Scalars["Boolean"]>;
   isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
@@ -911,13 +955,23 @@ export type UpdateNotebookPayload = {
 export type UpdatePageInput = {
   canvasDataUrl?: InputMaybe<Scalars["String"]>;
   clientMutationId?: InputMaybe<Scalars["String"]>;
+  fillSwatchUid?: InputMaybe<Scalars["UUID"]>;
+  isAddImageMode?: InputMaybe<Scalars["Boolean"]>;
+  isDebugMode?: InputMaybe<Scalars["Boolean"]>;
+  isInteractiveEditMode?: InputMaybe<Scalars["Boolean"]>;
+  isPasteMode?: InputMaybe<Scalars["Boolean"]>;
+  isRulerMode?: InputMaybe<Scalars["Boolean"]>;
+  isTextboxEditMode?: InputMaybe<Scalars["Boolean"]>;
   notebookUid?: InputMaybe<Scalars["UUID"]>;
   paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
-  patternOpacity?: InputMaybe<Scalars["Int"]>;
-  patternSize?: InputMaybe<Scalars["Float"]>;
-  patternSpacing?: InputMaybe<Scalars["Float"]>;
+  patternOptions?: InputMaybe<Scalars["JSONString"]>;
   patternSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
+  selectedLineEndSide?: InputMaybe<Scalars["Int"]>;
+  selectedLineEndStyle?: InputMaybe<Scalars["Int"]>;
+  selectedTool?: InputMaybe<Scalars["Int"]>;
+  selectedToolSize?: InputMaybe<Scalars["Int"]>;
+  strokeSwatchUid?: InputMaybe<Scalars["UUID"]>;
   uid: Scalars["UUID"];
 };
 
@@ -992,6 +1046,7 @@ export type UserNodeElementsArgs = {
   after?: InputMaybe<Scalars["String"]>;
   before?: InputMaybe<Scalars["String"]>;
   first?: InputMaybe<Scalars["Int"]>;
+  isHidden?: InputMaybe<Scalars["Boolean"]>;
   isHtmlElement?: InputMaybe<Scalars["Boolean"]>;
   last?: InputMaybe<Scalars["Int"]>;
   offset?: InputMaybe<Scalars["Int"]>;
@@ -1146,12 +1201,23 @@ export type CreateNotebookMutation = {
 
 export type CreatePageMutationVariables = Exact<{
   notebookUid: Scalars["UUID"];
-  paperSwatchUid: Scalars["UUID"];
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
+  paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
-  patternSize?: InputMaybe<Scalars["Float"]>;
-  patternSpacing?: InputMaybe<Scalars["Float"]>;
-  patternOpacity?: InputMaybe<Scalars["Int"]>;
+  patternOptions?: InputMaybe<Scalars["JSONString"]>;
+  fillSwatchUid?: InputMaybe<Scalars["UUID"]>;
+  strokeSwatchUid?: InputMaybe<Scalars["UUID"]>;
+  selectedTool?: InputMaybe<Scalars["Int"]>;
+  selectedToolSize?: InputMaybe<Scalars["Int"]>;
+  selectedLineEndStyle?: InputMaybe<Scalars["Int"]>;
+  selectedLineEndSide?: InputMaybe<Scalars["Int"]>;
+  isDebugMode?: InputMaybe<Scalars["Boolean"]>;
+  isPasteMode?: InputMaybe<Scalars["Boolean"]>;
+  isAddImageMode?: InputMaybe<Scalars["Boolean"]>;
+  isInteractiveEditMode?: InputMaybe<Scalars["Boolean"]>;
+  isTextboxEditMode?: InputMaybe<Scalars["Boolean"]>;
+  isRulerMode?: InputMaybe<Scalars["Boolean"]>;
 }>;
 
 export type CreatePageMutation = {
@@ -1163,12 +1229,20 @@ export type CreatePageMutation = {
       uid: any;
       updatedAt: any;
       createdAt: any;
-      patternType: number;
-      patternSize?: number | null;
-      patternSpacing?: number | null;
-      patternOpacity?: number | null;
-      elementOrder: Array<any>;
       canvasDataUrl?: string | null;
+      elementOrder: Array<any>;
+      patternType: number;
+      patternOptions?: any | null;
+      selectedTool: number;
+      selectedToolSize: number;
+      selectedLineEndStyle: number;
+      selectedLineEndSide: number;
+      isDebugMode: boolean;
+      isPasteMode: boolean;
+      isAddImageMode: boolean;
+      isInteractiveEditMode: boolean;
+      isTextboxEditMode: boolean;
+      isRulerMode: boolean;
       notebook: { __typename?: "NotebookNode"; uid: any; pageOrder: Array<any> };
       paperSwatch?: {
         __typename?: "PaletteSwatchNode";
@@ -1176,6 +1250,16 @@ export type CreatePageMutation = {
         palette: { __typename?: "PaletteNode"; uid: any };
       } | null;
       patternSwatch?: {
+        __typename?: "PaletteSwatchNode";
+        uid: any;
+        palette: { __typename?: "PaletteNode"; uid: any };
+      } | null;
+      fillSwatch?: {
+        __typename?: "PaletteSwatchNode";
+        uid: any;
+        palette: { __typename?: "PaletteNode"; uid: any };
+      } | null;
+      strokeSwatch?: {
         __typename?: "PaletteSwatchNode";
         uid: any;
         palette: { __typename?: "PaletteNode"; uid: any };
@@ -1291,13 +1375,23 @@ export type UpdateElementMutation = {
 export type UpdatePageMutationVariables = Exact<{
   uid: Scalars["UUID"];
   notebookUid?: InputMaybe<Scalars["UUID"]>;
+  canvasDataUrl?: InputMaybe<Scalars["String"]>;
   paperSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternSwatchUid?: InputMaybe<Scalars["UUID"]>;
   patternType?: InputMaybe<Scalars["Int"]>;
-  patternSize?: InputMaybe<Scalars["Float"]>;
-  patternSpacing?: InputMaybe<Scalars["Float"]>;
-  patternOpacity?: InputMaybe<Scalars["Int"]>;
-  canvasDataUrl?: InputMaybe<Scalars["String"]>;
+  patternOptions?: InputMaybe<Scalars["JSONString"]>;
+  fillSwatchUid?: InputMaybe<Scalars["UUID"]>;
+  strokeSwatchUid?: InputMaybe<Scalars["UUID"]>;
+  selectedTool?: InputMaybe<Scalars["Int"]>;
+  selectedToolSize?: InputMaybe<Scalars["Int"]>;
+  selectedLineEndStyle?: InputMaybe<Scalars["Int"]>;
+  selectedLineEndSide?: InputMaybe<Scalars["Int"]>;
+  isDebugMode?: InputMaybe<Scalars["Boolean"]>;
+  isPasteMode?: InputMaybe<Scalars["Boolean"]>;
+  isAddImageMode?: InputMaybe<Scalars["Boolean"]>;
+  isInteractiveEditMode?: InputMaybe<Scalars["Boolean"]>;
+  isTextboxEditMode?: InputMaybe<Scalars["Boolean"]>;
+  isRulerMode?: InputMaybe<Scalars["Boolean"]>;
 }>;
 
 export type UpdatePageMutation = {
@@ -1309,12 +1403,20 @@ export type UpdatePageMutation = {
       uid: any;
       updatedAt: any;
       createdAt: any;
-      patternType: number;
-      patternSize?: number | null;
-      patternSpacing?: number | null;
-      patternOpacity?: number | null;
-      elementOrder: Array<any>;
       canvasDataUrl?: string | null;
+      elementOrder: Array<any>;
+      patternType: number;
+      patternOptions?: any | null;
+      selectedTool: number;
+      selectedToolSize: number;
+      selectedLineEndStyle: number;
+      selectedLineEndSide: number;
+      isDebugMode: boolean;
+      isPasteMode: boolean;
+      isAddImageMode: boolean;
+      isInteractiveEditMode: boolean;
+      isTextboxEditMode: boolean;
+      isRulerMode: boolean;
       notebook: { __typename?: "NotebookNode"; uid: any; pageOrder: Array<any> };
       paperSwatch?: {
         __typename?: "PaletteSwatchNode";
@@ -1322,6 +1424,16 @@ export type UpdatePageMutation = {
         palette: { __typename?: "PaletteNode"; uid: any };
       } | null;
       patternSwatch?: {
+        __typename?: "PaletteSwatchNode";
+        uid: any;
+        palette: { __typename?: "PaletteNode"; uid: any };
+      } | null;
+      fillSwatch?: {
+        __typename?: "PaletteSwatchNode";
+        uid: any;
+        palette: { __typename?: "PaletteNode"; uid: any };
+      } | null;
+      strokeSwatch?: {
         __typename?: "PaletteSwatchNode";
         uid: any;
         palette: { __typename?: "PaletteNode"; uid: any };
@@ -1433,12 +1545,20 @@ export type MyPagesQuery = {
         uid: any;
         updatedAt: any;
         createdAt: any;
-        patternType: number;
-        patternSize?: number | null;
-        patternSpacing?: number | null;
-        patternOpacity?: number | null;
-        elementOrder: Array<any>;
         canvasDataUrl?: string | null;
+        elementOrder: Array<any>;
+        patternType: number;
+        patternOptions?: any | null;
+        selectedTool: number;
+        selectedToolSize: number;
+        selectedLineEndStyle: number;
+        selectedLineEndSide: number;
+        isDebugMode: boolean;
+        isPasteMode: boolean;
+        isAddImageMode: boolean;
+        isInteractiveEditMode: boolean;
+        isTextboxEditMode: boolean;
+        isRulerMode: boolean;
         notebook: { __typename?: "NotebookNode"; uid: any };
         paperSwatch?: {
           __typename?: "PaletteSwatchNode";
@@ -1446,6 +1566,16 @@ export type MyPagesQuery = {
           palette: { __typename?: "PaletteNode"; uid: any };
         } | null;
         patternSwatch?: {
+          __typename?: "PaletteSwatchNode";
+          uid: any;
+          palette: { __typename?: "PaletteNode"; uid: any };
+        } | null;
+        fillSwatch?: {
+          __typename?: "PaletteSwatchNode";
+          uid: any;
+          palette: { __typename?: "PaletteNode"; uid: any };
+        } | null;
+        strokeSwatch?: {
           __typename?: "PaletteSwatchNode";
           uid: any;
           palette: { __typename?: "PaletteNode"; uid: any };
@@ -2020,11 +2150,13 @@ export const CreatePageDocument = {
         },
         {
           kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
           variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatchUid" } },
-          type: {
-            kind: "NonNullType",
-            type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
-          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
           kind: "VariableDefinition",
@@ -2038,18 +2170,68 @@ export const CreatePageDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternSize" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternOptions" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternSpacing" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "fillSwatchUid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "strokeSwatchUid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "selectedTool" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "selectedToolSize" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "selectedLineEndStyle" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "selectedLineEndSide" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isDebugMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isPasteMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isAddImageMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isInteractiveEditMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isTextboxEditMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isRulerMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
         },
       ],
       selectionSet: {
@@ -2072,6 +2254,11 @@ export const CreatePageDocument = {
                     },
                     {
                       kind: "ObjectField",
+                      name: { kind: "Name", value: "canvasDataUrl" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
+                    },
+                    {
+                      kind: "ObjectField",
                       name: { kind: "Name", value: "paperSwatchUid" },
                       value: { kind: "Variable", name: { kind: "Name", value: "paperSwatchUid" } },
                     },
@@ -2090,18 +2277,83 @@ export const CreatePageDocument = {
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternSize" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternSize" } },
+                      name: { kind: "Name", value: "patternOptions" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternOptions" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternSpacing" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternSpacing" } },
+                      name: { kind: "Name", value: "fillSwatchUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "fillSwatchUid" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternOpacity" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
+                      name: { kind: "Name", value: "strokeSwatchUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "strokeSwatchUid" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "selectedTool" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "selectedTool" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "selectedToolSize" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "selectedToolSize" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "selectedLineEndStyle" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "selectedLineEndStyle" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "selectedLineEndSide" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "selectedLineEndSide" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isDebugMode" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isDebugMode" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isPasteMode" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isPasteMode" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isAddImageMode" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isAddImageMode" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isInteractiveEditMode" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "isInteractiveEditMode" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isTextboxEditMode" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "isTextboxEditMode" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isRulerMode" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isRulerMode" } },
                     },
                   ],
                 },
@@ -2130,6 +2382,8 @@ export const CreatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
+                      { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "paperSwatch" },
@@ -2171,11 +2425,57 @@ export const CreatePageDocument = {
                         },
                       },
                       { kind: "Field", name: { kind: "Name", value: "patternType" } },
-                      { kind: "Field", name: { kind: "Name", value: "patternSize" } },
-                      { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
-                      { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
-                      { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
-                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternOptions" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "fillSwatch" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palette" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "strokeSwatch" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palette" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "selectedTool" } },
+                      { kind: "Field", name: { kind: "Name", value: "selectedToolSize" } },
+                      { kind: "Field", name: { kind: "Name", value: "selectedLineEndStyle" } },
+                      { kind: "Field", name: { kind: "Name", value: "selectedLineEndSide" } },
+                      { kind: "Field", name: { kind: "Name", value: "isDebugMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isPasteMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isAddImageMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isInteractiveEditMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isTextboxEditMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isRulerMode" } },
                     ],
                   },
                 },
@@ -2629,6 +2929,11 @@ export const UpdatePageDocument = {
         },
         {
           kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
           variable: { kind: "Variable", name: { kind: "Name", value: "paperSwatchUid" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
@@ -2644,23 +2949,68 @@ export const UpdatePageDocument = {
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternSize" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "patternOptions" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "JSONString" } },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternSpacing" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "Float" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "fillSwatchUid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "strokeSwatchUid" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "UUID" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "selectedTool" } },
           type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
         },
         {
           kind: "VariableDefinition",
-          variable: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
-          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          variable: { kind: "Variable", name: { kind: "Name", value: "selectedToolSize" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "selectedLineEndStyle" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "selectedLineEndSide" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isDebugMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isPasteMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isAddImageMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isInteractiveEditMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isTextboxEditMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "isRulerMode" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Boolean" } },
         },
       ],
       selectionSet: {
@@ -2688,6 +3038,11 @@ export const UpdatePageDocument = {
                     },
                     {
                       kind: "ObjectField",
+                      name: { kind: "Name", value: "canvasDataUrl" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
+                    },
+                    {
+                      kind: "ObjectField",
                       name: { kind: "Name", value: "paperSwatchUid" },
                       value: { kind: "Variable", name: { kind: "Name", value: "paperSwatchUid" } },
                     },
@@ -2706,23 +3061,83 @@ export const UpdatePageDocument = {
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternSize" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternSize" } },
+                      name: { kind: "Name", value: "patternOptions" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "patternOptions" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternSpacing" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternSpacing" } },
+                      name: { kind: "Name", value: "fillSwatchUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "fillSwatchUid" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "patternOpacity" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "patternOpacity" } },
+                      name: { kind: "Name", value: "strokeSwatchUid" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "strokeSwatchUid" } },
                     },
                     {
                       kind: "ObjectField",
-                      name: { kind: "Name", value: "canvasDataUrl" },
-                      value: { kind: "Variable", name: { kind: "Name", value: "canvasDataUrl" } },
+                      name: { kind: "Name", value: "selectedTool" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "selectedTool" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "selectedToolSize" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "selectedToolSize" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "selectedLineEndStyle" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "selectedLineEndStyle" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "selectedLineEndSide" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "selectedLineEndSide" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isDebugMode" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isDebugMode" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isPasteMode" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isPasteMode" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isAddImageMode" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isAddImageMode" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isInteractiveEditMode" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "isInteractiveEditMode" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isTextboxEditMode" },
+                      value: {
+                        kind: "Variable",
+                        name: { kind: "Name", value: "isTextboxEditMode" },
+                      },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "isRulerMode" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "isRulerMode" } },
                     },
                   ],
                 },
@@ -2751,6 +3166,8 @@ export const UpdatePageDocument = {
                       { kind: "Field", name: { kind: "Name", value: "uid" } },
                       { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                       { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
+                      { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "paperSwatch" },
@@ -2792,11 +3209,57 @@ export const UpdatePageDocument = {
                         },
                       },
                       { kind: "Field", name: { kind: "Name", value: "patternType" } },
-                      { kind: "Field", name: { kind: "Name", value: "patternSize" } },
-                      { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
-                      { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
-                      { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
-                      { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
+                      { kind: "Field", name: { kind: "Name", value: "patternOptions" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "fillSwatch" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palette" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "strokeSwatch" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "uid" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "palette" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "selectedTool" } },
+                      { kind: "Field", name: { kind: "Name", value: "selectedToolSize" } },
+                      { kind: "Field", name: { kind: "Name", value: "selectedLineEndStyle" } },
+                      { kind: "Field", name: { kind: "Name", value: "selectedLineEndSide" } },
+                      { kind: "Field", name: { kind: "Name", value: "isDebugMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isPasteMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isAddImageMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isInteractiveEditMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isTextboxEditMode" } },
+                      { kind: "Field", name: { kind: "Name", value: "isRulerMode" } },
                     ],
                   },
                 },
@@ -3166,6 +3629,8 @@ export const MyPagesDocument = {
                             { kind: "Field", name: { kind: "Name", value: "uid" } },
                             { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
                             { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+                            { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
+                            { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "paperSwatch" },
@@ -3207,11 +3672,63 @@ export const MyPagesDocument = {
                               },
                             },
                             { kind: "Field", name: { kind: "Name", value: "patternType" } },
-                            { kind: "Field", name: { kind: "Name", value: "patternSize" } },
-                            { kind: "Field", name: { kind: "Name", value: "patternSpacing" } },
-                            { kind: "Field", name: { kind: "Name", value: "patternOpacity" } },
-                            { kind: "Field", name: { kind: "Name", value: "elementOrder" } },
-                            { kind: "Field", name: { kind: "Name", value: "canvasDataUrl" } },
+                            { kind: "Field", name: { kind: "Name", value: "patternOptions" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "fillSwatch" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "palette" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "strokeSwatch" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "palette" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        { kind: "Field", name: { kind: "Name", value: "uid" } },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            { kind: "Field", name: { kind: "Name", value: "selectedTool" } },
+                            { kind: "Field", name: { kind: "Name", value: "selectedToolSize" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "selectedLineEndStyle" },
+                            },
+                            { kind: "Field", name: { kind: "Name", value: "selectedLineEndSide" } },
+                            { kind: "Field", name: { kind: "Name", value: "isDebugMode" } },
+                            { kind: "Field", name: { kind: "Name", value: "isPasteMode" } },
+                            { kind: "Field", name: { kind: "Name", value: "isAddImageMode" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "isInteractiveEditMode" },
+                            },
+                            { kind: "Field", name: { kind: "Name", value: "isTextboxEditMode" } },
+                            { kind: "Field", name: { kind: "Name", value: "isRulerMode" } },
                           ],
                         },
                       },

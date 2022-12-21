@@ -83,11 +83,10 @@ export const LINE_END_STYLE_CHOICES = [
   { key: LineEndStyle.SQUARE, label: "Square" },
 ];
 
-export const PEN_SIZES = [5, 10, 20, 40, 60];
+export const PEN_SIZES = [1, 5, 10, 20, 40, 60];
 export const DEFAULT_PEN_SIZE = 20;
 export const MAX_SWATCH_COLORS = 9;
 export const TRANSPARENT_COLOR = { r: 0, g: 0, b: 0, a: 0 };
-export const DEFAULT_PATTERN_OPACITY = 50;
 
 export enum PALETTE_TYPES {
   GENERAL = 1,

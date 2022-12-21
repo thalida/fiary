@@ -19,8 +19,8 @@ const emits = defineEmits<{
   (e: "update", paletteUid: TPrimaryKey, swatchUid: TPrimaryKey): void;
 }>();
 const coreStore = useCoreStore();
-const pageOptions = computed(() => {
-  return coreStore.pageOptions[props.pageUid];
+const page = computed(() => {
+  return coreStore.pages[props.pageUid];
 });
 
 const builtinPalette = computed(() => {
@@ -57,7 +57,7 @@ const isDropdownOpen = ref(false);
 const debouncedUpdateSwatchColor = debounce(coreStore.updateSwatchColor, 100);
 
 watchEffect(() => {
-  pageOptions.value.isSwatchOpen = showModal.value || isDropdownOpen.value;
+  page.value.isSwatchOpen = showModal.value || isDropdownOpen.value;
 });
 
 function handleCreatePalette() {

@@ -14,7 +14,7 @@ import { merge } from "lodash";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
+const page = computed(() => coreStore.pages[props.pageUid]);
 const rootEl = ref(null as HTMLElement | null);
 const activeElementUid = ref(null as TPrimaryKey | null);
 const activeHtmlElements = computed(() => {
@@ -29,7 +29,7 @@ let moveableElements: (HTMLElement | SVGElement)[] = [];
 function handleStartInteractiveEdit() {
   if (rootEl.value === null) return;
 
-  pageOptions.value.isInteractiveEditMode = true;
+  page.value.isInteractiveEditMode = true;
   activeElementUid.value = null;
   moveableElements = [];
   selectoInteractive = new Selecto({
@@ -104,7 +104,7 @@ function handleStartInteractiveEdit() {
 }
 
 function handleEndInteractiveEdit() {
-  pageOptions.value.isInteractiveEditMode = false;
+  page.value.isInteractiveEditMode = false;
   selectoInteractive.destroy();
   moveableInteractive.destroy();
 }
@@ -212,28 +212,28 @@ function handleCheckboxChange(elementUid: TPrimaryKey) {
 }
 
 function handleTextboxFocus({ elementUid }: { elementUid: TPrimaryKey }) {
-  if (pageOptions.value.isDrawing) {
+  if (page.value.isDrawing) {
     return;
   }
 
-  pageOptions.value.isTextboxEditMode = true;
-  pageOptions.value.selectedTool = ELEMENT_TYPE.TEXTBOX;
+  page.value.isTextboxEditMode = true;
+  page.value.selectedTool = ELEMENT_TYPE.TEXTBOX;
   activeElementUid.value = elementUid;
 }
 
 function handleTextboxBlur() {
-  pageOptions.value.isTextboxEditMode = false;
+  page.value.isTextboxEditMode = false;
 }
 
 function handleInteractiveElementEvent(e: Event) {
-  if (!pageOptions.value.isInteractiveEditMode && !pageOptions.value.isDrawing) {
+  if (!page.value.isInteractiveEditMode && !page.value.isDrawing) {
     e.stopPropagation();
   }
 }
 
 function reset() {
-  pageOptions.value.isTextboxEditMode = false;
-  pageOptions.value.isInteractiveEditMode = false;
+  page.value.isTextboxEditMode = false;
+  page.value.isInteractiveEditMode = false;
   activeElementUid.value = null;
 }
 
@@ -247,7 +247,7 @@ defineExpose({
 
 <template>
   <div
-    v-if="pageOptions"
+    v-if="page"
     ref="rootEl"
     :style="{
       width: coreStore.canvasConfig.width + 'px',

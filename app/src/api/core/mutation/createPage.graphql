@@ -1,21 +1,43 @@
 mutation CreatePage(
   $notebookUid: UUID!
-  $paperSwatchUid: UUID!
-  $patternSwatchUid: UUID
-  $patternType: Int
-  $patternSize: Float
-  $patternSpacing: Float
-  $patternOpacity: Int
+  $canvasDataUrl: String,
+  $paperSwatchUid: UUID,
+  $patternSwatchUid: UUID,
+  $patternType: Int,
+  $patternOptions: JSONString,
+  $fillSwatchUid: UUID,
+  $strokeSwatchUid: UUID,
+  $selectedTool: Int,
+  $selectedToolSize: Int,
+  $selectedLineEndStyle: Int,
+  $selectedLineEndSide: Int,
+  $isDebugMode: Boolean,
+  $isPasteMode: Boolean,
+  $isAddImageMode: Boolean,
+  $isInteractiveEditMode: Boolean,
+  $isTextboxEditMode: Boolean,
+  $isRulerMode: Boolean,
 ) {
   createPage(
     input: {
       notebookUid: $notebookUid
+      canvasDataUrl: $canvasDataUrl
       paperSwatchUid: $paperSwatchUid
       patternSwatchUid: $patternSwatchUid
       patternType: $patternType
-      patternSize: $patternSize
-      patternSpacing: $patternSpacing
-      patternOpacity: $patternOpacity
+      patternOptions: $patternOptions
+      fillSwatchUid: $fillSwatchUid
+      strokeSwatchUid: $strokeSwatchUid
+      selectedTool: $selectedTool
+      selectedToolSize: $selectedToolSize
+      selectedLineEndStyle: $selectedLineEndStyle
+      selectedLineEndSide: $selectedLineEndSide
+      isDebugMode: $isDebugMode
+      isPasteMode: $isPasteMode
+      isAddImageMode: $isAddImageMode
+      isInteractiveEditMode: $isInteractiveEditMode
+      isTextboxEditMode: $isTextboxEditMode
+      isRulerMode: $isRulerMode
     }
   ) {
     page {
@@ -26,6 +48,8 @@ mutation CreatePage(
       uid
       updatedAt
       createdAt
+      canvasDataUrl
+      elementOrder
       paperSwatch {
         uid
         palette {
@@ -39,11 +63,29 @@ mutation CreatePage(
         }
       }
       patternType
-      patternSize
-      patternSpacing
-      patternOpacity
-      elementOrder
-      canvasDataUrl
+      patternOptions
+      fillSwatch {
+        uid
+        palette {
+          uid
+        }
+      }
+      strokeSwatch {
+        uid
+        palette {
+          uid
+        }
+      }
+      selectedTool
+      selectedToolSize
+      selectedLineEndStyle
+      selectedLineEndSide
+      isDebugMode
+      isPasteMode
+      isAddImageMode
+      isInteractiveEditMode
+      isTextboxEditMode
+      isRulerMode
     }
   }
 }

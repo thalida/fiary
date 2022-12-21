@@ -13,7 +13,6 @@ import type BaseCanvasElement from "@/models/BaseCanvasElement";
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const canvas = ref<HTMLCanvasElement>();
 const pasteTransform = ref({
@@ -32,11 +31,11 @@ async function handlePasteStart() {
     scale: [1, 1],
     rotate: 0,
   };
-  pageOptions.value.isPasteMode = true;
+  page.value.isPasteMode = true;
   await nextTick();
 
   if (typeof rootEl.value === "undefined" || typeof canvas.value === "undefined") {
-    pageOptions.value.isPasteMode = false;
+    page.value.isPasteMode = false;
     return;
   }
 
@@ -120,7 +119,7 @@ function handleCancelPaste() {
   const cutSelectionUid = activeElements[activeElements.length - 1];
   const cutSelection = coreStore.elements[cutSelectionUid] as CutElement;
   coreStore.removeElement(cutSelection, false);
-  pageOptions.value.isPasteMode = false;
+  page.value.isPasteMode = false;
 }
 
 function handlePasteEnd() {
@@ -194,14 +193,14 @@ function handlePasteEnd() {
     pasteElement.cachedCanvasImage = img;
     coreStore.addElement(pasteElement);
     emit("redraw");
-    pageOptions.value.isPasteMode = false;
+    page.value.isPasteMode = false;
   };
   img.src = pasteElement.canvasDataUrl;
 }
 
 function handlePasteDelete() {
   emit("redraw");
-  pageOptions.value.isPasteMode = false;
+  page.value.isPasteMode = false;
 }
 
 function setPasteTransform(
@@ -242,7 +241,7 @@ defineExpose({
 });
 </script>
 <template>
-  <div ref="rootEl" class="paste-layer" v-if="pageOptions && pageOptions.isPasteMode">
+  <div ref="rootEl" class="paste-layer" v-if="page && page.isPasteMode">
     <canvas class="paste-canvas" ref="canvas"></canvas>
   </div>
 </template>

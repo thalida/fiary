@@ -210,13 +210,24 @@ class DeleteNotebook(graphene.relay.ClientIDMutation):
 class CreatePage(graphene.relay.ClientIDMutation):
     class Input:
         notebook_uid = graphene.UUID(required=True)
+        canvas_data_url = graphene.String(required=False)
+
         paper_swatch_uid = graphene.UUID(required=False)
         pattern_swatch_uid = graphene.UUID(required=False)
         pattern_type = graphene.Int(required=False)
-        pattern_size = graphene.Float(required=False)
-        pattern_spacing = graphene.Float(required=False)
-        pattern_opacity = graphene.Int(required=False)
-        canvas_data_url = graphene.String(required=False)
+        pattern_options = graphene.JSONString(required=False)
+        fill_swatch_uid = graphene.UUID(required=False)
+        stroke_swatch_uid = graphene.UUID(required=False)
+        selected_tool = graphene.Int(required=False)
+        selected_tool_size = graphene.Int(required=False)
+        selected_line_end_style = graphene.Int(required=False)
+        selected_line_end_side = graphene.Int(required=False)
+        is_debug_mode = graphene.Boolean(required=False)
+        is_paste_mode = graphene.Boolean(required=False)
+        is_add_image_mode = graphene.Boolean(required=False)
+        is_interactive_edit_mode = graphene.Boolean(required=False)
+        is_textbox_edit_mode = graphene.Boolean(required=False)
+        is_ruler_mode = graphene.Boolean(required=False)
 
     page = graphene.Field(PageNode)
 
@@ -241,6 +252,14 @@ class CreatePage(graphene.relay.ClientIDMutation):
                 page.pattern_swatch = PaletteSwatch.objects.get(uid=v)
                 continue
 
+            if k == 'fill_swatch_uid':
+                page.fill_swatch = PaletteSwatch.objects.get(uid=v)
+                continue
+
+            if k == 'stroke_swatch_uid':
+                page.stroke_swatch = PaletteSwatch.objects.get(uid=v)
+                continue
+
             setattr(page, k, v)
 
         page.save()
@@ -252,13 +271,24 @@ class UpdatePage(graphene.relay.ClientIDMutation):
     class Input:
         uid = graphene.UUID(required=True)
         notebook_uid = graphene.UUID(required=False)
+        canvas_data_url = graphene.String(required=False)
+
         paper_swatch_uid = graphene.UUID(required=False)
         pattern_swatch_uid = graphene.UUID(required=False)
         pattern_type = graphene.Int(required=False)
-        pattern_size = graphene.Float(required=False)
-        pattern_spacing = graphene.Float(required=False)
-        pattern_opacity = graphene.Int(required=False)
-        canvas_data_url = graphene.String(required=False)
+        pattern_options = graphene.JSONString(required=False)
+        fill_swatch_uid = graphene.UUID(required=False)
+        stroke_swatch_uid = graphene.UUID(required=False)
+        selected_tool = graphene.Int(required=False)
+        selected_tool_size = graphene.Int(required=False)
+        selected_line_end_style = graphene.Int(required=False)
+        selected_line_end_side = graphene.Int(required=False)
+        is_debug_mode = graphene.Boolean(required=False)
+        is_paste_mode = graphene.Boolean(required=False)
+        is_add_image_mode = graphene.Boolean(required=False)
+        is_interactive_edit_mode = graphene.Boolean(required=False)
+        is_textbox_edit_mode = graphene.Boolean(required=False)
+        is_ruler_mode = graphene.Boolean(required=False)
 
     page = graphene.Field(PageNode)
 
@@ -289,6 +319,14 @@ class UpdatePage(graphene.relay.ClientIDMutation):
 
             if k == 'pattern_swatch_uid':
                 page.pattern_swatch = PaletteSwatch.objects.get(uid=v)
+                continue
+
+            if k == 'fill_swatch_uid':
+                page.fill_swatch = PaletteSwatch.objects.get(uid=v)
+                continue
+
+            if k == 'stroke_swatch_uid':
+                page.stroke_swatch = PaletteSwatch.objects.get(uid=v)
                 continue
 
             setattr(page, k, v)

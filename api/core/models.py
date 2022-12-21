@@ -2,7 +2,7 @@ import uuid
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.dispatch import receiver
-from .choices import PaletteTypes, PatternTypes, SwatchDefaultUsages, Tools
+from .choices import LineEndSides, LineEndStyles, PaletteTypes, PatternTypes, SwatchDefaultUsages, Tools
 
 
 class Room(models.Model):
@@ -129,6 +129,18 @@ class Page(models.Model):
         related_name='pages',
         on_delete=models.CASCADE
     )
+    element_order = ArrayField(
+        models.UUIDField(),
+        default=list,
+        blank=True
+    )
+
+    canvas_data_url = models.TextField(
+        default=None,
+        null=True,
+        blank=True
+    )
+
     paper_swatch = models.ForeignKey(
         'core.PaletteSwatch',
         related_name='paper_swatch',
@@ -149,30 +161,59 @@ class Page(models.Model):
         choices=PatternTypes.choices,
         default=PatternTypes.SOLID
     )
-    pattern_size = models.FloatField(
+    pattern_options = models.JSONField(
         default=None,
         blank=True,
         null=True
     )
-    pattern_spacing = models.FloatField(
+    fill_swatch = models.ForeignKey(
+        'core.PaletteSwatch',
+        related_name='fill_swatch',
+        on_delete=models.SET_NULL,
         default=None,
         blank=True,
         null=True
     )
-    pattern_opacity = models.IntegerField(
+    stroke_swatch = models.ForeignKey(
+        'core.PaletteSwatch',
+        related_name='stroke_swatch',
+        on_delete=models.SET_NULL,
         default=None,
         blank=True,
         null=True
     )
-    canvas_data_url = models.TextField(
-        default=None,
-        null=True,
-        blank=True
+    selected_tool = models.IntegerField(
+        choices=Tools.choices,
+        default=Tools.PEN
     )
-    element_order = ArrayField(
-        models.UUIDField(),
-        default=list,
-        blank=True
+    selected_tool_size = models.IntegerField(
+        default=1
+    )
+    selected_line_end_style = models.IntegerField(
+        choices=LineEndStyles.choices,
+        default=LineEndStyles.NONE
+    )
+    selected_line_end_side = models.IntegerField(
+        choices=LineEndSides.choices,
+        default=LineEndSides.NONE
+    )
+    is_debug_mode = models.BooleanField(
+        default=False
+    )
+    is_paste_mode = models.BooleanField(
+        default=False
+    )
+    is_add_image_mode = models.BooleanField(
+        default=False
+    )
+    is_interactive_edit_mode = models.BooleanField(
+        default=False
+    )
+    is_textbox_edit_mode = models.BooleanField(
+        default=False
+    )
+    is_ruler_mode = models.BooleanField(
+        default=False
     )
 
     def __str__(self):
@@ -188,6 +229,9 @@ def setup_page(sender, instance, created, **kwargs):
     notebook = page.notebook
     notebook.page_order.append(page.uid)
     notebook.save()
+
+    def __str__(self):
+        return f"page settings {self.uid}"
 
 
 class Element(models.Model):

@@ -20,7 +20,6 @@ import type {
   IImageElementSettings,
   INotebooks,
   IPage,
-  IPageOptions,
   IPages,
   IPalette,
   IPalettes,
@@ -31,7 +30,6 @@ import type {
 } from "@/types/core";
 import {
   CANVAS_POINTER_TOOL,
-  DEFAULT_PATTERN_OPACITY,
   DEFAULT_PATTERN_TYPE,
   DEFAULT_PEN_SIZE,
   ELEMENT_TYPE,
@@ -44,13 +42,13 @@ import {
 } from "@/constants/core";
 import type BaseElement from "@/models/BaseElement";
 import { ELEMENT_MAP } from "@/models/elements";
+import patterns from "@/components/PagePatterns";
 
 export const useCoreStore = defineStore("core", () => {
   const rooms = ref({} as IRooms);
   const bookshelves = ref({} as IBookshelves);
   const notebooks = ref({} as INotebooks);
   const pages = ref({} as IPages);
-  const pageOptions = ref({} as { [key: TPrimaryKey]: IPageOptions });
   const isSavingElements = ref(false);
   const autoSaveInterval = ref(null as NodeJS.Timer | null);
   const elements = ref({} as { [key: TPrimaryKey]: BaseElement });
@@ -129,63 +127,26 @@ export const useCoreStore = defineStore("core", () => {
   });
 
   const selectedFillColor = computed(() => (pageUid: TPrimaryKey) => {
-    const options = pageOptions.value[pageUid];
-    if (options.fillPaletteUid === null || options.fillSwatchUid === null) {
+    const page = pages.value[pageUid];
+    if (page.fillPaletteUid === null || page.fillSwatchUid === null) {
       return TRANSPARENT_COLOR;
     }
-    return getSwatchColor.value(options.fillPaletteUid, options.fillSwatchUid);
+    return getSwatchColor.value(page.fillPaletteUid, page.fillSwatchUid);
   });
 
   const selectedStrokeColor = computed(() => (pageUid: TPrimaryKey) => {
-    const options = pageOptions.value[pageUid];
-    if (options.strokeSwatchUid === null || options.strokePaletteUid === null) {
+    const page = pages.value[pageUid];
+    if (page.strokeSwatchUid === null || page.strokePaletteUid === null) {
       return TRANSPARENT_COLOR;
     }
-    return getSwatchColor.value(options.strokePaletteUid, options.strokeSwatchUid);
+    return getSwatchColor.value(page.strokePaletteUid, page.strokeSwatchUid);
   });
 
-  function initPageOptions(canvas: HTMLCanvasElement, pageUid: TPrimaryKey) {
-    if (typeof pageOptions.value[pageUid] === "undefined") {
-      const options = {
-        drawingCanvas: canvas,
-
-        fillPaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.palette,
-        fillSwatchUid: builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.swatch,
-        strokePaletteUid: builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.palette,
-        strokeSwatchUid: builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.swatch,
-
-        selectedTool: CANVAS_POINTER_TOOL,
-        selectedToolSize: DEFAULT_PEN_SIZE,
-        selectedLineEndSide: LineEndSide.NONE,
-        selectedLineEndStyle: LineEndStyle.NONE,
-
-        isDebugMode: false,
-        isPasteMode: false,
-        isAddImageMode: false,
-        isInteractiveEditMode: false,
-        isTextboxEditMode: false,
-        isRulerMode: false,
-        isMovingRuler: false,
-        isDrawing: false,
-        isSwatchOpen: false,
-        isStylus: false,
-        detectedStylus: false,
-        allowFingerDrawing: true,
-
-        transformMatrix: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
-      };
-
-      pageOptions.value[pageUid] = options;
-    }
-
-    return pageOptions.value[pageUid];
-  }
-
   function setIsStylus(pageUid: TPrimaryKey, event: MouseEvent | TouchEvent) {
-    const options = pageOptions.value[pageUid];
+    const page = pages.value[pageUid];
     const force = (event as TouchEvent).touches ? (event as TouchEvent).touches[0]["force"] : 0;
-    options.isStylus = force > 0;
-    options.detectedStylus = options.detectedStylus || options.isStylus;
+    page.isStylus = force > 0;
+    page.detectedStylus = page.detectedStylus || page.isStylus;
   }
 
   async function fetchMyRooms() {
@@ -366,28 +327,74 @@ export const useCoreStore = defineStore("core", () => {
   function storePage(page: any): Promise<IPage> {
     const currPage = pages.value[page.uid];
     const isInit = typeof currPage === "undefined" || currPage === null;
+
+    const patternKeys = Object.keys(patterns);
+    const defaultPatternOptions = {};
+    for (let i = 0; i < patternKeys.length; i += 1) {
+      const key = patternKeys[i];
+      defaultPatternOptions[key] = patterns[key].DEFAULT_PROPS;
+    }
+    const pagePatternOptions = page.patternOptions ? JSON.parse(page.patternOptions) : {};
+
     const formattedPage: Partial<IPage> = {
       uid: page.uid,
       updatedAt: page.updatedAt,
       createdAt: page.createdAt,
       notebookUid: page.notebook.uid,
-      paperSwatchUid: page.paperSwatch
-        ? page.paperSwatch.uid
-        : builtinPalettes.value[PALETTE_TYPES.PAPER]?.swatch,
+      canvasDataUrl: page.canvasDataUrl ? page.canvasDataUrl : null,
+
       paperPaletteUid: page.paperSwatch
         ? page.paperSwatch.palette.uid
         : builtinPalettes.value[PALETTE_TYPES.PAPER]?.palette,
-      patternSwatchUid: page.patternSwatch
-        ? page.patternSwatch.uid
-        : builtinPalettes.value[PALETTE_TYPES.PATTERN]?.swatch,
+      paperSwatchUid: page.paperSwatch
+        ? page.paperSwatch.uid
+        : builtinPalettes.value[PALETTE_TYPES.PAPER]?.swatch,
+
       patternPaletteUid: page.patternSwatch
         ? page.patternSwatch.palette.uid
         : builtinPalettes.value[PALETTE_TYPES.PATTERN]?.palette,
+      patternSwatchUid: page.patternSwatch
+        ? page.patternSwatch.uid
+        : builtinPalettes.value[PALETTE_TYPES.PATTERN]?.swatch,
+
       patternType: page.patternType ? page.patternType : DEFAULT_PATTERN_TYPE,
-      patternSize: typeof page.patternSize !== "undefined" ? page.patternSize : null,
-      patternSpacing: typeof page.patternSpacing !== "undefined" ? page.patternSpacing : null,
-      patternOpacity: page.patternOpacity ? page.patternOpacity : DEFAULT_PATTERN_OPACITY,
-      canvasDataUrl: page.canvasDataUrl ? page.canvasDataUrl : null,
+      patternOptions: merge(defaultPatternOptions, pagePatternOptions),
+
+      fillPaletteUid: page.fillSwatch
+        ? page.fillSwatch.palette.uid
+        : builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.palette,
+      fillSwatchUid: page.fillSwatch
+        ? page.fillSwatch.uid
+        : builtinPalettes.value[PALETTE_TYPES.TOOL_FILL]?.swatch,
+
+      strokePaletteUid: page.strokeSwatch
+        ? page.strokeSwatch.palette.uid
+        : builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.palette,
+      strokeSwatchUid: page.strokeSwatch
+        ? page.strokeSwatch.uid
+        : builtinPalettes.value[PALETTE_TYPES.TOOL_STROKE]?.swatch,
+
+      selectedTool: page.selectedTool ? page.selectedTool : CANVAS_POINTER_TOOL,
+      selectedToolSize: page.selectedToolSize ? page.selectedToolSize : DEFAULT_PEN_SIZE,
+      selectedLineEndSide: page.selectedLineEndSide ? page.selectedLineEndSide : LineEndSide.NONE,
+      selectedLineEndStyle: page.selectedLineEndStyle
+        ? page.selectedLineEndStyle
+        : LineEndStyle.NONE,
+
+      isDebugMode: page.isDebugMode ? page.isDebugMode : false,
+      isPasteMode: page.isPasteMode ? page.isPasteMode : false,
+      isAddImageMode: page.isAddImageMode ? page.isAddImageMode : false,
+      isInteractiveEditMode: page.isInteractiveEditMode ? page.isInteractiveEditMode : false,
+      isTextboxEditMode: page.isTextboxEditMode ? page.isTextboxEditMode : false,
+      isRulerMode: page.isRulerMode ? page.isRulerMode : false,
+
+      isMovingRuler: false,
+      isDrawing: false,
+      isSwatchOpen: false,
+      isStylus: false,
+      detectedStylus: false,
+      allowFingerDrawing: true,
+      transformMatrix: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
     };
 
     pages.value[page.uid] = merge(currPage, formattedPage);
@@ -450,9 +457,19 @@ export const useCoreStore = defineStore("core", () => {
     return await storePage(page);
   }
 
-  async function updatePage(uid: TPrimaryKey, page: Partial<IPage>) {
+  async function updatePage(uid: TPrimaryKey, pageOverrides: Partial<IPage>) {
     const { execute, data } = useMutation(UpdatePageDocument);
-    await execute({ uid, ...page });
+    const page = pages.value[uid];
+    const formattedPage = {
+      ...page,
+      ...pageOverrides,
+    };
+
+    if (typeof formattedPage.patternOptions !== "undefined") {
+      formattedPage.patternOptions = JSON.stringify(formattedPage.patternOptions);
+    }
+
+    await execute({ uid, ...formattedPage });
 
     const updatedPage = data.value.updatePage?.page;
     if (typeof updatedPage === "undefined" || updatedPage === null) {
@@ -499,7 +516,7 @@ export const useCoreStore = defineStore("core", () => {
     }
   }
 
-  async function startAutoSave() {
+  async function startAutoSave(pageUid: TPrimaryKey, canvas: HTMLCanvasElement) {
     if (autoSaveInterval.value) {
       return;
     }
@@ -507,7 +524,7 @@ export const useCoreStore = defineStore("core", () => {
     const interval = 1000 * 60 * 5; // 5 minutes
 
     autoSaveInterval.value = setInterval(async () => {
-      batchSaveElements();
+      batchSaveElements(pageUid, canvas);
     }, interval);
   }
 
@@ -520,7 +537,7 @@ export const useCoreStore = defineStore("core", () => {
     autoSaveInterval.value = null;
   }
 
-  async function batchSaveElements() {
+  async function batchSaveElements(pageUid: TPrimaryKey, canvas: HTMLCanvasElement) {
     if (isSavingElements.value === true) {
       return;
     }
@@ -533,15 +550,10 @@ export const useCoreStore = defineStore("core", () => {
     isSavingElements.value = true;
 
     const elementsToSave: string[] = [];
-    const pagesToSave: string[] = [];
 
     for (let i = 0; i < dirtyElements.value.length; i += 1) {
       const elementUid = dirtyElements.value[i];
       const element = elements.value[elementUid] as BaseElement;
-      const pageUid = element.pageUid;
-      if (!pagesToSave.includes(pageUid)) {
-        pagesToSave.push(pageUid);
-      }
       if (!elementsToSave.includes(elementUid)) {
         const apiElement = element.toBatchApiFormat();
         element.isDirty = false;
@@ -552,17 +564,13 @@ export const useCoreStore = defineStore("core", () => {
     dirtyElements.value = [];
 
     const { execute } = useMutation(BatchSaveElementsDocument);
-    execute({ elements: elementsToSave }).then(() => {
-      for (let i = 0; i < pagesToSave.length; i += 1) {
-        const pageUid = pagesToSave[i];
-        const canvas = pageOptions.value[pageUid].drawingCanvas;
-        if (canvas !== null) {
-          const canvasDataUrl = canvas.toDataURL();
-          updatePage(pageUid, { canvasDataUrl });
-        }
-      }
-      isSavingElements.value = false;
-    });
+    await execute({ elements: elementsToSave });
+
+    if (canvas !== null) {
+      const canvasDataUrl = canvas.toDataURL();
+      await updatePage(pageUid, { canvasDataUrl });
+    }
+    isSavingElements.value = false;
   }
 
   function addElement(element: BaseElement, trackHistory = true) {
@@ -683,9 +691,7 @@ export const useCoreStore = defineStore("core", () => {
     addHistoryEvent,
     popHistoryEvent,
 
-    pageOptions,
     canvasConfig,
-    initPageOptions,
     selectedFillColor,
     selectedStrokeColor,
     setIsStylus,

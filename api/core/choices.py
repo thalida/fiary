@@ -38,3 +38,15 @@ class SwatchDefaultUsages(models.IntegerChoices):
     PAPER = 1, _('Paper'),
     PATTERN = 10, _('Pattern'),
     TOOL = 20, _('Tool'),
+
+class LineEndStyles(models.IntegerChoices):
+    NONE = 0, _('None'),
+    ARROW = 1, _('Arrow'),
+    CIRCLE = 2, _('Circle'),
+    SQUARE = 3, _('Square'),
+
+
+class LineEndSides(models.IntegerChoices):
+    NONE = 0, _('None'),
+    ONE = 1, _('One'),
+    BOTH = 2, _('Both'),

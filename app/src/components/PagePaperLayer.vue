@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import type { TPrimaryKey } from "@/types/core";
 import { getColorAsCss } from "@/utils/color";
 import { useCoreStore } from "@/stores/core";
@@ -10,7 +10,6 @@ const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 
 const selectedPatternComponent = computed(() => {
   return page.value.patternType !== PATTERN_TYPES.SOLID ? patterns[page.value.patternType] : null;
@@ -23,15 +22,15 @@ const patternColor = computed(() =>
 );
 </script>
 <template>
-  <div v-if="pageOptions" class="paper-layer">
+  <div v-if="page" class="paper-layer">
     <div class="paper-color" :style="{ background: getColorAsCss(paperColor) }"></div>
     <svg class="paper-pattern" width="100%" height="100%" v-if="selectedPatternComponent !== null">
       <component
         id="paper-svg-pattern"
         :is="selectedPatternComponent.COMPONENT"
         :fillColor="getColorAsCss(patternColor)"
-        :lineSize="page.patternSize"
-        :spacing="page.patternSpacing"
+        :lineSize="page.patternOptions[page.patternType].lineSize"
+        :spacing="page.patternOptions[page.patternType].spacing"
         x="0"
         y="0"
       />
@@ -41,7 +40,7 @@ const patternColor = computed(() =>
         width="100%"
         height="100%"
         fill="url(#paper-svg-pattern)"
-        :opacity="page.patternOpacity / 100"
+        :opacity="page.patternOptions[page.patternType].opacity / 100"
       ></rect>
     </svg>
   </div>

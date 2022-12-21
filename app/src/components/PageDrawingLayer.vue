@@ -7,7 +7,6 @@ import { computed, onMounted, ref, watch } from "vue";
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const drawingCanvas = ref<HTMLCanvasElement>();
 const emits = defineEmits<{
   (event: "ready"): void;
@@ -33,12 +32,10 @@ onMounted(() => {
 
   ctx.scale(dpi, dpi);
 
-  coreStore.initPageOptions(drawingCanvas.value, props.pageUid);
-
   drawElements();
 
   watch(
-    () => (pageOptions.value ? pageOptions.value.isDebugMode : false),
+    () => (page.value ? page.value.isDebugMode : false),
     () => {
       drawElements();
     }

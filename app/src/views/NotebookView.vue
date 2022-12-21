@@ -26,6 +26,7 @@ const numPages = computed(() => {
 watchEffect(async () => {
   if (isAuthenticated.value) {
     isLoading.value = true;
+    await coreStore.fetchMyPalettes();
     await coreStore.fetchNotebook(props.notebookUid);
     isLoading.value = false;
   }

@@ -8,7 +8,6 @@ import { useCoreStore } from "@/stores/core";
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const page = computed(() => coreStore.pages[props.pageUid]);
-const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const rulerEl = ref();
 const moveableEl = ref();
@@ -26,7 +25,7 @@ const ruler = ref({
   },
 });
 const showRulerControls = computed(() => {
-  return !pageOptions.value.isDrawing;
+  return !page.value.isDrawing;
 });
 const lastActiveElementUid = computed(() => {
   return coreStore.lastActiveElementUid(props.pageUid);
@@ -37,7 +36,7 @@ const lasElementDimensions = computed(() => {
 });
 
 watchPostEffect(() => {
-  if (pageOptions.value?.isRulerMode) {
+  if (page.value?.isRulerMode) {
     setRulerTransform(rulerEl.value, {});
   }
 });
@@ -59,11 +58,11 @@ function setRulerTransform(
 }
 
 function onRulerMoveStart() {
-  pageOptions.value.isMovingRuler = true;
+  page.value.isMovingRuler = true;
 }
 
 function onRulerMoveEnd() {
-  pageOptions.value.isMovingRuler = false;
+  page.value.isMovingRuler = false;
 }
 
 function onRulerDrag({ target, translate }: OnDrag) {
@@ -104,7 +103,7 @@ defineExpose({
 <template>
   <div
     ref="rootEl"
-    v-if="pageOptions && pageOptions.isRulerMode"
+    v-if="page && page.isRulerMode"
     class="ruler-layer"
     :class="{ 'hide-ruler-controls': !showRulerControls }"
   >
@@ -112,9 +111,7 @@ defineExpose({
       <div class="ruler__label">
         {{ Math.round(ruler.transform.rotate) }}&deg;
         <span
-          v-if="
-            page.elementOrder.length > 0 && pageOptions.isDrawing && lasElementDimensions !== null
-          "
+          v-if="page.elementOrder.length > 0 && page.isDrawing && lasElementDimensions !== null"
         >
           <span v-if="lasElementDimensions.lineLength">
             {{ Math.round(lasElementDimensions.lineLength) }}px
@@ -129,13 +126,13 @@ defineExpose({
       <div class="ruler__tool" :style="{ width: rulerWidth + 'px' }"></div>
     </div>
     <MoveableVue
-      v-if="pageOptions.isRulerMode"
+      v-if="page.isRulerMode"
       ref="moveableEl"
       className="moveable-ruler"
       :target="['.ruler']"
       :pinchable="['rotatable']"
-      :draggable="!pageOptions.isDrawing"
-      :rotatable="!pageOptions.isDrawing"
+      :draggable="!page.isDrawing"
+      :rotatable="!page.isDrawing"
       :scalable="false"
       :throttleRotate="1"
       @drag="onRulerDrag"

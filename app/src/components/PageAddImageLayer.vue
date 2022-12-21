@@ -9,7 +9,7 @@ import { useCoreStore } from "@/stores/core";
 
 const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
-const pageOptions = computed(() => coreStore.pageOptions[props.pageUid]);
+const page = computed(() => coreStore.pages[props.pageUid]);
 const rootEl = ref<HTMLElement>();
 const activeImage = ref<HTMLImageElement | null>(null);
 const imagePreviewCanvas = ref<HTMLCanvasElement>();
@@ -50,7 +50,7 @@ async function handleAddImageStart(image: HTMLImageElement, trackHistory = true)
     clipType: "inset",
     clipStyles: [0, 0, 0, 0],
   };
-  pageOptions.value.isAddImageMode = true;
+  page.value.isAddImageMode = true;
   await nextTick();
 
   if (
@@ -199,13 +199,13 @@ function handleAddImageEnd() {
     coreStore.addElement(imageElement);
     emit("redraw");
     activeImage.value = null;
-    pageOptions.value.isAddImageMode = false;
+    page.value.isAddImageMode = false;
   };
   img.src = imageElement.canvasDataUrl;
 }
 
 function handleCancelAddImage() {
-  pageOptions.value.isAddImageMode = false;
+  page.value.isAddImageMode = false;
 }
 
 function handleImageUpload(e: Event) {
@@ -317,7 +317,7 @@ defineExpose({
 });
 </script>
 <template>
-  <div v-if="pageOptions && pageOptions.isAddImageMode" ref="rootEl" class="image-layer">
+  <div v-if="page && page.isAddImageMode" ref="rootEl" class="image-layer">
     <div class="image-canvases">
       <canvas class="image-canvas image-canvas--preview" ref="imagePreviewCanvas"></canvas>
       <canvas class="image-canvas image-canvas--backdrop" ref="imageBackdropCanvas"></canvas>

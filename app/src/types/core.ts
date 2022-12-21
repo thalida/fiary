@@ -53,23 +53,15 @@ export interface IPage {
   updatedAt: string;
   createdAt: string;
   notebookUid: TPrimaryKey;
+  elementOrder: TPrimaryKey[];
+  canvasDataUrl: string | null;
+
   paperPaletteUid: TPrimaryKey;
   paperSwatchUid: TPrimaryKey;
   patternPaletteUid: TPrimaryKey;
   patternSwatchUid: TPrimaryKey;
   patternType: PATTERN_TYPES;
-  patternOpacity: number;
-  patternSize: number | null;
-  patternSpacing: number | null;
-  elementOrder: TPrimaryKey[];
-  canvasDataUrl: string | null;
-
-  canvasImage?: HTMLImageElement | null;
-}
-
-export interface IPageOptions {
-  drawingCanvas: HTMLCanvasElement | null;
-
+  patternOptions: { [key: string]: { [key: string]: any } };
   fillPaletteUid: TPrimaryKey | null;
   fillSwatchUid: TPrimaryKey | null;
   strokePaletteUid: TPrimaryKey | null;
@@ -78,21 +70,21 @@ export interface IPageOptions {
   selectedToolSize: number;
   selectedLineEndStyle: LineEndStyle;
   selectedLineEndSide: LineEndSide;
-
   isDebugMode: boolean;
   isPasteMode: boolean;
   isAddImageMode: boolean;
   isInteractiveEditMode: boolean;
   isTextboxEditMode: boolean;
   isRulerMode: boolean;
+
+  allowFingerDrawing: boolean;
+  transformMatrix: ITransformMatrix;
   isMovingRuler: boolean;
   isDrawing: boolean;
   isSwatchOpen: boolean;
   isStylus: boolean;
   detectedStylus: boolean;
-  allowFingerDrawing: boolean;
-
-  transformMatrix: ITransformMatrix;
+  canvasImage?: HTMLImageElement | null;
 }
 
 export interface ITransformMatrix {

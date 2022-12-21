@@ -1,6 +1,7 @@
-export { default as COMPONENT } from './pattern.vue';
-export const LABEL = 'Isometric Grid';
+export { default as COMPONENT } from "./pattern.vue";
+export const LABEL = "Isometric Grid";
 export const DEFAULT_PROPS = {
-  spacing: 50,
+  spacing: 30,
   lineSize: 1,
+  opacity: 50,
 };
