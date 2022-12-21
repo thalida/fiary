@@ -226,7 +226,7 @@ defineExpose({
       </option>
     </select>
     <ColorPicker
-      v-if="isPaperTool && page.patternType !== PATTERN_TYPES.SOLID"
+      v-if="isPaperTool"
       style="display: inline"
       :ref="addColorPickerRef"
       :pageUid="props.pageUid"
