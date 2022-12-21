@@ -35,7 +35,7 @@ DEBUG = 'RENDER' not in os.environ
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https:\/\/.*\.fiary\.app$",
+    r"^https?:\/\/(.+\.)*fiary\.app$",
 ]
 
 ALLOWED_HOSTS = [
