@@ -3,6 +3,7 @@ import router from "@/router";
 import { computed, ref, watchEffect } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useCoreStore } from "@/stores/core";
+import AppHeader from "@/components/AppHeader.vue";
 import type { TPrimaryKey } from "@/types/core";
 
 const authStore = useAuthStore();

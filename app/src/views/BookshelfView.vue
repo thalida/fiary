@@ -3,6 +3,7 @@ import { computed, ref, watchEffect } from "vue";
 import router from "@/router";
 import { useAuthStore } from "@/stores/auth";
 import { useCoreStore } from "@/stores/core";
+import AppHeader from "@/components/AppHeader.vue";
 
 const authStore = useAuthStore();
 const coreStore = useCoreStore();
