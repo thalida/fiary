@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     'graphene_django',
     'corsheaders',
     'social_django',
+    'django_filters',
 
     # API Apps
     "users.apps.UsersConfig",
