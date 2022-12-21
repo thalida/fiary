@@ -80,7 +80,7 @@ function initScene() {
 }
 
 function handleSaveBtnClick() {
-  coreStore.batchSaveElements(props.pageUid, drawingLayer.value?.drawingCanvas);
+  coreStore.batchSave(props.pageUid, drawingLayer.value?.drawingCanvas);
 }
 
 const surfaceGestureModule = useGesture(
@@ -497,8 +497,8 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
         size: page.value.selectedToolSize,
         simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !page.value.isStylus,
         thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.5 : 0,
-        streamline: isRulerLine ? 1 : 0.32,
-        smoothing: isRulerLine ? 1 : 0.32,
+        streamline: isRulerLine ? 1 : 0.1,
+        smoothing: isRulerLine ? 1 : 0.1,
         last: false,
       },
     } as Partial<ICanvasSettings>,

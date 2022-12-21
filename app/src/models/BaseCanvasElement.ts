@@ -440,7 +440,6 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.beginPath();
       const strokePoints = this.canvasSettings.smoothPoints.stroke;
       ctx.moveTo(strokePoints[0][0], strokePoints[0][1]);
-      // const strokeData = this.svgPathFromStroke(strokePoints);
       const myStroke = new Path2D(this.canvasSettings.smoothPoints.strokeSvgPath);
       ctx.fillStyle = ctx.strokeStyle;
       ctx.fill(myStroke);
@@ -454,7 +453,6 @@ export default class BaseCanvasElement extends BaseElement {
       ctx.beginPath();
       const pathPoints = this.canvasSettings.smoothPoints.path;
       ctx.moveTo(pathPoints[0][0], pathPoints[0][1]);
-      // const pathData = this.svgPathFromStroke(pathPoints);
       const myPath = new Path2D(this.canvasSettings.smoothPoints.pathSvgPath);
       ctx.fill(myPath);
       ctx.restore();

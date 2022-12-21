@@ -524,7 +524,7 @@ export const useCoreStore = defineStore("core", () => {
     const interval = 1000 * 60 * 5; // 5 minutes
 
     autoSaveInterval.value = setInterval(async () => {
-      batchSaveElements(pageUid, canvas);
+      batchSave(pageUid, canvas);
     }, interval);
   }
 
@@ -537,13 +537,8 @@ export const useCoreStore = defineStore("core", () => {
     autoSaveInterval.value = null;
   }
 
-  async function batchSaveElements(pageUid: TPrimaryKey, canvas: HTMLCanvasElement) {
+  async function batchSave(pageUid: TPrimaryKey, canvas: HTMLCanvasElement) {
     if (isSavingElements.value === true) {
-      return;
-    }
-
-    if (dirtyElements.value.length === 0) {
-      isSavingElements.value = false;
       return;
     }
 
@@ -563,13 +558,16 @@ export const useCoreStore = defineStore("core", () => {
 
     dirtyElements.value = [];
 
-    const { execute } = useMutation(BatchSaveElementsDocument);
-    await execute({ elements: elementsToSave });
+    if (elementsToSave.length > 0) {
+      const { execute } = useMutation(BatchSaveElementsDocument);
+      await execute({ elements: elementsToSave });
+    }
 
     if (canvas !== null) {
       const canvasDataUrl = canvas.toDataURL();
       await updatePage(pageUid, { canvasDataUrl });
     }
+
     isSavingElements.value = false;
   }
 
@@ -681,7 +679,7 @@ export const useCoreStore = defineStore("core", () => {
     fetchElements,
     startAutoSave,
     stopAutoSave,
-    batchSaveElements,
+    batchSave,
     addElement,
     removeElement,
     markDirtyElement,
