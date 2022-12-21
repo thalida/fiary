@@ -42,7 +42,7 @@ import {
 } from "@/constants/core";
 import type BaseElement from "@/models/BaseElement";
 import { ELEMENT_MAP } from "@/models/elements";
-import patterns from "@/components/PagePatterns";
+import patterns, { patternOrder } from "@/components/PagePatterns";
 
 export const useCoreStore = defineStore("core", () => {
   const rooms = ref({} as IRooms);
@@ -328,12 +328,10 @@ export const useCoreStore = defineStore("core", () => {
     const currPage = pages.value[page.uid];
     const isInit = typeof currPage === "undefined" || currPage === null;
 
-    const patternKeys = Object.keys(patterns);
-    const defaultPatternOptions = {};
-    for (let i = 0; i < patternKeys.length; i += 1) {
-      const key = patternKeys[i];
-      defaultPatternOptions[key] = patterns[key].DEFAULT_PROPS;
-    }
+    const defaultPatternOptions: IPage["patternOptions"] = patternOrder.reduce((acc, key) => {
+      acc[key] = patterns[key].DEFAULT_PROPS;
+      return acc;
+    }, {} as IPage["patternOptions"]);
     const pagePatternOptions = page.patternOptions ? JSON.parse(page.patternOptions) : {};
 
     const formattedPage: Partial<IPage> = {
@@ -460,16 +458,17 @@ export const useCoreStore = defineStore("core", () => {
   async function updatePage(uid: TPrimaryKey, pageOverrides: Partial<IPage>) {
     const { execute, data } = useMutation(UpdatePageDocument);
     const page = pages.value[uid];
-    const formattedPage = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pageApiFormat: any = {
       ...page,
       ...pageOverrides,
     };
 
-    if (typeof formattedPage.patternOptions !== "undefined") {
-      formattedPage.patternOptions = JSON.stringify(formattedPage.patternOptions);
+    if (typeof pageApiFormat.patternOptions !== "undefined") {
+      pageApiFormat.patternOptions = JSON.stringify(pageApiFormat.patternOptions);
     }
 
-    await execute({ uid, ...formattedPage });
+    await execute({ uid, ...pageApiFormat });
 
     const updatedPage = data.value.updatePage?.page;
     if (typeof updatedPage === "undefined" || updatedPage === null) {

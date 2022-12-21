@@ -217,7 +217,6 @@ defineExpose({
       @update="handleStrokeColorChange"
     />
     <select v-if="isPaperTool" v-model="page.patternType" @change="handlePatternTypeChange">
-      <option :value="PATTERN_TYPES.SOLID">Solid</option>
       <option v-for="patternKey in patternOrder" :key="patternKey" :value="patternKey">
         {{ patterns[patternKey].LABEL }}
       </option>

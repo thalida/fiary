@@ -48,6 +48,12 @@ export interface IPages {
   [key: string]: IPage;
 }
 
+export interface IPagePatternOptions {
+  lineSize: number;
+  spacing: number;
+  opacity: number;
+}
+
 export interface IPage {
   uid: TPrimaryKey;
   updatedAt: string;
@@ -61,7 +67,9 @@ export interface IPage {
   patternPaletteUid: TPrimaryKey;
   patternSwatchUid: TPrimaryKey;
   patternType: PATTERN_TYPES;
-  patternOptions: { [key: string]: { [key: string]: any } };
+  patternOptions: {
+    [key in PATTERN_TYPES]: IPagePatternOptions;
+  };
   fillPaletteUid: TPrimaryKey | null;
   fillSwatchUid: TPrimaryKey | null;
   strokePaletteUid: TPrimaryKey | null;
