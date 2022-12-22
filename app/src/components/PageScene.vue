@@ -352,15 +352,54 @@ function handleSurfaceHover({ hovering }: { hovering: boolean }) {
   document.addEventListener("gesturechange", cancelEvent);
 }
 
+let nextIsSecond = false;
 function handleSurfaceDrag({
+  event,
   movement: [x, y],
   dragging,
+  touches,
+  down,
+  first,
+  last,
 }: {
+  event: MouseEvent | TouchEvent;
   movement: [number, number];
   dragging: boolean;
+  touches: number;
+  down: boolean;
+  first: boolean;
+  last: boolean;
 }) {
-  if (!dragging || page.value.selectedTool !== CANVAS_HAND_TOOL) {
+  event.stopPropagation();
+
+  if (last) {
+    handleSurfaceTouchEnd(event);
+    nextIsSecond = false;
     return;
+  }
+
+  if (first && page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
+    if (down) {
+      handleSurfaceTouchStart(event);
+    }
+    nextIsSecond = true;
+    return;
+  }
+
+  if (page.value.isDrawing) {
+    const shouldDragInstead = nextIsSecond && touches > 1;
+    nextIsSecond = false;
+
+    if (!shouldDragInstead) {
+      handleSurfaceTouchMove(event);
+      return;
+    }
+
+    handleSurfaceTouchEnd(event);
+    const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
+    const lastElement = coreStore.elements[lastElementUid];
+    coreStore.removeElement(lastElement, false);
+    drawingLayer.value?.drawElements();
   }
 
   setSurfaceTransform({ translate: [x, y] });
@@ -374,10 +413,19 @@ function handleSurfaceDrag({
   ];
 }
 
-function handleSurfacePinch({ offset, pinching }: { offset: [number, number]; pinching: boolean }) {
+function handleSurfacePinch({
+  event,
+  offset,
+  pinching,
+}: {
+  event: MouseEvent | TouchEvent;
+  offset: [number, number];
+  pinching: boolean;
+}) {
   if (!pinching || page.value.isDrawing) {
     return;
   }
+  event.stopPropagation();
 
   const mappedValue = mapper.value(offset[0]);
   const scale = [mappedValue, mappedValue];
@@ -394,15 +442,20 @@ function handleSurfacePinch({ offset, pinching }: { offset: [number, number]; pi
 }
 
 function handleSurfaceScroll({
+  event,
   xy: [x, y],
   wheeling,
+  touches,
 }: {
+  event: MouseEvent | TouchEvent;
   xy: [number, number];
   wheeling: boolean;
+  touches: number;
 }) {
   if (!wheeling) {
     return;
   }
+  event.stopPropagation();
 
   setSurfaceTransform({ translate: [-x, -y] });
   surfaceGestureModule.state.wheel.values = [
@@ -755,12 +808,6 @@ function handleRedo() {
         height: `${coreStore.canvasConfig.height}px`,
         transform: surfaceTransformCss,
       }"
-      @mousedown="handleSurfaceTouchStart"
-      @touchstart="handleSurfaceTouchStart"
-      @mouseup="handleSurfaceTouchEnd"
-      @touchend="handleSurfaceTouchEnd"
-      @mousemove="handleSurfaceTouchMove"
-      @touchmove="handleSurfaceTouchMove"
     >
       <PageRulerLayer ref="rulerLayer" class="ruler-layer" :pageUid="pageUid" />
 

@@ -14,8 +14,12 @@ import "./styles/main.css";
 
 const app = createApp(App);
 
+const graphqlUrl =
+  window.location.hostname === "fiary-app.tunl.sh"
+    ? "https://fiary-api.tunl.sh/graphql/"
+    : import.meta.env.VITE_GRAPHQL_URL;
 const graphqlClient = createClient({
-  url: import.meta.env.VITE_GRAPHQL_URL,
+  url: graphqlUrl,
 });
 
 app.use(graphqlClient);
