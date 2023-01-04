@@ -33,7 +33,7 @@ function handleStartInteractiveEdit() {
   activeElementUid.value = null;
   moveableElements = [];
   selectoInteractive = new Selecto({
-    container: document.body,
+    container: rootEl.value,
     selectableTargets: [".interactiveElement"],
     selectByClick: true,
     selectFromInside: false,
@@ -192,7 +192,9 @@ function handleInteractiveElementDelete() {
     coreStore.removeElement(element);
   }
   moveableElements = [];
-  moveableInteractive.target = [];
+  if (typeof moveableInteractive !== "undefined") {
+    moveableInteractive.target = [];
+  }
 }
 
 function handleTextboxChange({
@@ -227,6 +229,7 @@ function handleTextboxBlur() {
 
 function handleInteractiveElementEvent(e: Event) {
   if (!page.value.isInteractiveEditMode && !page.value.isDrawing) {
+    // console.log("handleInteractiveElementEvent", e);
     e.stopPropagation();
   }
 }

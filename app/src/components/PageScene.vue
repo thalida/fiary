@@ -353,6 +353,7 @@ function handleSurfaceHover({ hovering }: { hovering: boolean }) {
 }
 
 let nextIsSecond = false;
+let lastEvent: MouseEvent | TouchEvent | null = null;
 function handleSurfaceDrag({
   event,
   movement: [x, y],
@@ -373,16 +374,25 @@ function handleSurfaceDrag({
   event.stopPropagation();
 
   if (last) {
-    handleSurfaceTouchEnd(event);
     nextIsSecond = false;
+    if (lastEvent === null) {
+      return;
+    }
+    const target = lastEvent?.target as HTMLElement;
+    if (target.classList.contains("interactiveElement")) {
+      console.log("handleSurfaceDrag", { event, dragging, touches, down, first, last });
+      return;
+    }
+
+    handleSurfaceTouchEnd(lastEvent);
+    lastEvent = null;
     return;
   }
 
   if (first && page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
-    if (down) {
-      handleSurfaceTouchStart(event);
-    }
+    handleSurfaceTouchStart(event);
     nextIsSecond = true;
+    lastEvent = event;
     return;
   }
 
@@ -392,17 +402,24 @@ function handleSurfaceDrag({
 
     if (!shouldDragInstead) {
       handleSurfaceTouchMove(event);
+      lastEvent = event;
       return;
     }
 
     handleSurfaceTouchEnd(event);
+    lastEvent = event;
     const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
     const lastElement = coreStore.elements[lastElementUid];
     coreStore.removeElement(lastElement, false);
     drawingLayer.value?.drawElements();
   }
 
+  if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
+    return;
+  }
+
   setSurfaceTransform({ translate: [x, y] });
+  lastEvent = event;
 
   if (typeof surfaceGestureModule.config.drag === "undefined") {
     return;
@@ -827,6 +844,7 @@ function handleRedo() {
 
       <div class="drawing-area">
         <PageInteractiveLayer
+          v-if="toolbar"
           ref="interactiveLayer"
           class="interactive-layer"
           :pageUid="props.pageUid"

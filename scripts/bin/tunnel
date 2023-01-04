@@ -1,3 +1,9 @@
 #!/usr/bin/env bash
 
-ssh -o StrictHostKeyChecking=no -p 2211 -R fiary-app:80:localhost:8080 tunl.sh
+set -o allexport
+source /workspace/.env
+source /workspace/app/.env
+set +o allexport
+
+cd /workspace/scripts/dev
+parallel -j 2 --lb  --tagstring '\033[30;3{=$_=++$::color%8+3=}m {/.}' ::: ./tunnel-api ./tunnel-app
