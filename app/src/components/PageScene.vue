@@ -320,23 +320,6 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
     nextTransform.d = transform.scale[1];
   }
 
-  const rootRect = rootEl.value.getBoundingClientRect();
-  const surfaceRect = surfaceEl.value.getBoundingClientRect();
-
-  const buffer = 50;
-  let x = nextTransform.e;
-  let y = nextTransform.f;
-  const x_boundary = surfaceRect.width - rootRect.width + buffer;
-  x = Math.max(x, -x_boundary);
-  x = Math.min(x, buffer);
-
-  const y_boundary = surfaceRect.height - rootRect.height + buffer;
-  y = Math.max(y, -y_boundary);
-  y = Math.min(y, buffer);
-
-  nextTransform.e = x;
-  nextTransform.f = y;
-
   page.value.transformMatrix = nextTransform;
 }
 
@@ -352,7 +335,7 @@ function handleSurfaceHover({ hovering }: { hovering: boolean }) {
   document.addEventListener("gesturechange", cancelEvent);
 }
 
-let nextIsSecond = false;
+let prevEventWasFirst = false;
 let lastEvent: MouseEvent | TouchEvent | null = null;
 function handleSurfaceDrag({
   event,
@@ -373,45 +356,40 @@ function handleSurfaceDrag({
 }) {
   event.stopPropagation();
 
+  const target = event.target as HTMLElement;
+  if (target.classList.contains("interactiveElement")) {
+    console.log("handleSurfaceDrag", { event, dragging, touches, down, first, last });
+    return;
+  }
+
+  if (first) {
+    prevEventWasFirst = true;
+    lastEvent = event;
+    return;
+  }
+
   if (last) {
-    nextIsSecond = false;
-    if (lastEvent === null) {
-      return;
-    }
-    const target = lastEvent?.target as HTMLElement;
-    if (target.classList.contains("interactiveElement")) {
-      console.log("handleSurfaceDrag", { event, dragging, touches, down, first, last });
-      return;
+    if (prevEventWasFirst && lastEvent !== null) {
+      handleSurfaceTouchStart(lastEvent);
     }
 
-    handleSurfaceTouchEnd(lastEvent);
+    handleSurfaceTouchEnd(event);
+    prevEventWasFirst = false;
     lastEvent = null;
     return;
   }
 
-  if (first && page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
-    handleSurfaceTouchStart(event);
-    nextIsSecond = true;
-    lastEvent = event;
-    return;
-  }
-
-  if (page.value.isDrawing) {
-    const shouldDragInstead = nextIsSecond && touches > 1;
-    nextIsSecond = false;
-
-    if (!shouldDragInstead) {
-      handleSurfaceTouchMove(event);
-      lastEvent = event;
-      return;
+  const shouldDraw =
+    prevEventWasFirst && page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1;
+  if (page.value.isDrawing || shouldDraw) {
+    if (prevEventWasFirst && lastEvent !== null) {
+      handleSurfaceTouchStart(lastEvent);
     }
 
-    handleSurfaceTouchEnd(event);
+    handleSurfaceTouchMove(event);
+    prevEventWasFirst = false;
     lastEvent = event;
-    const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
-    const lastElement = coreStore.elements[lastElementUid];
-    coreStore.removeElement(lastElement, false);
-    drawingLayer.value?.drawElements();
+    return;
   }
 
   if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
@@ -420,6 +398,7 @@ function handleSurfaceDrag({
 
   setSurfaceTransform({ translate: [x, y] });
   lastEvent = event;
+  prevEventWasFirst = false;
 
   if (typeof surfaceGestureModule.config.drag === "undefined") {
     return;
@@ -429,6 +408,84 @@ function handleSurfaceDrag({
     page.value.transformMatrix.f,
   ];
 }
+
+// let nextIsSecond = false;
+// let lastEvent: MouseEvent | TouchEvent | null = null;
+// function handleSurfaceDrag({
+//   event,
+//   movement: [x, y],
+//   dragging,
+//   touches,
+//   down,
+//   first,
+//   last,
+// }: {
+//   event: MouseEvent | TouchEvent;
+//   movement: [number, number];
+//   dragging: boolean;
+//   touches: number;
+//   down: boolean;
+//   first: boolean;
+//   last: boolean;
+// }) {
+//   event.stopPropagation();
+
+//   if (last) {
+//     nextIsSecond = false;
+//     if (lastEvent === null) {
+//       return;
+//     }
+//     const target = lastEvent?.target as HTMLElement;
+//     if (target.classList.contains("interactiveElement")) {
+//       console.log("handleSurfaceDrag", { event, dragging, touches, down, first, last });
+//       return;
+//     }
+
+//     handleSurfaceTouchEnd(lastEvent);
+//     lastEvent = null;
+//     return;
+//   }
+
+//   if (first && page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
+//     handleSurfaceTouchStart(event);
+//     nextIsSecond = true;
+//     lastEvent = event;
+//     return;
+//   }
+
+//   if (page.value.isDrawing) {
+//     const shouldDragInstead = nextIsSecond && touches > 1;
+//     nextIsSecond = false;
+
+//     if (!shouldDragInstead) {
+//       handleSurfaceTouchMove(event);
+//       lastEvent = event;
+//       return;
+//     }
+
+//     handleSurfaceTouchEnd(event);
+//     lastEvent = event;
+//     const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
+//     const lastElement = coreStore.elements[lastElementUid];
+//     coreStore.removeElement(lastElement, false);
+//     drawingLayer.value?.drawElements();
+//   }
+
+//   if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
+//     return;
+//   }
+
+//   setSurfaceTransform({ translate: [x, y] });
+//   lastEvent = event;
+
+//   if (typeof surfaceGestureModule.config.drag === "undefined") {
+//     return;
+//   }
+//   surfaceGestureModule.config.drag.initial = [
+//     page.value.transformMatrix.e,
+//     page.value.transformMatrix.f,
+//   ];
+// }
 
 function handleSurfacePinch({
   event,
