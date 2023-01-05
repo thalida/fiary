@@ -25,6 +25,7 @@ import { useCoreStore } from "@/stores/core";
 import type LineElement from "@/models/elements/LineElement";
 import type BaseCanvasElement from "@/models/BaseCanvasElement";
 import type BaseElement from "@/models/BaseElement";
+import { useMotionProperties, useSpring, type PermissiveMotionProperties } from "@vueuse/motion";
 
 console.log("Updated PageScene");
 const props = defineProps<{ pageUid: TPrimaryKey }>();
@@ -40,6 +41,13 @@ const drawingLayer = ref<typeof PageDrawingLayer>();
 const pasteLayer = ref<typeof PagePasteLayer>();
 const addImageLayer = ref<typeof PageAddImageLayer>();
 const toolbar = ref<typeof PageToolbar>();
+
+const { motionProperties } = useMotionProperties(surfaceEl, {
+  x: 0,
+  y: 0,
+  scale: 1,
+});
+const { set } = useSpring(motionProperties as Partial<PermissiveMotionProperties>);
 
 const mapper = ref();
 
@@ -228,24 +236,31 @@ function handleClearAll() {
   page.value.selectedTool = ELEMENT_TYPE.ERASER;
 }
 
-async function setSurfaceTransform(transform: { translate?: number[]; scale?: number[] }) {
+async function setSurfaceTransform(transform: { translate?: number[]; scale?: number }) {
   if (typeof surfaceEl.value === "undefined" || typeof rootEl.value === "undefined") {
     return;
   }
 
-  const nextTransform = {
-    ...page.value.transformMatrix,
-  };
-  if (typeof transform.translate !== "undefined") {
-    nextTransform.e = transform.translate[0];
-    nextTransform.f = transform.translate[1];
-  }
-  if (typeof transform.scale !== "undefined") {
-    nextTransform.a = transform.scale[0];
-    nextTransform.d = transform.scale[1];
+  // const nextTransform = {
+  //   ...page.value.transformMatrix,
+  // };
+  if (Array.isArray(transform.translate) && transform.translate.length === 2) {
+    page.value.transformMatrix.e = transform.translate[0];
+    page.value.transformMatrix.f = transform.translate[1];
   }
 
-  page.value.transformMatrix = nextTransform;
+  if (typeof transform.scale !== "undefined") {
+    page.value.transformMatrix.a = transform.scale;
+    page.value.transformMatrix.d = transform.scale;
+  }
+
+  set({
+    x: page.value.transformMatrix.e,
+    y: page.value.transformMatrix.f,
+    scale: page.value.transformMatrix.a,
+  });
+
+  // page.value.transformMatrix = nextTransform;
 }
 
 function handleSurfaceHover({ hovering }: { hovering: boolean }) {
@@ -277,20 +292,24 @@ function handleSurfaceDrag({
   movement: [number, number];
   offset: [number, number];
   dragging: boolean;
+  pinching: boolean;
   touches: number;
   down: boolean;
   first: boolean;
   last: boolean;
+  intentional: boolean;
 }) {
-  event.stopPropagation();
-
-  console.log("handleSurfaceDrag", offset);
-
   const target = event.target as HTMLElement;
-  if (target.classList.contains("interactiveElement")) {
-    console.log("handleSurfaceDrag", { event, dragging, touches, down, first, last });
+  const validTarget =
+    target.classList.contains("canvas-wrapper") ||
+    target.classList.contains("surface") ||
+    target.classList.contains("interactive-layer");
+
+  if (!validTarget) {
     return;
   }
+
+  event.stopPropagation();
 
   if (first) {
     prevEventWasFirst = true;
@@ -303,6 +322,7 @@ function handleSurfaceDrag({
     target.classList.contains("surface") || target.classList.contains("interactive-layer");
 
   const isDrawingAllowed =
+    page.value.selectedTool !== CANVAS_HAND_TOOL &&
     isSurfaceTarget &&
     page.value.selectedTool !== CANVAS_HAND_TOOL &&
     lastNumTouches === 1 &&
@@ -334,12 +354,13 @@ function handleSurfaceDrag({
     return;
   }
 
-  if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches <= 1) {
-    return;
-  }
+  // if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches <= 1) {
+  //   return;
+  // }
 
   // const mappedValue = mapper.value(offset[0]);
   // const scale = [mappedValue, mappedValue];
+  console.log("handleSurfaceDrag", movement);
 
   setSurfaceTransform({ translate: movement });
   lastEvent = event;
@@ -362,6 +383,7 @@ function handleSurfacePinch({
   pinching,
   dragging,
   touches,
+  intentional,
 }: {
   event: MouseEvent | TouchEvent;
   offset: [number, number];
@@ -369,25 +391,18 @@ function handleSurfacePinch({
   pinching: boolean;
   dragging: boolean;
   touches: number;
+  intentional: boolean;
 }) {
-  console.log("handleSurfacePinch", touches, pinching, dragging, page.value.isDrawing);
+  // console.log("handleSurfacePinch", touches, pinching, dragging, page.value.isDrawing);
   if (!pinching || page.value.isDrawing) {
     return;
   }
   event.stopPropagation();
 
-  const mappedValue = mapper.value(offset[0]);
-  const scale = [mappedValue, mappedValue];
+  const scale = mapper.value(offset[0]);
+  console.log("handleSurfacePinch", offset, offset[0], scale);
 
   setSurfaceTransform({ scale });
-
-  // if (typeof surfaceGestureModule.config.drag === "undefined") {
-  //   return;
-  // }
-  // surfaceGestureModule.config.drag.initial = [
-  //   page.value.transformMatrix.e,
-  //   page.value.transformMatrix.f,
-  // ];
 }
 
 function handleSurfaceScroll({
@@ -420,7 +435,7 @@ function handleCameraZoom(zoomStep: number) {
   const nextZoom = page.value.transformMatrix.a + zoomStep;
   const clampedZoom = Math.max(Math.min(nextZoom, maxZoom), minZoom);
   setSurfaceTransform({
-    scale: [clampedZoom, clampedZoom],
+    scale: clampedZoom,
   });
 
   if (typeof surfaceGestureModule.config.drag === "undefined") {
@@ -728,7 +743,6 @@ function handleRedo() {
       :style="{
         width: `${coreStore.canvasConfig.width}px`,
         height: `${coreStore.canvasConfig.height}px`,
-        transform: surfaceTransformCss,
       }"
     >
       <PageAddImageLayer

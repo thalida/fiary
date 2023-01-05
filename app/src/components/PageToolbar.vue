@@ -150,7 +150,7 @@ defineExpose({
 });
 </script>
 <template>
-  <div v-if="page" class="tools">
+  <div v-if="page" class="tools toolbar">
     <select v-model="page.selectedTool" @change="handleToolChange">
       <option v-for="tool in supportedTools" :key="tool.key" :value="tool.key">
         {{ tool.label }}
