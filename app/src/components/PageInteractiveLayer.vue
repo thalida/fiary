@@ -16,6 +16,7 @@ const props = defineProps<{ pageUid: TPrimaryKey }>();
 const coreStore = useCoreStore();
 const page = computed(() => coreStore.pages[props.pageUid]);
 const rootEl = ref(null as HTMLElement | null);
+const elementsContainerEl = ref(null as HTMLElement | null);
 const activeElementUid = ref(null as TPrimaryKey | null);
 const activeHtmlElements = computed(() => {
   const activeElements = coreStore.activeElements(props.pageUid);
@@ -27,19 +28,21 @@ let moveableInteractive: Moveable;
 let moveableElements: (HTMLElement | SVGElement)[] = [];
 
 function handleStartInteractiveEdit() {
-  if (rootEl.value === null) return;
+  if (rootEl.value === null || elementsContainerEl.value === null) return;
 
   page.value.isInteractiveEditMode = true;
   activeElementUid.value = null;
   moveableElements = [];
   selectoInteractive = new Selecto({
     container: rootEl.value,
+    dragContainer: elementsContainerEl.value,
     selectableTargets: [".interactiveElement"],
+    hitRate: 100,
     selectByClick: true,
-    selectFromInside: false,
-    continueSelect: false,
-    toggleContinueSelect: "shift",
-    hitRate: 0,
+    selectFromInside: true,
+    // continueSelect: false,
+    toggleContinueSelect: ["shift"],
+    ratio: 0,
   });
 
   moveableInteractive = new Moveable(rootEl.value, {
@@ -229,7 +232,6 @@ function handleTextboxBlur() {
 
 function handleInteractiveElementEvent(e: Event) {
   if (!page.value.isInteractiveEditMode && !page.value.isDrawing) {
-    // console.log("handleInteractiveElementEvent", e);
     e.stopPropagation();
   }
 }
@@ -258,46 +260,54 @@ defineExpose({
       transform: `matrix(1, 0, 0, 1, 0, 0)`,
     }"
   >
-    <template v-for="elementUid in activeHtmlElements" :key="elementUid">
-      <CheckboxElementComponent
-        v-if="coreStore.elements[elementUid].tool === ELEMENT_TYPE.CHECKBOX"
-        class="interactiveElement"
-        :data-element-uid="elementUid"
-        :style="{
-          position: 'absolute',
-          transform: (coreStore.elements[elementUid] as BaseInteractiveElement).getTransformCSS(),
-        }"
-        :elementUid="elementUid"
-        @change="handleCheckboxChange"
-        @mousedown="handleInteractiveElementEvent"
-        @touchstart="handleInteractiveElementEvent"
-        @mouseup="handleInteractiveElementEvent"
-        @touchend="handleInteractiveElementEvent"
-        @mousemove="handleInteractiveElementEvent"
-        @touchmove="handleInteractiveElementEvent"
-      />
-      <TextboxElementComponent
-        v-else-if="coreStore.elements[elementUid].tool === ELEMENT_TYPE.TEXTBOX"
-        :data-element-uid="elementUid"
-        class="interactiveElement"
-        :style="{
-          position: 'absolute',
-          transform: (coreStore.elements[elementUid] as BaseInteractiveElement).getTransformCSS(),
-        }"
-        :elementUid="elementUid"
-        :is-active="elementUid === activeElementUid"
-        @change="handleTextboxChange"
-        @focus="handleTextboxFocus"
-        @blur="handleTextboxBlur"
-        @mousedown="handleInteractiveElementEvent"
-        @touchstart="handleInteractiveElementEvent"
-        @mouseup="handleInteractiveElementEvent"
-        @touchend="handleInteractiveElementEvent"
-        @mousemove="handleInteractiveElementEvent"
-        @touchmove="handleInteractiveElementEvent"
-      />
-    </template>
+    <div class="interactive-elements" ref="elementsContainerEl">
+      <template v-for="elementUid in activeHtmlElements" :key="elementUid">
+        <CheckboxElementComponent
+          v-if="coreStore.elements[elementUid].tool === ELEMENT_TYPE.CHECKBOX"
+          class="interactiveElement"
+          :data-element-uid="elementUid"
+          :style="{
+            // display: 'block',
+            position: 'absolute',
+            transform: (coreStore.elements[elementUid] as BaseInteractiveElement).getTransformCSS(),
+          }"
+          :elementUid="elementUid"
+          @change="handleCheckboxChange"
+          @mousedown="handleInteractiveElementEvent"
+          @touchstart="handleInteractiveElementEvent"
+          @mouseup="handleInteractiveElementEvent"
+          @touchend="handleInteractiveElementEvent"
+          @mousemove="handleInteractiveElementEvent"
+          @touchmove="handleInteractiveElementEvent"
+        />
+        <TextboxElementComponent
+          v-else-if="coreStore.elements[elementUid].tool === ELEMENT_TYPE.TEXTBOX"
+          :data-element-uid="elementUid"
+          class="interactiveElement"
+          :style="{
+            position: 'absolute',
+            transform: (coreStore.elements[elementUid] as BaseInteractiveElement).getTransformCSS(),
+          }"
+          :elementUid="elementUid"
+          :is-active="elementUid === activeElementUid"
+          @change="handleTextboxChange"
+          @focus="handleTextboxFocus"
+          @blur="handleTextboxBlur"
+          @mousedown="handleInteractiveElementEvent"
+          @touchstart="handleInteractiveElementEvent"
+          @mouseup="handleInteractiveElementEvent"
+          @touchend="handleInteractiveElementEvent"
+          @mousemove="handleInteractiveElementEvent"
+          @touchmove="handleInteractiveElementEvent"
+        />
+      </template>
+    </div>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.interactive-elements {
+  width: 100%;
+  height: 100%;
+}
+</style>

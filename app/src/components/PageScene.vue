@@ -303,9 +303,10 @@ function handleSurfaceDrag({
   const validTarget =
     target.classList.contains("canvas-wrapper") ||
     target.classList.contains("surface") ||
-    target.classList.contains("interactive-layer");
+    target.classList.contains("interactive-layer") ||
+    target.classList.contains("interactive-elements");
 
-  if (!validTarget) {
+  if (!validTarget || page.value.isInteractiveEditMode) {
     return;
   }
 
@@ -319,12 +320,13 @@ function handleSurfaceDrag({
   }
 
   const isSurfaceTarget =
-    target.classList.contains("surface") || target.classList.contains("interactive-layer");
+    target.classList.contains("surface") ||
+    target.classList.contains("interactive-layer") ||
+    target.classList.contains("interactive-elements");
 
   const isDrawingAllowed =
     page.value.selectedTool !== CANVAS_HAND_TOOL &&
     isSurfaceTarget &&
-    page.value.selectedTool !== CANVAS_HAND_TOOL &&
     lastNumTouches === 1 &&
     touches <= 1;
 
@@ -353,14 +355,6 @@ function handleSurfaceDrag({
     lastNumTouches = touches;
     return;
   }
-
-  // if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches <= 1) {
-  //   return;
-  // }
-
-  // const mappedValue = mapper.value(offset[0]);
-  // const scale = [mappedValue, mappedValue];
-  console.log("handleSurfaceDrag", movement);
 
   setSurfaceTransform({ translate: movement });
   lastEvent = event;
@@ -393,15 +387,12 @@ function handleSurfacePinch({
   touches: number;
   intentional: boolean;
 }) {
-  // console.log("handleSurfacePinch", touches, pinching, dragging, page.value.isDrawing);
   if (!pinching || page.value.isDrawing) {
     return;
   }
   event.stopPropagation();
 
   const scale = mapper.value(offset[0]);
-  console.log("handleSurfacePinch", offset, offset[0], scale);
-
   setSurfaceTransform({ scale });
 }
 
@@ -450,11 +441,10 @@ function handleCameraZoom(zoomStep: number) {
 function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   toolbar.value?.closeAllColorPickers();
 
-  if (page.value.selectedTool === CANVAS_POINTER_TOOL) {
-    return;
-  }
-
-  if (page.value.selectedTool === CANVAS_PAPER_TOOL) {
+  if (
+    page.value.selectedTool === CANVAS_POINTER_TOOL ||
+    page.value.selectedTool === CANVAS_PAPER_TOOL
+  ) {
     return;
   }
 
