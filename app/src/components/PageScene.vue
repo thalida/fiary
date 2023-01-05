@@ -91,7 +91,7 @@ const surfaceGestureModule = useGesture(
     onWheel: handleSurfaceScroll,
   },
   {
-    domTarget: surfaceEl,
+    domTarget: rootEl,
     eventOptions: { passive: false },
   }
 );
@@ -337,6 +337,7 @@ function handleSurfaceHover({ hovering }: { hovering: boolean }) {
 
 let prevEventWasFirst = false;
 let lastEvent: MouseEvent | TouchEvent | null = null;
+let lastNumTouches = 0;
 function handleSurfaceDrag({
   event,
   movement: [x, y],
@@ -365,23 +366,33 @@ function handleSurfaceDrag({
   if (first) {
     prevEventWasFirst = true;
     lastEvent = event;
+    lastNumTouches = touches;
     return;
   }
+
+  const isSurfaceTarget =
+    target.classList.contains("surface") || target.classList.contains("interactive-layer");
+
+  const isDrawingAllowed =
+    isSurfaceTarget &&
+    page.value.selectedTool !== CANVAS_HAND_TOOL &&
+    (lastNumTouches === 1 || touches === 1);
 
   if (last) {
-    if (prevEventWasFirst && lastEvent !== null) {
-      handleSurfaceTouchStart(lastEvent);
-    }
+    if (isDrawingAllowed && lastEvent !== null) {
+      if (prevEventWasFirst) {
+        handleSurfaceTouchStart(lastEvent);
+      }
 
-    handleSurfaceTouchEnd(event);
+      handleSurfaceTouchEnd(lastEvent);
+    }
     prevEventWasFirst = false;
     lastEvent = null;
+    lastNumTouches = 0;
     return;
   }
 
-  const shouldDraw =
-    prevEventWasFirst && page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1;
-  if (page.value.isDrawing || shouldDraw) {
+  if (page.value.isDrawing || isDrawingAllowed) {
     if (prevEventWasFirst && lastEvent !== null) {
       handleSurfaceTouchStart(lastEvent);
     }
@@ -389,6 +400,7 @@ function handleSurfaceDrag({
     handleSurfaceTouchMove(event);
     prevEventWasFirst = false;
     lastEvent = event;
+    lastNumTouches = touches;
     return;
   }
 
@@ -399,6 +411,7 @@ function handleSurfaceDrag({
   setSurfaceTransform({ translate: [x, y] });
   lastEvent = event;
   prevEventWasFirst = false;
+  lastNumTouches = touches;
 
   if (typeof surfaceGestureModule.config.drag === "undefined") {
     return;
