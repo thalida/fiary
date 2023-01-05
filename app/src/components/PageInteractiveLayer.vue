@@ -37,10 +37,10 @@ function handleStartInteractiveEdit() {
     container: rootEl.value,
     dragContainer: elementsContainerEl.value,
     selectableTargets: [".interactiveElement"],
-    hitRate: 100,
+    hitRate: 0,
     selectByClick: true,
-    selectFromInside: true,
-    // continueSelect: false,
+    selectFromInside: false,
+    continueSelect: false,
     toggleContinueSelect: ["shift"],
     ratio: 0,
   });
