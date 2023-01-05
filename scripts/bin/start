@@ -6,5 +6,4 @@ source /workspace/app/.env
 set +o allexport
 
 cd /workspace/scripts/dev
-start_scripts=("./start-api", "./start-app")
 parallel -j 2 --lb  --tagstring '\033[30;3{=$_=++$::color%8+3=}m {/.}' ::: ./start-api ./start-app
