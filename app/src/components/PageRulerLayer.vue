@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watchPostEffect } from "vue";
+import { computed, ref } from "vue";
 import type { OnDrag, OnRotate } from "moveable";
 import MoveableVue from "vue3-moveable";
 import type { TPrimaryKey } from "@/types/core";
@@ -33,12 +33,6 @@ const lastActiveElementUid = computed(() => {
 const lasElementDimensions = computed(() => {
   const lastElement = coreStore.elements[lastActiveElementUid.value];
   return lastElement ? lastElement.dimensions : null;
-});
-
-watchPostEffect(() => {
-  if (page.value?.isRulerMode) {
-    setRulerTransform(rulerEl.value, {});
-  }
 });
 
 function setRulerTransform(

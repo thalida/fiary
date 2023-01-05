@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from "vue";
 import cloneDeep from "lodash/cloneDeep";
-import type Moveable from "moveable";
 import { useGesture } from "@vueuse/gesture";
 import { interpolate } from "popmotion";
 import {
@@ -21,7 +20,6 @@ import PagePaperLayer from "@/components/PagePaperLayer.vue";
 import PageDrawingLayer from "@/components/PageDrawingLayer.vue";
 import PagePasteLayer from "@/components/PagePasteLayer.vue";
 import PageAddImageLayer from "@/components/PageAddImageLayer.vue";
-import PageRulerLayer from "@/components/PageRulerLayer.vue";
 import PageToolbar from "@/components/PageToolbar.vue";
 import { useCoreStore } from "@/stores/core";
 import type LineElement from "@/models/elements/LineElement";
@@ -41,7 +39,6 @@ const paperLayer = ref<typeof PagePaperLayer>();
 const drawingLayer = ref<typeof PageDrawingLayer>();
 const pasteLayer = ref<typeof PagePasteLayer>();
 const addImageLayer = ref<typeof PageAddImageLayer>();
-const rulerLayer = ref<typeof PageRulerLayer>();
 const toolbar = ref<typeof PageToolbar>();
 
 const mapper = ref();
@@ -169,12 +166,7 @@ function getPressure(event: MouseEvent | TouchEvent, tool: ELEMENT_TYPE): number
   return 0.5;
 }
 
-function getMousePos(
-  canvas: HTMLCanvasElement,
-  event: MouseEvent | TouchEvent,
-  followRuler = false,
-  rulerElement?: Moveable
-) {
+function getMousePos(canvas: HTMLCanvasElement, event: MouseEvent | TouchEvent) {
   const rect = canvas.getBoundingClientRect(); // abs. size of element
   const clientX = (event as TouchEvent).touches
     ? (event as TouchEvent).touches[0].clientX
@@ -182,81 +174,14 @@ function getMousePos(
   const clientY = (event as TouchEvent).touches
     ? (event as TouchEvent).touches[0].clientY
     : (event as MouseEvent).clientY;
-  let inputX = clientX;
-  let inputY = clientY;
-  let isRulerLine = false;
 
-  if (page.value.isRulerMode && followRuler && rulerElement) {
-    const searchDistance = 25;
-    let foundX, foundY;
-    let searchFor = true;
-    let isFirstLoop = true;
-
-    let dx = 0;
-    while (dx <= searchDistance) {
-      const rx1 = clientX - dx;
-      const rx2 = clientX + dx;
-
-      let dy = 0;
-      while (dy <= searchDistance) {
-        const ry1 = clientY - dy;
-        const ry2 = clientY + dy;
-        const searchDirections = [
-          [rx1, ry1],
-          [rx1, ry2],
-          [rx2, ry1],
-          [rx2, ry2],
-        ];
-
-        for (let i = 0; i < searchDirections.length; i += 1) {
-          const searchDirection = searchDirections[i];
-          const isInside = rulerElement.isInside(searchDirection[0], searchDirection[1]);
-
-          if (isFirstLoop) {
-            searchFor = !isInside;
-            isFirstLoop = false;
-          }
-
-          if (isInside === searchFor) {
-            foundX = searchDirection[0];
-            foundY = searchDirection[1];
-            break;
-          }
-        }
-
-        if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-          break;
-        }
-
-        dy += 1;
-      }
-
-      if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-        break;
-      }
-
-      dx += 1;
-    }
-
-    if (typeof foundX !== "undefined" && typeof foundY !== "undefined") {
-      isRulerLine = true;
-      inputX = foundX;
-      inputY = foundY;
-    }
-  }
-
-  const x = inputX - rect.left;
-  const y = inputY - rect.top;
-  return { x, y, isRulerLine };
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  return { x, y };
 }
 
-function getDrawPos(
-  canvas: HTMLCanvasElement,
-  event: MouseEvent | TouchEvent,
-  followRuler = false,
-  rulerElement?: Moveable
-) {
-  const pos = getMousePos(canvas, event, followRuler, rulerElement);
+function getDrawPos(canvas: HTMLCanvasElement, event: MouseEvent | TouchEvent) {
+  const pos = getMousePos(canvas, event);
   const cameraZoom = page.value.transformMatrix ? page.value.transformMatrix.a : 1;
   const transformedPos = {
     x: pos.x / cameraZoom,
@@ -340,7 +265,8 @@ let lastEvent: MouseEvent | TouchEvent | null = null;
 let lastNumTouches = 0;
 function handleSurfaceDrag({
   event,
-  movement: [x, y],
+  movement,
+  offset,
   dragging,
   touches,
   down,
@@ -349,6 +275,7 @@ function handleSurfaceDrag({
 }: {
   event: MouseEvent | TouchEvent;
   movement: [number, number];
+  offset: [number, number];
   dragging: boolean;
   touches: number;
   down: boolean;
@@ -356,6 +283,8 @@ function handleSurfaceDrag({
   last: boolean;
 }) {
   event.stopPropagation();
+
+  console.log("handleSurfaceDrag", offset);
 
   const target = event.target as HTMLElement;
   if (target.classList.contains("interactiveElement")) {
@@ -376,7 +305,8 @@ function handleSurfaceDrag({
   const isDrawingAllowed =
     isSurfaceTarget &&
     page.value.selectedTool !== CANVAS_HAND_TOOL &&
-    (lastNumTouches === 1 || touches === 1);
+    lastNumTouches === 1 &&
+    touches <= 1;
 
   if (last) {
     if (isDrawingAllowed && lastEvent !== null) {
@@ -404,11 +334,14 @@ function handleSurfaceDrag({
     return;
   }
 
-  if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
+  if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches <= 1) {
     return;
   }
 
-  setSurfaceTransform({ translate: [x, y] });
+  // const mappedValue = mapper.value(offset[0]);
+  // const scale = [mappedValue, mappedValue];
+
+  setSurfaceTransform({ translate: movement });
   lastEvent = event;
   prevEventWasFirst = false;
   lastNumTouches = touches;
@@ -422,93 +355,22 @@ function handleSurfaceDrag({
   ];
 }
 
-// let nextIsSecond = false;
-// let lastEvent: MouseEvent | TouchEvent | null = null;
-// function handleSurfaceDrag({
-//   event,
-//   movement: [x, y],
-//   dragging,
-//   touches,
-//   down,
-//   first,
-//   last,
-// }: {
-//   event: MouseEvent | TouchEvent;
-//   movement: [number, number];
-//   dragging: boolean;
-//   touches: number;
-//   down: boolean;
-//   first: boolean;
-//   last: boolean;
-// }) {
-//   event.stopPropagation();
-
-//   if (last) {
-//     nextIsSecond = false;
-//     if (lastEvent === null) {
-//       return;
-//     }
-//     const target = lastEvent?.target as HTMLElement;
-//     if (target.classList.contains("interactiveElement")) {
-//       console.log("handleSurfaceDrag", { event, dragging, touches, down, first, last });
-//       return;
-//     }
-
-//     handleSurfaceTouchEnd(lastEvent);
-//     lastEvent = null;
-//     return;
-//   }
-
-//   if (first && page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
-//     handleSurfaceTouchStart(event);
-//     nextIsSecond = true;
-//     lastEvent = event;
-//     return;
-//   }
-
-//   if (page.value.isDrawing) {
-//     const shouldDragInstead = nextIsSecond && touches > 1;
-//     nextIsSecond = false;
-
-//     if (!shouldDragInstead) {
-//       handleSurfaceTouchMove(event);
-//       lastEvent = event;
-//       return;
-//     }
-
-//     handleSurfaceTouchEnd(event);
-//     lastEvent = event;
-//     const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
-//     const lastElement = coreStore.elements[lastElementUid];
-//     coreStore.removeElement(lastElement, false);
-//     drawingLayer.value?.drawElements();
-//   }
-
-//   if (page.value.selectedTool !== CANVAS_HAND_TOOL && touches === 1) {
-//     return;
-//   }
-
-//   setSurfaceTransform({ translate: [x, y] });
-//   lastEvent = event;
-
-//   if (typeof surfaceGestureModule.config.drag === "undefined") {
-//     return;
-//   }
-//   surfaceGestureModule.config.drag.initial = [
-//     page.value.transformMatrix.e,
-//     page.value.transformMatrix.f,
-//   ];
-// }
-
 function handleSurfacePinch({
   event,
   offset,
+  movement,
   pinching,
+  dragging,
+  touches,
 }: {
   event: MouseEvent | TouchEvent;
   offset: [number, number];
+  movement: [number, number];
   pinching: boolean;
+  dragging: boolean;
+  touches: number;
 }) {
+  console.log("handleSurfacePinch", touches, pinching, dragging, page.value.isDrawing);
   if (!pinching || page.value.isDrawing) {
     return;
   }
@@ -519,20 +381,19 @@ function handleSurfacePinch({
 
   setSurfaceTransform({ scale });
 
-  if (typeof surfaceGestureModule.config.drag === "undefined") {
-    return;
-  }
-  surfaceGestureModule.config.drag.initial = [
-    page.value.transformMatrix.e,
-    page.value.transformMatrix.f,
-  ];
+  // if (typeof surfaceGestureModule.config.drag === "undefined") {
+  //   return;
+  // }
+  // surfaceGestureModule.config.drag.initial = [
+  //   page.value.transformMatrix.e,
+  //   page.value.transformMatrix.f,
+  // ];
 }
 
 function handleSurfaceScroll({
   event,
   xy: [x, y],
   wheeling,
-  touches,
 }: {
   event: MouseEvent | TouchEvent;
   xy: [number, number];
@@ -617,13 +478,7 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
   const strokeColor =
     selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedStrokeColor.value;
   const fillColor = selectedTool === ELEMENT_TYPE.CUT ? TRANSPARENT_COLOR : selectedFillColor.value;
-  const pos = getDrawPos(
-    drawingLayer.value?.drawingCanvas,
-    event,
-    true,
-    rulerLayer.value?.moveableEl
-  );
-  const isRulerLine = pos.isRulerLine;
+  const pos = getDrawPos(drawingLayer.value?.drawingCanvas, event);
 
   const elementProps = {
     pageUid: props.pageUid,
@@ -631,14 +486,14 @@ function handleSurfaceTouchStart(event: MouseEvent | TouchEvent) {
     canvasSettings: {
       strokeColor,
       fillColor,
-      isRulerLine,
+      isRulerLine: false,
       lineSize: selectedTool === ELEMENT_TYPE.CUT ? 0 : page.value.selectedToolSize,
       freehandOptions: {
         size: page.value.selectedToolSize,
         simulatePressure: selectedTool === ELEMENT_TYPE.PEN && !page.value.isStylus,
         thinning: selectedTool === ELEMENT_TYPE.PEN ? 0.5 : 0,
-        streamline: isRulerLine ? 1 : 0.01,
-        smoothing: isRulerLine ? 1 : 0.66,
+        streamline: 0.01,
+        smoothing: 0.66,
         last: false,
       },
     } as Partial<ICanvasSettings>,
@@ -682,17 +537,9 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
 
   event.preventDefault();
 
-  // const lastElementUid = coreStore.lastActiveElementUid(props.pageUid);
   const lastElementUid = page.value.elementOrder[page.value.elementOrder.length - 1];
   const lastElement = coreStore.elements[lastElementUid] as BaseCanvasElement;
-  const isntLineTool = !CANVAS_LINE_TOOLS.includes(lastElement.tool);
-  const followRuler = lastElement.canvasSettings.isRulerLine || isntLineTool;
-  const pos = getDrawPos(
-    drawingLayer.value?.drawingCanvas,
-    event,
-    followRuler,
-    rulerLayer.value?.moveableEl
-  );
+  const pos = getDrawPos(drawingLayer.value?.drawingCanvas, event);
   const pressure = getPressure(event, lastElement.tool);
 
   if (lastElement.tool === ELEMENT_TYPE.CIRCLE || lastElement.tool === ELEMENT_TYPE.RECTANGLE) {
@@ -719,8 +566,6 @@ function handleSurfaceTouchMove(event: MouseEvent | TouchEvent) {
     lastElement.points.push({ x: pos.x, y: pos.y, pressure });
   }
 
-  lastElement.canvasSettings.isRulerLine = pos.isRulerLine;
-
   if (CANVAS_LINE_TOOLS.includes(lastElement.tool)) {
     lastElement.canvasSettings.smoothPoints = lastElement.smoothPoints();
   }
@@ -740,23 +585,13 @@ function handleSurfaceTouchEnd(event: MouseEvent | TouchEvent) {
   }
 
   if (page.value.selectedTool === ELEMENT_TYPE.CHECKBOX) {
-    const pos = getDrawPos(
-      drawingLayer.value?.drawingCanvas,
-      event,
-      true,
-      rulerLayer.value?.moveableEl
-    );
+    const pos = getDrawPos(drawingLayer.value?.drawingCanvas, event);
     handleAddCheckbox(pos);
     return;
   }
 
   if (page.value.selectedTool === ELEMENT_TYPE.TEXTBOX) {
-    const pos = getDrawPos(
-      drawingLayer.value?.drawingCanvas,
-      event,
-      true,
-      rulerLayer.value?.moveableEl
-    );
+    const pos = getDrawPos(drawingLayer.value?.drawingCanvas, event);
     handleAddTextbox(pos);
     return;
   }
@@ -896,8 +731,6 @@ function handleRedo() {
         transform: surfaceTransformCss,
       }"
     >
-      <PageRulerLayer ref="rulerLayer" class="ruler-layer" :pageUid="pageUid" />
-
       <PageAddImageLayer
         ref="addImageLayer"
         class="image-layer"

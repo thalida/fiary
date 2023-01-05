@@ -268,8 +268,6 @@ defineExpose({
       v-model.number="page.patternOptions[page.patternType].spacing"
       @change="handlePatternSpacingChange"
     />
-
-    <!-- <label><input type="checkbox" v-model="page.isRulerMode" /> Show ruler?</label> -->
     <label>
       <input type="checkbox" v-model="page.detectedStylus" :disabled="true" /> Detected Stylus?
     </label>
