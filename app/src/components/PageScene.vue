@@ -233,26 +233,24 @@ async function setSurfaceTransform(transform: { translate?: number[]; scale?: nu
     return;
   }
 
-  // const nextTransform = {
-  //   ...page.value.transformMatrix,
-  // };
   if (Array.isArray(transform.translate) && transform.translate.length === 2) {
     page.value.transformMatrix.e = transform.translate[0];
     page.value.transformMatrix.f = transform.translate[1];
+
+    set({
+      x: page.value.transformMatrix.e,
+      y: page.value.transformMatrix.f,
+    });
   }
 
   if (typeof transform.scale !== "undefined") {
     page.value.transformMatrix.a = transform.scale;
     page.value.transformMatrix.d = transform.scale;
+
+    set({
+      scale: page.value.transformMatrix.a,
+    });
   }
-
-  set({
-    x: page.value.transformMatrix.e,
-    y: page.value.transformMatrix.f,
-    scale: page.value.transformMatrix.a,
-  });
-
-  // page.value.transformMatrix = nextTransform;
 }
 
 function handleSurfaceHover({ hovering }: { hovering: boolean }) {
