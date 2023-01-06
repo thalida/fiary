@@ -68,7 +68,7 @@ def setup_palettes(apps, schema_editor):
     for idx, swatch in enumerate(pattern_swatches):
         swatch = PaletteSwatch.objects.create(
             owner=superadmin,
-            palette=default_paper_palette,
+            palette=default_pattern_palette,
             swatch=swatch,
             is_default=idx == default_pattern_swatch_idx,
         )
@@ -83,7 +83,7 @@ def setup_palettes(apps, schema_editor):
     for idx, swatch in enumerate(tool_fill_swatches):
         swatch = PaletteSwatch.objects.create(
             owner=superadmin,
-            palette=default_paper_palette,
+            palette=default_tool_fill_palette,
             swatch=swatch,
             is_default=idx == default_tool_fill_swatch_idx,
         )
@@ -97,7 +97,7 @@ def setup_palettes(apps, schema_editor):
     for idx, swatch in enumerate(tool_stroke_swatches):
         swatch = PaletteSwatch.objects.create(
             owner=superadmin,
-            palette=default_paper_palette,
+            palette=default_tool_stroke_palette,
             swatch=swatch,
             is_default=idx == default_tool_stroke_swatch_idx,
         )

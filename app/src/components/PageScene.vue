@@ -47,20 +47,12 @@ const { motionProperties } = useMotionProperties(surfaceEl, {
   y: 0,
   scale: 1,
 });
-const { set } = useSpring(motionProperties as Partial<PermissiveMotionProperties>);
-
+const { set } = useSpring(motionProperties as Partial<PermissiveMotionProperties>, {
+  damping: 30,
+  stiffness: 70,
+});
 const mapper = ref();
 
-const surfaceTransformCss = computed(() => {
-  if (typeof page.value === "undefined") {
-    return "";
-  }
-
-  const translate = `translate(${page.value.transformMatrix.e}px, ${page.value.transformMatrix.f}px)`;
-  const scale = `scale(${page.value.transformMatrix.a})`;
-
-  return `${translate} ${scale}`;
-});
 const selectedFillColor = computed(() => coreStore.selectedFillColor(props.pageUid));
 const selectedStrokeColor = computed(() => coreStore.selectedStrokeColor(props.pageUid));
 
